@@ -1,0 +1,7 @@
+RewriteEngine On
+RewriteBase /projects/spider/spider/chrome/content/spider/
+
+RewriteRule ^spider.html spider.htm
+RewriteRule ^spider-help.html spider-help.htm
+
+

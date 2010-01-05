@@ -1,0 +1,178 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+            "http://www.w3.org/TR/html4/strict.dtd">
+<!-- ***** BEGIN LICENSE BLOCK *****
+   - Version: MPL 1.1/GPL 2.0/LGPL 2.1
+   -
+   - The contents of this file are subject to the Mozilla Public License Version
+   - 1.1 (the "License"); you may not use this file except in compliance with
+   - the License. You may obtain a copy of the License at
+   - http://www.mozilla.org/MPL/
+   -
+   - Software distributed under the License is distributed on an "AS IS" basis,
+   - WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+   - for the specific language governing rights and limitations under the
+   - License.
+   -
+   - The Original Code is Netscape Code.
+   -
+   - The Initial Developer of the Original Code is
+   - Netscape Corporation.
+   - Portions created by the Initial Developer are Copyright (C) 2003
+   - the Initial Developer. All Rights Reserved.
+   -
+   - Contributor(s): Bob Clary <bclary@netscape.com>
+   -                 Bob Clary <http://bclary.com/>
+   -
+   - Alternatively, the contents of this file may be used under the terms of
+   - either the GNU General Public License Version 2 or later (the "GPL"), or
+   - the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+   - in which case the provisions of the GPL or the LGPL are applicable instead
+   - of those above. If you wish to allow use of your version of this file only
+   - under the terms of either the GPL or the LGPL, and not to allow others to
+   - use your version of this file under the terms of the MPL, indicate your
+   - decision by deleting the provisions above and replace them with the notice
+   - and other provisions required by the LGPL or the GPL. If you do not delete
+   - the provisions above, a recipient may use your version of this file under
+   - the terms of any one of the MPL, the GPL or the LGPL.
+   -
+   - ***** END LICENSE BLOCK ***** -->
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Spider</title>
+    <link rel="stylesheet" type="text/css" href="../../skin/classic/spider/spider.css" />
+    <style type="text/css">
+      html, body {height: 100%; width: 100%;}
+      iframe#contentSpider {height: 95%; width: 95%;}
+    </style>
+  </head>
+  <body onload="init(event, document.location.search)" onunload="unload()">
+
+    
+    <script type="text/javascript" src="utils.js"></script>
+    <script type="text/javascript" src="dialog-closer.js"></script>
+    <script type="text/javascript" src="isRobotBlocked.js"></script>
+    <script type="text/javascript" src="CCallWrapper.js"></script>
+    <script type="text/javascript" src="CSpider.js"></script>
+    <script type="text/javascript" src="FormPersist.js"></script>
+    <script type="text/javascript" src="spider.js"></script>
+    <script type="text/javascript" src="version.js"></script>
+    <script type="text/javascript" src="script-loader.js"></script>
+
+    <form id="spiderForm" name="spiderForm" action="">
+      <fieldset>
+        <legend>Data</legend>
+        <label>URL&#160;&#160;&#160;&#160;<input name="url" type="text" size="80" value="" /></label>
+
+        <br />
+
+        <label>Domain&#160;<input name="domain" type="text" size="80" value="" /></label>
+
+        <br />
+
+        <label>Depth&#160;&#160;<input name="depth" type="text" size="4" value="1" /></label>
+
+        <label>Page timeout  <input name="timeout" type="text" size="4" value="120" /></label>
+
+        <label>Page wait time  <input name="waittime" type="text" size="4" value="5" /></label>
+
+        <label>
+          <input name="hooksignal" type="checkbox" value="on" />
+          Wait for User Hook
+        </label>
+
+        <br />
+
+        <label>
+          <input name="autostart" type="checkbox" value="on" />
+          Autostart 
+        </label>
+
+        <label>
+          <input name="autoquit" type="checkbox" value="on" />
+          Autoquit 
+        </label>
+
+        <label>
+          <input name="restrict" type="checkbox" value="on" />
+          Restrict URLs 
+        </label>
+
+        <label>
+          <input name="respectrobotrules" type="checkbox" value="on" />
+          Respect robots.txt
+        </label>
+
+        <label>
+          <input name="debug" type="checkbox" value="on" />
+          Debug Spider
+        </label>
+
+      </fieldset>
+
+      <fieldset>
+        <legend>Error Output</legend>
+
+        <table>
+          <tr>
+            <td>JavaScript</td>
+            <td>
+
+              <input name="javascripterrors" type="checkbox" 
+                value="on" /> Errors 
+
+              <input name="javascriptwarnings" type="checkbox" 
+                value="on" /> Warnings 
+
+              <input name="chromeerrors" type="checkbox" value="on" /> Chrome
+
+              <input name="xblerrors" type="checkbox" value="on" /> XBL
+            </td>
+          </tr>
+          <tr>
+            <td>CSS</td>
+            <td>
+              <input name="csserrors" type="checkbox" 
+                value="on" /> Errors 
+            </td>
+          </tr>
+	  <tr>
+	  <td>HTTP</td>
+	  <td>
+	  <input name="httpresponses" type="checkbox" 
+		 value="on" /> Responses
+	  </td>
+	  </tr>
+        </table>
+
+      </fieldset>
+      <fieldset>
+        <legend>User Hooks</legend>
+
+        <label>
+          Script URL
+          <input name="scripturl" type="text" size="80" />
+          <span id="scripturlstatus"></span>
+        </label>
+
+      </fieldset>
+
+      <fieldset>
+        <legend>Controls</legend>
+        <button name="run" type="button" onclick="main(this.form)">Run</button>
+        <button name="pause" type="button" onclick="userpause()" disabled="disabled">Pause</button>
+        <button name="restart" type="button" onclick="gSpider.restart()" disabled="disabled">Restart</button>
+        <button name="stop" type="button" onclick="gSpider.stop()">Stop</button>
+        <button name="save" type="button" onclick="saveParms()">Generate Spider URL</button>
+        <button name="reset" type="reset" onclick="init(event, '')">Reset</button>
+        <button name="help" type="button" id="help" onclick="openHelp()">Help</button>
+      </fieldset>
+    </form>
+
+    <div id="output"></div>
+    <div style="width:100%; height:100%">
+    <iframe id="contentSpider" src="about:blank" height="100%" width="100%">
+    </iframe>
+    </div>
+    <div id="version">spider</div>
+  </body>
+</html>

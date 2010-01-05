@@ -1,0 +1,29 @@
+. $topsrcdir/browser/config/mozconfig
+CPU=`sysctl -a hw 2>&1 | grep 'hw.availcpu' | sed 's|hw.availcpu = *||'`
+let J=$CPU+1
+if [[ $J -gt 4 ]]; then let J=4; fi
+
+
+export CC=gcc-3.3
+export CXX=g++-3.3
+
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/firefox-opt
+mk_add_options MOZ_MAKE_FLAGS=-j${J}
+mk_add_options MOZ_CO_PROJECT=browser
+
+ac_add_options --target=powerpc-apple-darwin8.7.0
+ac_add_options --with-macos-sdk=/Developer/SDKs/MacOSX10.2.8.sdk
+ac_add_options --enable-application=browser
+ac_add_options --enable-optimize="-O2 -g"
+ac_add_options --enable-debugger-info-modules=yes
+
+#ac_add_options --enable-tests
+ac_add_options --disable-debug
+ac_add_options --enable-shared
+ac_add_options --disable-static
+ac_add_options --enable-prebinding
+ac_add_options --enable-svg
+ac_add_options --enable-canvas
+
+ac_add_options --enable-official-branding
+ac_add_options --enable-logrefcnt

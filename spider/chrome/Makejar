@@ -1,0 +1,18 @@
+#-# Makfile #-#
+
+CONTENT = $(shell find content -type f -print)
+LOCALE  = $(shell find locale  -type f -print)
+SKIN    = $(shell find skin    -type f -print)
+
+all: spider.jar
+
+# add Makejar as a dependency so that the file list
+# is not empty if no changes have been made.
+spider.jar: Makejar $(CONTENT) $(LOCALE) $(SKIN)
+	zip -r -o $@ $(CONTENT) $(LOCALE) $(SKIN)
+	if [[ Makejar -nt spider.jar ]]; then \
+		touch --reference=Makejar spider.jar; \
+	fi
+
+clean:
+	rm -f spider.jar

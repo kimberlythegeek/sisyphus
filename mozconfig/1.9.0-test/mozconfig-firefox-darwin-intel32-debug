@@ -1,0 +1,35 @@
+. $topsrcdir/browser/config/mozconfig
+CPU=`sysctl -a hw 2>&1 | grep 'hw.availcpu' | sed 's|hw.availcpu = *||'`
+let J=$CPU+1
+if [[ $J -gt 4 ]]; then let J=4; fi
+
+
+
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/firefox-debug
+mk_add_options MOZ_MAKE_FLAGS=-j${J}
+mk_add_options MOZ_CO_PROJECT=browser
+
+DARWIN_ARCH=`uname -p`
+DARWIN_VERSION=`uname -r`
+
+ac_add_options --target=${DARWIN_ARCH}-apple-darwin$DARWIN_VERSION
+ac_add_options --with-macos-sdk=/Developer/SDKs/MacOSX10.4u.sdk
+
+ac_add_options --enable-application=browser
+ac_add_options --disable-optimize
+ac_add_options --enable-debugger-info-modules=yes
+
+ac_add_options --enable-debug
+ac_add_options --enable-tests
+ac_add_options --disable-static
+ac_add_options --enable-shared
+ac_add_options --enable-svg
+ac_add_options --enable-canvas
+ac_add_options --enable-places
+
+ac_add_options --enable-official-branding
+#ac_add_options --disable-crashreporter
+ac_add_options --enable-logrefcnt
+ac_add_options --enable-accessibility 
+#ac_add_options --with-valgrind
+#ac_add_options --enable-valgrind

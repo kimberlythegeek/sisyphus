@@ -1,0 +1,5 @@
+window {color: black; background-color: white; }
+label {font-family: monospace;}
+div#id {padding: 1em;}
+#contentSpider { border: 5px solid black; margin: 1em; }
+#output { height: 8em; padding: 0; margin: 0; width: 100%; overflow: hidden; }

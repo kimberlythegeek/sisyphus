@@ -1,0 +1,5 @@
+content spider jar:chrome/spider.jar!/content/spider/ xpcnativewrappers=yes
+locale spider en-US jar:chrome/spider.jar!/locale/en-US/spider/
+skin spider classic/1.0 jar:chrome/spider.jar!/skin/classic/spider/
+skin spider modern/1.0 jar:chrome/spider.jar!/skin/modern/spider/
+

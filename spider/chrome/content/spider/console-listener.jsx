@@ -1,0 +1,437 @@
+/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/*-- ***** BEGIN LICENSE BLOCK *****
+  - Version: MPL 1.1/GPL 2.0/LGPL 2.1
+  -
+  - The contents of this file are subject to the Mozilla Public License Version
+  - 1.1 (the "License"); you may not use this file except in compliance with
+  - the License. You may obtain a copy of the License at
+  - http://www.mozilla.org/MPL/
+  -
+  - Software distributed under the License is distributed on an "AS IS" basis,
+  - WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+  - for the specific language governing rights and limitations under the
+  - License.
+  -
+  - The Original Code is Spider code.
+  -
+  - The Initial Developer of the Original Code is
+  - Bob Clary.
+  - Portions created by the Initial Developer are Copyright (C) 2003
+  - the Initial Developer. All Rights Reserved.
+  -
+  - Contributor(s): Bob Clary <http://bclary.com/>
+  -
+  - Alternatively, the contents of this file may be used under the terms of
+  - either the GNU General Public License Version 2 or later (the "GPL"), or
+  - the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+  - in which case the provisions of the GPL or the LGPL are applicable instead
+  - of those above. If you wish to allow use of your version of this file only
+  - under the terms of either the GPL or the LGPL, and not to allow others to
+  - use your version of this file under the terms of the MPL, indicate your
+  - decision by deleting the provisions above and replace them with the notice
+  - and other provisions required by the LGPL or the GPL. If you do not delete
+  - the provisions above, a recipient may use your version of this file under
+  - the terms of any one of the MPL, the GPL or the LGPL.
+  -
+  - ***** END LICENSE BLOCK ***** */
+    
+// console listener adapted from 
+// http://www.mozilla.org/projects/xpcom/using-consoleservice.html
+
+var gConsoleSecurityPrivileges = 
+  'UniversalXPConnect UniversalBrowserRead UniversalBrowserWrite';
+
+var gConsoleSecurityMessage = 
+  'Error logging requires security privileges to operate.\n' + 
+  'Please see Help for more details.';
+
+
+var gConsoleService;
+
+var gConsoleListener = 
+{
+  javascriptErrors: false,
+  javascriptWarnings: false,
+  cssErrors: false,
+  chromeErrors: false,
+  xblErrors: false,
+  consoleStrings: null,
+
+  observe:function gConsoleListener_Observe( aMessage )
+  {
+    //@JSD_LOG 
+    // inspired by Basic's consoleDump XPI
+
+    var e;
+    var excp1;
+    var excp2;
+    var msg = '';
+
+    if (window.document.location.href.indexOf('chrome://') == -1)
+    {
+      try
+      {
+        window.netscape.security.PrivilegeManager.
+          enablePrivilege(window.gConsoleSecurityPrivileges);
+      }
+      catch(e)
+      {
+        //window.cdump('gConsoleListener_Observe: ' + window.gConsoleSecurityMessage);
+        return;
+      }
+    }
+
+    try
+    {
+      var category;
+      var sourcecode;
+      var type;
+      var typeName = 'typeError';
+
+      var errorMessage = 
+      aMessage.QueryInterface(Components.interfaces.nsIScriptError);
+
+      if (errorMessage.flags & errorMessage.warningFlag)
+      {
+        typeName = 'typeWarning';
+      }
+      else if (errorMessage.flags & errorMessage.exceptionFlag)
+      {
+        typeName = 'typeException';
+      }
+      else if (errorMessage.flags & errorMessage.errorFlag)
+      {
+        typeName = 'typeError';
+      }
+
+      if (errorMessage.category == 'content javascript' ||
+          errorMessage.category == 'XPConnect JavaScript')
+      {
+        if (!this.javascriptErrors && 
+            (typeName == 'typeError' || typeName == 'typeException'))
+        {
+          return;
+        }
+        if (!this.javascriptWarnings && typeName == 'typeWarning')
+        {
+          return;
+        }
+      }
+
+      if (errorMessage.category.indexOf('CSS') > -1  && !this.cssErrors)
+      {
+        return;
+      }
+
+      if (errorMessage.category == 'chrome javascript' && !this.chromeErrors)
+      {
+        return;
+      }
+
+      if (errorMessage.category == 'xbl javascript' && !this.xblErrors)
+      {
+        return;
+      }
+
+      if (errorMessage.category == 'content javascript')
+      {
+        category = 'JavaScript';
+      }
+      else if (errorMessage.category == 'chrome javascript')
+      {
+        category = 'Chrome JavaScript';
+      }
+      else if (errorMessage.category == 'xbl javascript')
+      {
+        category = 'XBL JavaScript';
+      }
+      else if (errorMessage.category.indexOf('CSS') > -1)
+      {
+        category = errorMessage.category;
+      }
+      else
+      {
+        category = errorMessage.category;
+      }
+
+      msg += category;
+
+      type = this.consoleStrings.getString(typeName);
+
+      msg += ' ' + type + ' ';
+
+      // hack around bug in nsScriptError that forces 
+      // message to contain JavaScript [Error|Warning]
+      msg += errorMessage.message.replace(/JavaScript (Error|Warning): /, '');
+      if (msg.substr(msg.length-1) != '.')
+      {
+        msg += '.';
+      }
+      msg += ' ';
+
+      if (errorMessage.sourceName)
+      {
+        msg += this.consoleStrings.
+          getFormattedString('errFile', 
+                             [errorMessage.sourceName]) + ', ';
+      }
+
+      if (errorMessage.columnNumber)
+      {
+        msg += this.consoleStrings.
+        getFormattedString('errLineCol',
+                           [errorMessage.lineNumber, 
+                            errorMessage.columnNumber]) +
+        ', ';
+      }
+      else
+      {
+        msg += this.consoleStrings.
+        getFormattedString('errLine',
+                           [errorMessage.lineNumber]) +
+        ', ';
+      }
+
+      if (errorMessage.sourceLine)
+      {
+        msg += this.consoleStrings.getFormattedString('errCode', ['']) + ' ' + 
+        errorMessage.sourceLine;
+      }
+    }
+    catch(excp1)
+    {
+      try
+      {
+        var consoleMessage = 
+        aMessage.QueryInterface(Components.interfaces.nsIConsoleMessage);
+        msg += consoleMessage.message;
+      }
+      catch(excp2)
+      {
+        msg += aMessage;
+      }
+    }
+
+    msg = msg.replace(/, $/, '.');
+    msg = msg.replace(/\n/g, ' ');
+    msg += '\n';
+
+    if (typeof(this.onConsoleMessage) == 'function')
+    {
+      try
+      {
+        this.onConsoleMessage(msg);
+      }
+      catch(e)
+      {
+        var errmsg = 'gConsoleListener_Observe: ' + e + '\n';
+        dump(errmsg);
+        throw(errmsg);
+      }
+    }
+    else 
+    {
+      dump(msg);
+    }
+  },
+
+  QueryInterface: function gConsoleListener_QueryInterface(iid) 
+  {
+    if (!iid.equals(Components.interfaces.nsIConsoleListener) &&
+        !iid.equals(Components.interfaces.nsISupports)) 
+    {
+      throw Components.results.NS_ERROR_NO_INTERFACE;
+    }
+    return this;
+  }
+};
+
+function registerConsoleListener()
+{
+  var excp;
+
+  gConsoleListener.javascriptErrors = false;
+  gConsoleListener.javascriptWarnings = false;
+  gConsoleListener.cssErrors = false;
+  gConsoleListener.chromeErrors = false;
+  gConsoleListener.xblErrors = false;
+
+  if (document.location.href.indexOf('chrome://') == -1)
+  {
+    try
+    {
+      netscape.security.PrivilegeManager.
+        enablePrivilege(gConsoleSecurityPrivileges);
+    }
+    catch(excp)
+    {
+      alert(gConsoleSecurityMessage);
+      return;
+    }
+  }
+
+  try
+  {
+    var consoleService = getConsoleService();
+    consoleService.registerListener(gConsoleListener); 
+  }
+  catch(excp)
+  {
+  }
+
+  gConsoleListener.consoleStrings = document.getElementById('console-strings');
+
+  if (!gConsoleListener.consoleStrings)
+  {
+    // handle the case where we are running in HTML
+    // and do not have a string-bundle for the console strings.
+    gConsoleListener.consoleStrings = {
+      getString: function gConsoleListener_getString(typeName)
+      {
+        switch (typeName)
+        {
+          case 'typeError':
+          return 'Error';
+          case 'typeWarning':
+          return 'Warning';
+          case 'typeException':
+          return 'Exception';
+          case 'errCode':
+          return 'Source Code:';
+          default:
+          return 'Unknown';
+        }
+      },
+
+      getFormattedString: 
+      function gConsoleListener_getFormattedString(typeName, values)
+      {
+        var s;
+        var v;
+
+        switch(typeName)
+        {
+        case 'errFile':
+          s = 'Source File: %S';
+          break;
+        case 'errLine':
+          s = 'Line: %S';
+          break;
+        case 'errLineCol':
+          s = 'Line: %S, Column: %S';
+          break;
+        default:
+          s = 'Unknown: ';
+          for (v in values)
+          {
+            s += ' %S ';
+          }
+          break;
+        }
+
+        for (v in values)
+        {
+          s = s.replace(/%S/, v);
+        }
+
+        return s;
+      }
+    };
+  }
+}
+
+function unregisterConsoleListener()
+{
+  var excp;
+
+  if (document.location.href.indexOf('chrome://') == -1)
+  {
+    try
+    {
+      netscape.security.PrivilegeManager.
+        enablePrivilege(gConsoleSecurityPrivileges);
+    }
+    catch(excp)
+    {
+      alert(gConsoleSecurityMessage);
+      return;
+    }
+  }
+
+  try
+  {
+    var consoleService = getConsoleService();
+    consoleService.unregisterListener(gConsoleListener); 
+  }
+  catch(excp)
+  {
+  }
+}
+
+function getConsoleService()
+{
+  if (gConsoleService)
+  {
+    return gConsoleService;
+  }
+
+  var excp;
+
+  if (document.location.href.indexOf('chrome://') == -1)
+  {
+    try
+    {
+      netscape.security.PrivilegeManager.
+        enablePrivilege(gConsoleSecurityPrivileges);
+    }
+    catch(excp)
+    {
+      alert(gConsoleSecurityMessage);
+      return gConsoleService;
+    }
+  }
+
+  try
+  {
+    gConsoleService = 
+      Components.classes["@mozilla.org/consoleservice;1"]
+      .getService(Components.interfaces.nsIConsoleService);
+  }
+  catch(excp)
+  {
+  }
+
+  return gConsoleService;
+
+}
+
+function cdump(s)
+{
+  var consoleService = getConsoleService();
+
+  var excp;
+
+  if (document.location.href.indexOf('chrome://') == -1)
+  {
+    try
+    {
+      netscape.security.PrivilegeManager.
+        enablePrivilege(gConsoleSecurityPrivileges);
+    }
+    catch(excp)
+    {
+      alert(gConsoleSecurityMessage);
+      return;
+    }
+  }
+
+  try
+  {
+    consoleService.logStringMessage(s);
+  }
+  catch(excp)
+  {
+  }
+
+}
+
