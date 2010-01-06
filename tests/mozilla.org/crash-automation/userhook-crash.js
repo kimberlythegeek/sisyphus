@@ -42,120 +42,117 @@ function userOnAfterPage()
 
   try
   {
-//    compatModeOnAfterPage();
-//    objectsOnAfterPage();
+    var win = gSpider.mDocument.defaultView;
+    if (win.wrappedJSObject)
+    {
+      cdump('Spider: getting wrapped window object');
+      win = win.wrappedJSObject;
+    }
+
+    var embedlist = win.document.getElementsByTagName('EMBED');
+
+    if (embedlist.wrappedJSObject)
+    {
+      cdump('Spider: getting wrapped embedlist object');
+      embedlist = embedlist.wrappedJSObject;
+    }
+
+    cdump('Spider: got ' + embedlist.length + ' embed elements');
+
+    for (i = 0; i < embedlist.length; i++)
+    {
+      embed = embedlist[i];
+      if (embed.wrappedJSObject)
+      {
+        cdump('Spider: getting wrapped embed object');
+        embed = embed.wrappedJSObject;
+      }
+      if (/flash/i.exec(embed.type))
+      {
+        try {
+          cdump("Spider: flash src=" + embed.src);
+        }
+        catch(ex) {
+          cdump(ex);
+        }
+        try {
+          cdump("Spider: flash TotalFrames=" + embed.TotalFrames());
+        }
+        catch(ex) {
+          cdump(ex);
+        }
+        try {
+          cdump("Spider: flash PecentLoaded=" + embed.PercentLoaded());
+        }
+        catch(ex) {
+          cdump(ex);
+        }
+        try {
+          cdump("Spider: flash IsPlaying=" + embed.IsPlaying());
+        }
+        catch(ex) {
+          cdump(ex);
+        }
+        try {
+          if (!embed.IsPlaying())
+          {
+            cdump("Spider: flash Play()");
+            embed.Play();
+          }
+        }
+        catch(ex)
+        {
+          cdump(ex);
+        }
+        try {
+          cdump("Spider: SetVariable");
+          embed.SetVariable("yoyodyne", "Lord Worphin");
+        }
+        catch(ex)
+        {
+          cdump(ex);
+        }
+        try {
+          cdump("Spider: GetVariable " + embed.GetVariable("yoyodyne"));
+        }
+        catch(ex)
+        {
+          cdump(ex);
+        }
+      }
+    }
+
+    cdump('Spider: blur()');
+    win.blur();
+    cdump('Spider: focus()');
+    win.focus();
+    cdump('Spider: moveTo(1,1)');
+    win.moveTo(1,1)
+      cdump('Spider: resizeTo(0,0)');
+    win.resizeTo(0, 0);
+    cdump('Spider: resizeTo(' + screen.availWidth + ',' + screen.availHeight + ')');
+    win.resizeTo(screen.availWidth,screen.availHeight);
+    cdump('Spider: gc()');
+    collectGarbage();
+
+    var fundown = (function () { cdump("Spider: scrollByPages(1)");win.scrollByPages(1); });
+
+    for (var i = 0; i < 3; i++)
+    {
+      win.setTimeout(fundown, i*1000);
+    }
+
+    var funup = (function () { cdump("Spider: scrollByPages(-1)");win.scrollByPages(-1); });
+
+    for (i = 0; i < 3; i++)
+    {
+      win.setTimeout(funup, (3+i)*1000);
+    }
+
   }
   catch(ex)
   {
     siteMessage(ex + '');
-  }
-
-  var win = gSpider.mDocument.defaultView;
-  if (win.wrappedJSObject)
-  {
-    cdump('Spider: getting wrapped window object');
-    win = win.wrappedJSObject;
-  }
-
-  var embedlist = win.document.getElementsByTagName('EMBED');
-
-  if (embedlist.wrappedJSObject)
-  {
-    cdump('Spider: getting wrapped embedlist object');
-    embedlist = embedlist.wrappedJSObject;
-  }
-
-  cdump('Spider: got ' + embedlist.length + ' embed elements');
-
-  for (i = 0; i < embedlist.length; i++)
-  {
-    embed = embedlist[i];
-    if (embed.wrappedJSObject)
-    {
-      cdump('Spider: getting wrapped embed object');
-      embed = embed.wrappedJSObject;
-    }
-    if (/flash/i.exec(embed.type))
-    {
-      try {
-        cdump("Spider: flash src=" + embed.src);
-      }
-      catch(ex) {
-        cdump(ex);
-      }
-      try {
-        cdump("Spider: flash TotalFrames=" + embed.TotalFrames());
-      }
-      catch(ex) {
-        cdump(ex);
-      }
-      try {
-        cdump("Spider: flash PecentLoaded=" + embed.PercentLoaded());
-      }
-      catch(ex) {
-        cdump(ex);
-      }
-      try {
-        cdump("Spider: flash IsPlaying=" + embed.IsPlaying());
-      }
-      catch(ex) {
-        cdump(ex);
-      }
-      try {
-        if (!embed.IsPlaying())
-        {
-          cdump("Spider: flash Play()");
-          embed.Play();
-        }
-      }
-      catch(ex)
-      {
-        cdump(ex);
-      }
-      try {
-        cdump("Spider: SetVariable");
-        embed.SetVariable("yoyodyne", "Lord Worphin");
-      }
-      catch(ex)
-      {
-        cdump(ex);
-      }
-      try {
-        cdump("Spider: GetVariable " + embed.GetVariable("yoyodyne"));
-      }
-      catch(ex)
-      {
-        cdump(ex);
-      }
-
-    }
-  }
-
-  cdump('Spider: blur()');
-  win.blur();
-  cdump('Spider: focus()');
-  win.focus();
-  cdump('Spider: moveTo(1,1)');
-  win.moveTo(1,1)
-  cdump('Spider: resizeTo(0,0)');
-  win.resizeTo(0, 0);
-  cdump('Spider: resizeTo(' + screen.availWidth + ',' + screen.availHeight + ')');
-  win.resizeTo(screen.availWidth,screen.availHeight);
-  cdump('Spider: gc()');
-  collectGarbage();
-
-  var fundown = (function () { cdump("Spider: scrollByPages(1)");win.scrollByPages(1); });
-
-  for (var i = 0; i < 3; i++)
-  {
-    win.setTimeout(fundown, i*1000)
-  }
-
-  var funup = (function () { cdump("Spider: scrollByPages(-1)");win.scrollByPages(-1); });
-
-  for (i = 0; i < 3; i++)
-  {
-    win.setTimeout(funup, (3+i)*1000)
   }
 
   setTimeout(completePage, embedlist.length*10*gWaitAfterLoad);
