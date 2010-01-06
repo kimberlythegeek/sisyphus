@@ -427,8 +427,8 @@ def testUrl(product, branch, buildtype, url):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE)
             stdout, stderr = proc.communicate()
-            debugMessage("stackwalking: stdout: %s" % (stdout))
-            debugMessage("stackwalking: stderr: %s" % (stderr))
+            #debugMessage("stackwalking: stdout: %s" % (stdout))
+            #debugMessage("stackwalking: stderr: %s" % (stderr))
 
             data = makeUnicodeString(stdout)
 
@@ -630,11 +630,11 @@ def checkIfUrlAlreadyTested(signature_doc, url_index):
 
     return len(result_rows) != 0
 
-def getPendingJobs(startkey=None, endkey=None):
+def getPendingJobs(startkey=None, endkey=None, limit=1000000):
 
     for attempt in max_db_attempts:
         try:
-            pending_job_rows = db.views.signatures.pending_jobs(startkey=startkey,endkey=endkey)
+            pending_job_rows = db.views.signatures.pending_jobs(startkey=startkey,endkey=endkey,limit=limit)
             #debugMessage('getPendingJobs: startkey: %s, endkey: %s, matches: %d' % (startkey, endkey, len(pending_job_rows)))
             break
         except:
@@ -1042,18 +1042,22 @@ def checkSignatureForWorker(pending_job_rows):
     ignored (as being taken by other workers).
     """
 
-    random_wait_time = 10
+    race_counter       = 0
+    race_counter_limit = 10
 
     #debugMessage("checkSignatureForWorker: checking %d pending jobs" % len(pending_job_rows))
 
     for pending_job in pending_job_rows:
         try:
+            race_counter += 1
+            if race_counter > race_counter_limit:
+                signature_doc = None
+                break
             signature_id  = pending_job["signature_id"]
             #debugMessage("checkSignatureForWorker: checking signature %s" % signature_id)
             signature_doc = getDocument(signature_id)
             if not signature_doc or signature_doc["worker"]:
                 #debugMessage("checkSignatureForWorker: race condition: someone else got the signature document %s" % signature_id)
-                time.sleep(random.uniform(1,random_wait_time))
                 continue
         except KeyboardInterrupt:
             raise
@@ -1065,7 +1069,6 @@ def checkSignatureForWorker(pending_job_rows):
 
             logMessage('checkSignatureForWorker: ignoring getDocument(%s): exception: %s' %
                        (signature_id, formatException(exceptionType, exceptionValue, exceptionTraceback)))
-            time.sleep(random.uniform(1,random_wait_time))
             continue
 
         # update the signature and this worker as soon as possible
@@ -1084,8 +1087,7 @@ def checkSignatureForWorker(pending_job_rows):
             if str(exceptionValue) != 'updateDocumentConflict':
                 raise
 
-            #debugMessage("checkSignatureForWorker: ignoring race condition updateDocumentConflict attempting to update signature. Try next signature.")
-            time.sleep(random.uniform(1,random_wait_time))
+            #debugMessage("checkSignatureForWorker: race condition updateDocumentConflict attempting to update signature document %s." % signature_id)
             continue
 
         #debugMessage("checkSignatureForWorker: update worker %s's signature" % this_worker_doc["_id"])
@@ -1169,33 +1171,34 @@ def getSignatureForWorker():
     """
     global this_worker_doc
 
+    limit         = 50
     signature_doc = None
 
     for priority in ['0', '1']:
         startkey         = [priority, this_worker_doc["os_name"], this_worker_doc["cpu_name"], this_worker_doc["os_version"]]
         endkey           = [priority, this_worker_doc["os_name"], this_worker_doc["cpu_name"], this_worker_doc["os_version"] + '\u9999']
-        pending_job_rows = getPendingJobs(startkey=startkey, endkey=endkey)
+        pending_job_rows = getPendingJobs(startkey=startkey, endkey=endkey,limit=limit)
         signature_doc    = checkSignatureForWorker(pending_job_rows)
         if signature_doc:
             break
 
         startkey         = [priority, this_worker_doc["os_name"], this_worker_doc["cpu_name"]]
         endkey           = [priority, this_worker_doc["os_name"], this_worker_doc["cpu_name"] + '\u9999']
-        pending_job_rows = getPendingJobs(startkey=startkey, endkey=endkey)
+        pending_job_rows = getPendingJobs(startkey=startkey, endkey=endkey,limit=limit)
         signature_doc    = checkSignatureForWorker(pending_job_rows)
         if signature_doc:
             break
 
         startkey         = [priority, this_worker_doc["os_name"]]
         endkey           = [priority, this_worker_doc["os_name"] + '\u9999']
-        pending_job_rows = getPendingJobs(startkey=startkey, endkey=endkey)
+        pending_job_rows = getPendingJobs(startkey=startkey, endkey=endkey,limit=limit)
         signature_doc    = checkSignatureForWorker(pending_job_rows)
         if signature_doc:
             break
 
         startkey         = [priority]
         endkey           = [str(int(priority)+1)]
-        pending_job_rows = getPendingJobs(startkey=startkey, endkey=endkey)
+        pending_job_rows = getPendingJobs(startkey=startkey, endkey=endkey,limit=limit)
         signature_doc    = checkSignatureForWorker(pending_job_rows)
         if signature_doc:
             break
@@ -1525,7 +1528,7 @@ Example:
                 branch_data   = None
                 branch        = None
                 buildtype     = None
-                waittime      = 300
+                waittime      = 60
 
                 if this_worker_doc["state"] != "idle":
                     logMessage('No signatures available to proccess, going idle.')
