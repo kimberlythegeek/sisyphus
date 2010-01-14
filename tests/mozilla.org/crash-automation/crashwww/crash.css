@@ -1,0 +1,267 @@
+/* Common */
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: arial, clean, sans-serif;
+  font-size: 13px;
+}
+
+#header {
+  background-color: #444;
+  color: white;
+  height: 100px;
+  padding-top: 30px;
+  width: 100%;
+  overflow: hidden;
+  font-family: arial, clean, sans-serif;
+}
+
+#title-header {
+  margin-left: 30px;
+  margin-right: 60px;
+  float: left;
+}
+
+.small-section {
+  margin-top: 41px;
+  padding: 20px;
+  height: 100%;
+  font-size: 1.2em;
+  float: left;
+  cursor: pointer;
+  text-decoration: none;
+  color: white;
+}
+
+.small-section.highlight {
+  background-color: #222;
+}
+
+.big-title {
+  font-family: sans-serif;
+  font-weight: bold;
+  font-size: 26px;
+}
+
+#firefox-header {
+  font-family: FF Meta Bold, FF Meta, Meta, arial, sans-serif;
+  color: #D86416;
+}
+
+#container {
+  margin: 0 auto;
+}
+
+table.view-table {
+  background-color: white;
+  border-top: 1px solid #AAA;
+  border-left: 1px solid #AAA;
+  border-right: 1px solid #AAA;
+  margin: 60px;
+  -moz-border-radius: 0px;
+}
+
+.view-table tr {
+  border: 1px solid black;
+}
+
+.view-table tr.header-row {
+  background-color: #C9C8C7;
+  font-family: Arial, clean, sans-serif;
+}
+
+.view-table td {
+  padding-top: 4px;
+  padding-left: 4px;
+  padding-right: 8px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #AAA;
+  border-right: 1px solid #BBB;
+}
+
+.view-table tr.header-row th {
+  border-bottom: 1px solid #AAAAAA;
+  border-right: 1px solid #999;
+  padding: 10px;
+}
+
+.view-table a.url {
+  text-decoration: none;
+}
+
+.view-table a:not(.light-sub) {
+  color: black;
+}
+
+.view-table a:hover {
+  text-decoration: underline;
+}
+
+.flex-both {
+  width: 100%;
+  height: 100%;
+}
+
+.flex-width {
+  width: 100%;
+}
+
+.signature {
+  font-family: monospace;
+  font-size: .wwwem;
+}
+
+/* Triage */
+
+.file-bug {
+  -moz-border-radius: 3px;
+  background-color: #5891ED;
+  padding: 6px;
+  color: white;
+  font-weight: bold;
+  font-size: 1.1em;
+  text-align: center;
+  margin-left: 12px;
+  margin-right: 12px;
+  letter-spacing: .6px;
+  cursor:pointer;
+}
+
+#file-bug-dialog {
+  background-color: white;
+  width: 100%;
+}
+
+#file-bug-dialog td {
+  padding-bottom: 8px;
+}
+
+#file-bug-dialog select {
+  width: 200px;
+}
+
+.bug-field {
+  text-align: right;
+  padding-right: 6px;
+  color: #121A2A;
+}
+
+#bug-desc-field {
+  vertical-align: top;
+  padding-top: 4px;
+}
+
+#bug-description {
+  height: 90%;
+  width: 90%;
+}
+
+#bug-desc-cell {
+  vertical-align: top;
+}
+
+#bug-summary, #bug-url {
+  width: 90%;
+}
+
+.fetching {
+  color: #777;
+  font-weight: bold;
+}
+
+#bug-login-title {
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+#bug-login-form {
+  margin: 50px; 
+}
+
+#bug-logged-in {
+  margin-left: 12px;
+  color: #777;
+}
+
+#bug-logged-in-login {
+  font-style: italic;
+  cursor: pointer;
+}
+
+.filing-bug {
+  color: #5891ED;
+  content: "Filing";
+}
+
+#bug-submitting {
+  margin-top: 6px;
+  color: green;
+}
+
+#bug-submit-error {
+  margin-top: 6px;
+  color: red;
+}
+
+#message {
+  font-size: 20px;
+  font-weight: bold;
+  color: black;
+  margin-top: 30px;
+  text-align: center;
+}
+
+/* Workers */
+
+#workers-list {
+  width: 80%;
+}
+
+#worker-header {
+  width: 100px;
+}
+
+.worker-idle {
+  color: red;
+}
+
+.worker-building {
+  color: #1A0FEE;
+}
+
+.worker-testing {
+  background-color: white;
+  color: green;
+}
+
+.light-sub {
+  margin-top: 2px;
+  color: #777;
+}
+
+
+/* Signature */
+
+.not-found {
+  margin: 30px;
+  font-size: 20px;
+}
+
+.reproduced {
+  margin: 10px;
+  padding: 5px;
+  padding-left: 6px;
+  -moz-border-radius: 5px;
+  font-size: 15px;
+  background-color: #2A8A2F;
+  color: white;
+  width: 86px;
+}
+
+
+.sig-property {
+  font-weight: bold;
+  width: 16%; 
+}
+

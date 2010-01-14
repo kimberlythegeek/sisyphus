@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Crash Automation Workers</title>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <link rel="stylesheet" href="crash.css" type="text/css">
+    <link rel="stylesheet" href="jquery/style/ui.base.css" type="text/css">
+    <link rel="stylesheet" href="jquery/style/jquery-ui-1.7.2.custom.css" type="text/css">
+    <script src="jquery/jquery-1.3.2.min.js"></script>
+    <script src="jquery/jquery-ui-1.7.2.custom.min.js"></script>
+    <script src="crash-common.js"></script>
+    <script src="workers.js"></script>
+    <script>
+      $(document).ready(function() {
+          $.getJSON("/crashtest/_design/signatures/_view/workers", showWorkers);
+       });
+    </script>
+  </head>
+  <body>
+    <div id="header">
+      <div id="title-header" class="big-title">
+        <div id="firefox-header">Firefox</div>
+        <div>Crash Automation</div>
+      </div>
+      <a href="/_utils/crashes/triage.html" class="small-section">Triage</a>
+      <a href="/_utils/crashes/workers.html" class="small-section highlight">Workers</a>
+    </div>
+    <div id="container">
+        <table id="workers-list" cellspacing="0" class="view-table">
+          <tbody>
+            <tr class="header-row">
+              <th>Worker</th>
+              <th width="18%">OS</th>
+              <th width="40%">State</th>
+              <th width="20%">Last Update</th>
+            </tr>
+          </tbody>
+        </table>
+    </div>
+  </body>
+</html>
