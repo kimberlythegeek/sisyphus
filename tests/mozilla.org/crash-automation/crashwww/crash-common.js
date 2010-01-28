@@ -1,7 +1,35 @@
+var db = "/crashtest";
+
 var bugzillaRESTUrl = 'https://api-dev.bugzilla.mozilla.org/stage/0.4';
 
 function formatDate(date) {
   return date.toUTCString();
+}
+
+function getParam(url) {
+  var matches = /\?([^\s#]*)/.exec(url);
+  if(matches)
+    return matches[1];
+}
+
+function changeParam(url, newParam) {
+  var matches = /\?([^\s#]+)/.exec(url);
+  if(matches)
+    return url.replace(matches[1], newParam);
+  return url + "?" + newParam;
+}
+
+function urlEncode(options) {
+  var urlString = "";
+  for(opt in options) 
+    urlString += "&" + encodeURIComponent(opt) + "=" + encodeURIComponent(options[opt]);
+  return urlString;
+}
+
+function cropText(text, limit) {
+  if(text.length > limit)
+    return text.slice(0, limit) + "...";
+  return text;
 }
 
 function differenceString(date1, date2) {

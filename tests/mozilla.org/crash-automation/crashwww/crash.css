@@ -226,6 +226,10 @@ table.view-table {
   color: red;
 }
 
+.worker-zombie {
+  color: red;
+}
+
 .worker-building {
   color: #1A0FEE;
 }
@@ -240,6 +244,62 @@ table.view-table {
   color: #777;
 }
 
+/* Views */
+
+#views {
+  margin-top: 20px;
+  margin-left: 40%;
+}
+
+#view-text {
+  font-size: 14px;
+  margin-right: 6px;
+}
+
+#page-navigation {
+  margin-left: 48%;
+  padding: 10px;
+}
+
+#page-navigation a {
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+#page-navigation a:active {
+  background-color: #CCC;
+}
+
+#page-number {
+  margin-right: 10px;
+}
+
+#next-link, #prev-link {
+  margin: 10px;
+  font-size: 14px;
+}
+
+.doc-prop {
+  font-weight: bold;
+  color: black;
+}
+
+.doc-value {
+  width: 100px;
+  color: black;
+  overflow: hidden;
+}
+
+.doc-pair {
+  margin-right: 16px;
+  display: inline-block;
+}
+
+.doc {
+  margin-top: 20px;
+  margin-left: 20px;
+  background-color: white;
+}
 
 /* Signature */
 

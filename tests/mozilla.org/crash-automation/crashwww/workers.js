@@ -13,9 +13,12 @@ function showWorkers(view) {
     var stateHTML = "<span class='worker-" + state.state + "'>" + state.state + "</span>";
     if(state.build)
       stateHTML += " " + state.build;
-    if(state.url)
-      stateHTML += "<div><a href=" + state.url + " class='url light-sub' >" + state.url + "</a></div>";
-
+    if(state.url) {
+      var urlText = state.url
+      if(urlText.length > 60)
+        urlText = urlText.slice(0, 60) + "...";
+        stateHTML += "<div><a href=" + state.url + " class='url light-sub' >" + urlText + "</a></div>";
+    }
     list.append("<tr>"
                  + "<td>" + worker._id + "</td>"
                  + "<td>" + os + "</td>"

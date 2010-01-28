@@ -35,9 +35,13 @@ function showTriage(view) {
     var onClick = "showFileBug(" + i + ",'" + os + "', '" + platform + "', '" + geckoVersion + "')";
     bugsHTML = '<div class="file-bug" onclick="' + onClick + '">File</div>';
 
+    var urlText = sig.url;
+    if(urlText.length > 60)
+      urlText = urlText.slice(0, 60) + "...";
+
     list.append("<tr id='sig-" + i + "'>"
            + "<td><a href=" + getMXRUrl(sig.signature) + " class='url signature'>" + sig.signature + "</a></td>"
-           + "<td><a href=/ui/" + sig.url + " class='url'>" + sig.url + "</a></td>"
+           + "<td><a href=/ui/" + sig.url + " class='url'>" + urlText + "</a></td>"
            + "<td id='bug-" + i + "'>" + bugsHTML + "</td>"
            + "<td id='related-" + i + "'><div class='fetching'>...</div></td>"
            + "<td>" + workerHTML + "</td>"
@@ -60,7 +64,7 @@ function showSimilarBugs(resp, index) {
 }
 
 function showCertError() {
-  $("#message").append("Please add the <a href='https://www.mozilla.com/certs/mozilla-root.crt'>Mozilla Root Certificate</a> to allow Bugzilla requests");
+  $("#message").text("Please add the <a href='https://www.mozilla.com/certs/mozilla-root.crt'>Mozilla Root Certificate</a> to allow Bugzilla requests");
 }
 
 function getMXRUrl(sig) {
