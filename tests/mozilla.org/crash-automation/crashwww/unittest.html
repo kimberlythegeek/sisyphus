@@ -12,8 +12,8 @@
     <script src="workers.js"></script>
     <script>
       var limit = 10;
-
-      var db = "/crashtest";
+    
+      var db = "/unittest";
 
       $(document).ready(function() {
           $("#next-link").attr("disabled", "true");
@@ -26,7 +26,7 @@
        });
 
       function getView(options, prev, next) {
-        var viewUrl = db + "/_design/signatures/_view/" + encodeURIComponent(viewName) + "?limit=" + (limit + 1);
+        var viewUrl = db + "/_design/unittest/_view/" + encodeURIComponent(viewName) + "?limit=" + (limit + 1);
         if(options)
           viewUrl += urlEncode(options);
         getJSON(viewUrl, function(view) { showDocs(view, prev, next);});
@@ -155,11 +155,9 @@
     <div id="header">
       <div id="title-header" class="big-title">
         <div id="firefox-header">Firefox</div>
-        <div>Crash Automation</div>
+        <div>Valgrind Unit Test Automation</div>
       </div>
-      <a href="/_utils/crashes/triage.html" class="small-section">Triage</a>
-      <a href="/_utils/crashes/workers.html" class="small-section">Workers</a>
-      <a href="/_utils/crashes/view.html" class="small-section highlight">Views</a>
+      <a href="/_utils/crashes/unittest.html" class="small-section highlight">Views</a>
     </div>
     <div>
     <div id="container">
