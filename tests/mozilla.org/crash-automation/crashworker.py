@@ -1042,17 +1042,10 @@ def checkSignatureForWorker(pending_job_rows):
     ignored (as being taken by other workers).
     """
 
-    race_counter       = 0
-    race_counter_limit = 10
-
     #debugMessage("checkSignatureForWorker: checking %d pending jobs" % len(pending_job_rows))
 
     for pending_job in pending_job_rows:
         try:
-            race_counter += 1
-            if race_counter > race_counter_limit:
-                signature_doc = None
-                break
             signature_id  = pending_job["signature_id"]
             #debugMessage("checkSignatureForWorker: checking signature %s" % signature_id)
             signature_doc = getDocument(signature_id)
