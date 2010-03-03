@@ -57,7 +57,7 @@ fi
 #
 # options processing
 #
-options="p:b:T:e:"
+options="p:b:T:e:c:"
 usage()
 {
     cat <<EOF
@@ -68,7 +68,8 @@ usage: set-build-env.sh -p product -b branch -T buildtype [-e extra]
 -b branch       one of supported branches. see library.sh
 -T buildtype    one of opt debug
 -e extra        extra qualifier to pick mozconfig and tree
-
+-c commands     quoted text string containing options commands to be
+                executed using the build environment's shell.
 EOF
 }
 
@@ -97,6 +98,7 @@ for step in step1; do # dummy loop for handling exits
           b) branch=$OPTARG;;
           T) buildtype=$OPTARG;;
           e) extra="-$OPTARG";;
+          c) commands="$OPTARG";;
       esac
     done
 
@@ -289,17 +291,31 @@ for step in step1; do # dummy loop for handling exits
                 if [[ "$name" == "BASH_EXECUTION_STRING" ]]; then
                     continue
                 fi
+                # skip PS1, PS2, PS3, PS4
+                if [[ "$name" == "PS1" || "$name" == "PS2" || "$name" == "PS3" || "$name" == "PS4" ]]; then
+                    continue
+                fi
                 eval "var=\$$name"
                 # remove any single quotes around the value
                 value="`echo $line | sed \"s|^[a-zA-Z_0-9]*='*\([^']*\)'*|\1|\"`"
+
+
                 if [[ -z "$var" ]]; then
                     # variable is not defined, i.e. was defined by the batch file.
                     # export it into the current process.
-                    eval "export $name=\"$value\""
+                    if eval "export $name='$value'"; then
+                        true
+                    else
+                        echo "error evaluating export $name='$value'"
+                    fi
                 elif [[ "$name" == "PATH" ]]; then
                     # convert msys relative paths to paths relative to /c/.
                     value=`echo "$value" | sed 's|/local/bin|/c/mozilla-build/msys/local/bin|' | sed 's|:/usr/local/bin:/mingw/bin:/bin:|:/c/mozilla-build/msys/usr/local/bin:/c/mozilla-build/msys/mingw/bin:/c/mozilla-build/msys/bin:|'`
-                    eval "export BUILDPATH=\"$value:$PATH\""
+                    if eval "export BUILDPATH=\"$value:$PATH\""; then
+                        true
+                    else
+                        echo "error evaluating export BUILDPATH=\"$value:$PATH\""
+                    fi
                 fi
             done
             IFS=$saveIFS
@@ -480,4 +496,11 @@ for step in step1; do # dummy loop for handling exits
     set | sed 's/^/environment: /'
     echo "mozconfig: $MOZCONFIG"
     cat $MOZCONFIG | sed 's/^/mozconfig: /'
+
+    if [[ -n "$commands" ]]; then
+        if  ! $buildbash $bashlogin -c "export PATH=\"$BUILDPATH\"; cd $BUILDTREE/mozilla; $commands" 2>&1; then
+            error "executing commands: $commands"
+        fi
+    fi
+
 done

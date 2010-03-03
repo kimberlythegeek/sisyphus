@@ -6,13 +6,13 @@
  * perform random page transition
  */
 
-var gWaitAfterLoad = 1000;
+var gWaitAfterLoad = 5000;
 var gObjectClassIds = {};
 var gEmbedTypes = {};
 var gMapClassIdType = {};
 
 var gPageCount = 0;
-var gPageLimit = 1;
+var gPageLimit = 3;
 
 function userOnStart()
 {
@@ -155,7 +155,7 @@ function userOnAfterPage()
     siteMessage(ex + '');
   }
 
-  setTimeout(completePage, embedlist.length*10*gWaitAfterLoad);
+  setTimeout(completePage, gWaitAfterLoad);
 
 }
 

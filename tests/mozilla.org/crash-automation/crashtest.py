@@ -40,6 +40,12 @@ from optparse import OptionParser
 import os
 import re
 import couchquery
+import urllib
+
+sisyphus_dir     = os.environ["TEST_DIR"]
+sys.path.append(os.path.join(sisyphus_dir,'bin'))
+
+import sisyphus.couchdb
 
 def ordered_ffversion(versionstring):
      versionstring = re.sub('[a-z].*$', '', versionstring)
@@ -79,35 +85,36 @@ Example:
                       help='File containing list of url patterns to be ignored.')
     (options, args) = parser.parse_args()
 
-    db = couchquery.Database(options.databaseuri)
-    try:
-        # attempt to create the database
-        couchquery.createdb(db)
-    except Exception, ex:
-        # assume error is due to already existing db
-        pass
+    urimatch = re.search('(https?:)(.*)', options.databaseuri)
+    if not urimatch:
+        raise Exception('Bad database uri')
 
-    db.sync_design_doc('signatures', os.path.join(os.path.dirname(sys.argv[0]), 'crashtest_views'))
+    hosturipath    = re.sub(urimatch.group(0), '', options.databaseuri)
+    hosturiparts   = urllib.splithost(hosturipath)
 
-    supported_versions_doc = {"type" : "supported_versions", "supported_versions": {}}
+    crashtestdb = sisyphus.couchdb.Database(options.databaseuri)
+
+    crashtestdb.db.sync_design_doc('default', os.path.join(os.path.dirname(sys.argv[0]), 'crashtest_views'))
+
+    supported_versions_doc = {"_id" : "supported_versions", "type" : "supported_versions", "supported_versions": {}}
     versionsbranches    = options.supported_versions.split(',')
     for versionbranch in versionsbranches:
          version, branch = versionbranch.split(':')
          supported_versions_doc["supported_versions"][ordered_ffversion(version)] = {"branch" : branch}
 
-    supported_versions_rows = db.views.signatures.supported_versions()
+    supported_versions_rows = crashtestdb.db.views.default.supported_versions()
 
     if len(supported_versions_rows) > 1:
         raise Exception("crashtest database has more than one supported_versions document")
 
     if len(supported_versions_rows) == 0:
-        docinfo = db.create(supported_versions_doc)
-        doc = db.get(docinfo['id'])
+        docinfo = crashtestdb.db.create(supported_versions_doc)
+        doc = crashtestdb.db.get(docinfo['id'])
     else:
         doc = supported_versions_rows[0]
         doc.supported_versions = supported_versions_doc["supported_versions"]
 
-    db.update(doc)
+    crashtestdb.db.update(doc)
 
 if __name__ == '__main__':
     main()

@@ -245,14 +245,14 @@ def process_crashdata(db, crashlogdate, crash_docs, ffversionshash, supported_ve
             if not skipsignature:
                 curr_signature_doc.pop('urlhash')
                 doc_buffer.append(curr_signature_doc)
-                if len(doc_buffer) == 1000:
+                if len(doc_buffer) == 5:  # make configurable
                     info = db.create(doc_buffer)
                     for result in info:
                         if 'error' in result:
                             print 'db.create error %s' % (result)
                             bad_results.append(result)
                             output('x')
-                    count += 1000
+                    count += 5 # make configurable
                     output('.')
                     doc_buffer = []
             curr_signature_doc = create_signature_doc(crashlogdate, crash_doc)
@@ -301,7 +301,7 @@ def finalize_curr_signature_doc(curr_signature_doc, ffversionshash, supported_ve
         # cut off global minor version is two releases prior to this major version
         glb_minor_versions = [ glb_minor_version for glb_minor_version in ffversionshash[sig_major_version] ]
         if len(glb_minor_versions) < 3:
-            glb_minor_version = glb_minor_versions[len(glb_minor_versions) - 1]
+            glb_minor_version = '000000'
         else:
             glb_minor_versions.sort()
             glb_minor_version  = glb_minor_versions[-3]
@@ -383,7 +383,7 @@ Example:
             skipurl = skipurl.rstrip('\n')
             skipurls.append(skipurl)
 
-    supported_versions_rows = db.views.signatures.supported_versions()
+    supported_versions_rows = db.views.default.supported_versions()
 
     if len(supported_versions_rows) > 1:
         raise Exception("crashtest view supported_versions has more than one row")
