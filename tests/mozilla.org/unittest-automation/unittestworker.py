@@ -438,11 +438,11 @@ class UnitTestWorker(sisyphus.worker.Worker):
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
                 if str(exceptionValue) == 'updateDocumentConflict':
-                    self.debugMessage("getJob: race condition testdb.updateDocumentConflict attempting to delete job %s." % job_doc)
+                    self.debugMessage("getJob: race condition updateDocumentConflict attempting to delete job %s." % job_doc)
                     continue
 
                 if str(exceptionValue) == 'deleteDocumentConflict':
-                    self.debugMessage("getJob: race condition testdb.deleteDocumentConflict attempting to delete job %s." % job_doc)
+                    self.debugMessage("getJob: race condition deleteDocumentConflict attempting to delete job %s." % job_doc)
                     continue
 
                 raise

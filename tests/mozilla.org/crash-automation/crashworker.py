@@ -695,7 +695,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 if str(exceptionValue) != 'updateDocumentConflict':
                     raise
 
-                self.debugMessage("checkSignatureForWorker: race condition self.testdb.updateDocumentConflict attempting to update signature document %s." % signature_id)
+                self.debugMessage("checkSignatureForWorker: race condition updateDocumentConflict attempting to update signature document %s." % signature_id)
                 continue
 
             self.debugMessage("checkSignatureForWorker: update worker %s's signature" % self.document["_id"])
@@ -740,7 +740,11 @@ class CrashTestWorker(sisyphus.worker.Worker):
                         signature_doc["worker"] = None
                         self.testdb.updateDocument(signature_doc)
                     except:
-                        raise
+                        exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                        if str(exceptionValue) != 'updateDocumentConfict':
+                            # throw other exceptions
+                            raise
+                        self.debugMessage("checkSignatureForWorker: ignoring updateDocumentConflict for signature %s" % signature_id)
 
                 else:
                     try:
@@ -748,10 +752,10 @@ class CrashTestWorker(sisyphus.worker.Worker):
                         self.testdb.deleteDocument(signature_doc)
                     except:
                         exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-                        if str(exceptionValue) != 'self.testdb.deleteDocumentConfict':
+                        if str(exceptionValue) != 'deleteDocumentConfict':
                             # throw other exceptions
                             raise
-                        self.debugMessage("checkSignatureForWorker: ignoring self.testdb.deleteDocumentConflict for signature %s" % signature_id)
+                        self.debugMessage("checkSignatureForWorker: ignoring deleteDocumentConflict for signature %s" % signature_id)
 
                 try:
                     # have to clear the worker's signature
