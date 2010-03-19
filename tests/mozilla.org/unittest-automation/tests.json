@@ -1,6 +1,6 @@
 {
   "1.9.3" :  [
-    "browser-chrome",
+    "crashtest",
     "jstestbrowser",
     "mochitest-a11y",
     "mochitest-browser-chrome",
