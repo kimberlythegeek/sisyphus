@@ -66,16 +66,31 @@ class Database():
         self.max_db_attempts  = range(10) # used outside of module
 
         try:
-            self.connectToDatabase()
+            self.connectToDatabase(None)
         except:
             exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
 
             message = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
-            if re.search('no_db_file', message):
-                couchquery.createdb(self.db)
-            else:
+            if not re.search('no_db_file', message):
                 raise
+
+            for attempt in self.max_db_attempts:
+                try:
+                    couchquery.createdb(self.db)
+                    break
+                except KeyboardInterrupt:
+                    raise
+                except SystemExit:
+                    raise
+                except:
+                    exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                    errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+                    print('Database: %s, attempt: %d, exception: %s' % (self.db.dburi, attempt, errorMessage))
+                    if not re.search('/(couchquery|httplib2)/', errorMessage):
+                        raise
+                    time.sleep(60)
+
 
     def logMessage(self, s, reconnect = True):
 
@@ -106,15 +121,16 @@ class Database():
                 raise
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+
                 print('logMessage: attempt: %d, exception: %s' % (attempt, errorMessage))
 
-                # reconnect to the database in case it has dropped
-                if reconnect and re.search('conn_request', errorMessage):
-                    self.connectToDatabase()
-                else:
+                if not re.search('/(couchquery|httplib2)/', errorMessage):
                     raise
+
+                # reconnect to the database in case it has dropped
+                if reconnect:
+                    self.connectToDatabase(range(1))
 
             if attempt == self.max_db_attempts[-1]:
                 raise Exception("logMessage: aborting after %d attempts" % (self.max_db_attempts[-1]+1))
@@ -139,16 +155,15 @@ class Database():
                 raise
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
-                # reconnect to the database in case it has dropped
-                if reconnect and re.search('conn_request', errorMessage):
-                    self.connectToDatabase()
-                    self.logMessage('getDocument: attempt: %d, id: %s, exception: %s' %
-                               (attempt, id, errorMessage))
-                else:
+                if not re.search('/(couchquery|httplib2)/', errorMessage):
                     raise
+
+                if reconnect:
+                    self.connectToDatabase(range(1))
+                    self.logMessage('getDocument: attempt: %d, id: %s, exception: %s' %
+                                    (attempt, id, errorMessage))
 
             if attempt == self.max_db_attempts[-1]:
                 raise Exception("getDocument: aborting after %d attempts" % (self.max_db_attempts[-1] + 1))
@@ -174,7 +189,6 @@ class Database():
                 raise
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
                 if exceptionType == couchquery.CouchDBException and re.search('Document update conflict', str(exceptionValue)):
@@ -184,12 +198,13 @@ class Database():
                                (attempt, document['type'], document["_id"], document["_rev"]))
                     self.updateDocument(document, True)
                     break
-                elif reconnect and re.search('conn_request', errorMessage):
-                    # reconnect to the database in case it has dropped
-                    self.connectToDatabase()
-                    self.logMessage('createDocument: attempt: %d, type: %s, exception: %s' % (attempt, document['type'], errorMessage))
-                else:
+
+                if not re.search('/(couchquery|httplib2)/', errorMessage):
                     raise
+
+                if reconnect:
+                    self.connectToDatabase(range(1))
+                    self.logMessage('createDocument: attempt: %d, type: %s, exception: %s' % (attempt, document['type'], errorMessage))
 
             if attempt == self.max_db_attempts[-1]:
                 raise Exception("createDocument: aborting after %d attempts" % (self.max_db_attempts[-1]+1))
@@ -223,7 +238,6 @@ class Database():
                 raise
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
                 if exceptionType == couchquery.CouchDBException and re.search('Document update conflict', str(exceptionValue)):
@@ -237,12 +251,14 @@ class Database():
                     docinfo = self.db.update(document)
                     document["_rev"] = docinfo["rev"]
                     break
-                elif reconnect and re.search('conn_request', errorMessage):
-                    # reconnect to the database in case it has dropped
-                    self.connectToDatabase()
-                    self.logMessage('updateDocument: attempt: %d, type: %s, exception: %s' % (attempt, document['type'], errorMessage))
-                else:
+
+                if not re.search('/(couchquery|httplib2)/', errorMessage):
                     raise
+
+                if reconnect:
+                    self.connectToDatabase(range(1))
+                    self.logMessage('updateDocument: attempt: %d, type: %s, exception: %s' % (attempt, document['type'], errorMessage))
+
             if attempt == self.max_db_attempts[-1]:
                 raise Exception("updateDocument: aborting after %d attempts" % (self.max_db_attempts[-1] + 1))
             time.sleep(60)
@@ -273,7 +289,6 @@ class Database():
                 raise
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
                 if exceptionType == couchquery.CouchDBException:
@@ -289,13 +304,14 @@ class Database():
                         docinfo = self.db.delete(document)
                         document["_rev"] = docinfo["rev"]
                         break
-                elif reconnect and re.search('conn_request', errorMessage):
-                    # reconnect to the database in case it has dropped
-                    self.connectToDatabase()
+
+                if not re.search('/(couchquery|httplib2)/', errorMessage):
+                    raise
+
+                if reconnect:
+                    self.connectToDatabase(range(1))
                     self.logMessage('deleteDocument: attempt: %d, type: %s, id: %s, rev: %s, exception: %s' %
                                     (attempt, document['type'], document['_id'], document['_rev'], errorMessage))
-                else:
-                    raise
 
             if attempt == self.max_db_attempts[-1]:
                 raise Exception("deleteDocument: aborting after %d attempts" % (self.max_db_attempts[-1] + 1))
@@ -305,13 +321,16 @@ class Database():
         if attempt > 0:
             self.logMessage('deleteDocument: attempt: %d, success' % (attempt))
 
-    def connectToDatabase(self):
+    def connectToDatabase(self, attempts = None):
         """
-        Attempt to access the database and keep trying until you succeed.
+        Attempt to access the database and keep trying for attempts.
+        If attempts not specified, then use max_db_attempts.
         """
         messagequeue = []
-        attempt = 0
-        while True:
+        if attempts is None:
+            attempts = self.max_db_attempts
+
+        for attempt in attempts:
             try:
                 resp, content = self.http.request(self.dburi, method = 'GET')
                 if resp['status'] == '404':
@@ -323,24 +342,25 @@ class Database():
                 raise
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = ('connectToDatabase: %s: %s, database %s not available, exception: %s' %
+                                (os.uname()[1], sisyphus.utils.getTimestamp(), self.dburi,
+                                 sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)))
 
-                message = ('connectToDatabase: %s: %s, database %s not available, exception: %s' %
-                           (os.uname()[1], sisyphus.utils.getTimestamp(), self.dburi,
-                            sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)))
-
-                if re.search('no_db_file', message):
+                if re.search('no_db_file', errorMessage):
                     raise
 
-                messagequeue.append(message)
-                print(message)
+                if not re.search('/(couchquery|httplib2)/', errorMessage):
+                    raise
+
+                messagequeue.append(errorMessage)
+                print(errorMessage)
 
             time.sleep(60)
-            attempt += 1
 
         if attempt > 0:
             for message in messagequeue:
                 self.logMessage(message)
-                time.sleep(1) # delay each message by a second to keep the log in order
+
             self.logMessage('connectToDatabase: attempt: %d, success connecting to %s' % (attempt, self.dburi))
 
     def checkDatabase(self):
@@ -387,15 +407,13 @@ class Database():
             raise
         except:
             exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-
             errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
-            # reconnect to the database in case it has dropped
-            if re.search('conn_request', errorMessage):
-                self.connectToDatabase()
-                self.logMessage('checkDatabase: exception %s: %s' % (str(exceptionValue), sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)))
-            else:
+            if not re.search('/httplib2/', errorMessage):
                 raise
+
+            self.connectToDatabase(range(1))
+            self.logMessage('checkDatabase: exception %s: %s' % (str(exceptionValue), sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)))
 
     def getDatabase(self):
         return self.db

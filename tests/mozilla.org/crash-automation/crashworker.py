@@ -485,17 +485,16 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 raise
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
-                # reconnect to the database in case it has dropped
-                if re.search('conn_request', errorMessage):
-                    self.testdb.connectToDatabase()
-                    self.logMessage('getPendingJobs: attempt: %d, startkey: %s, endkey: %s, exception: %s' %
-                               (attempt, startkey, endkey, errorMessage))
-                    self.amIOk()
-                else:
+                if not re.search('/(couchquery|httplib2)/', errorMessage):
                     raise
+
+                # reconnect to the database in case it has dropped
+                self.testdb.connectToDatabase(None)
+                self.logMessage('getPendingJobs: attempt: %d, startkey: %s, endkey: %s, exception: %s' %
+                                (attempt, startkey, endkey, errorMessage))
+                self.amIOk()
 
             if attempt == self.testdb.max_db_attempts[-1]:
                 raise Exception("getPendingJobs: aborting after %d attempts" % (self.testdb.max_db_attempts[-1] + 1))
@@ -945,17 +944,16 @@ def getBuildData(crashtestdb, worker=None):
             raise
         except:
             exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-
             errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
-            # reconnect to the database in case it has dropped
-            if re.search('conn_request', errorMessage):
-                crashtestdb.connectToDatabase()
-                crashtestdb.logMessage('getBuildData: attempt: %d, exception: %s' % (attempt, errorMessage))
-                if worker:
-                    worker.amIOk()
-            else:
+            if not re.search('/(couchquery|httplib2)/', errorMessage):
                 raise
+
+            # reconnect to the database in case it has dropped
+            crashtestdb.connectToDatabase(None)
+            crashtestdb.logMessage('getBuildData: attempt: %d, exception: %s' % (attempt, errorMessage))
+            if worker:
+                worker.amIOk()
 
         if attempt == crashtestdb.max_db_attempts[-1]:
             raise Exception("getBuildData: aborting after %d attempts" % (crashtestdb.max_db_attempts[-1] + 1))

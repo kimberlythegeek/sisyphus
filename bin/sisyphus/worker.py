@@ -907,16 +907,15 @@ class Worker():
                 raise
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
-                # reconnect to the database in case it has dropped
-                if re.search('conn_request', errorMessage):
-                    self.testdb.connectToDatabase()
-                    self.testdb.logMessage('getAllWorkers: attempt: %d, key: %s, exception: %s' % (attempt, key, errorMessage))
-                    self.amIOk()
-                else:
+                if not re.search('/(couchquery|httplib2)/', errorMessage):
                     raise
+
+                # reconnect to the database in case it has dropped
+                self.testdb.connectToDatabase(None)
+                self.testdb.logMessage('getAllWorkers: attempt: %d, key: %s, exception: %s' % (attempt, key, errorMessage))
+                self.amIOk()
 
             if attempt == self.testdb.max_db_attempts[-1]:
                 raise Exception("getAllWorkers: aborting after %d attempts" % (self.testdb.max_db_attempts[-1] + 1))
@@ -1415,17 +1414,16 @@ class Worker():
                 raise
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
-                # reconnect to the database in case it has dropped
-                if re.search('conn_request', errorMessage):
-                    self.testdb.connectToDatabase()
-                    self.logMessage('getRows: attempt: %d, startkey: %s, endkey: %s, exception: %s' %
-                                    (attempt, startkey, endkey, errorMessage))
-                    self.amIOk()
-                else:
+                if not re.search('/(couchquery|httplib2)/', errorMessage):
                     raise
+
+                # reconnect to the database in case it has dropped
+                self.testdb.connectToDatabase(None)
+                self.logMessage('getRows: attempt: %d, startkey: %s, endkey: %s, exception: %s' %
+                                (attempt, startkey, endkey, errorMessage))
+                self.amIOk()
 
             if attempt == self.testdb.max_db_attempts[-1]:
                 raise Exception("getRows: aborting after %d attempts" % (self.testdb.max_db_attempts[-1] + 1))

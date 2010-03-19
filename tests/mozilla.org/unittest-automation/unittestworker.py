@@ -510,17 +510,16 @@ def getTestData(testdb, worker=None):
             raise
         except:
             exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-
             errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
-            # reconnect to the database in case it has dropped
-            if re.search('conn_request', errorMessage):
-                testdb.connectToDatabase()
-                testdb.logMessage('getTestData: attempt: %d, exception: %s' % (attempt, errorMessage))
-                if worker:
-                    worker.amIOk()
-            else:
+            if not re.search('/(couchquery|httplib2)/', errorMessage):
                 raise
+
+            # reconnect to the database in case it has dropped
+            testdb.connectToDatabase(None)
+            testdb.logMessage('getTestData: attempt: %d, exception: %s' % (attempt, errorMessage))
+            if worker:
+                worker.amIOk()
 
         if attempt == testdb.max_db_attempts[-1]:
             raise Exception("getTestData: aborting after %d attempts" % (testdb.max_db_attempts[-1] + 1))
