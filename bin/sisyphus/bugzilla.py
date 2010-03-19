@@ -90,45 +90,103 @@ def timedHttpRequest(url, timeout = 300):
 
     return resp, jcontent
 
-def searchBugzillaSummary(query, querytype='contains'):
+def searchBugzillaSummary(query, querytype='contains', keywords=None):
     """
     Search bugzilla using the bugzilla rest api for bugs containing
-    the string query in summary returning the response and content
-    as a json 2-tuple.
+    the string query in the summary and optionally all of the keywords
+    returning the response and content as a json 2-tuple.
 
     usage: resp, content = searchBugzillaSummary('yomama')
 
+    NOTE: Only searches the Client Software and Components classifications.
     """
-    resp, content = timedHttpRequest(bzapiurl + "bug?summary_type=" + querytype + "&summary=" + urllib.quote(query))
+
+    url = (bzapiurl +
+           "bug?classification=Client%20Software&classification=Components" +
+           "&summary_type=" + querytype +
+           "&summary=" + urllib.quote(query))
+
+    if keywords is not None:
+        url += "&keywords_type=contains_all&keywords=" + urllib.quote(keywords)
+
+    resp, content = timedHttpRequest(url)
+
     return resp, content
 
-def searchBugzillaComments(query, querytype='contains'):
+def searchBugzillaComments(query, querytype='contains', keywords=None):
     """
     Search bugzilla using the bugzilla rest api for bugs containing
-    the string query in the comments returning the response and content
-    as a json 2-tuple.
+    the string query in the comments and optionally all of the
+    keywords returning the response and content as a json 2-tuple.
 
     usage: resp, content = searchBugzillaComments('yomama')
 
+    NOTE: Only searches the Client Software and Components classifications.
     """
-    resp, content = timedHttpRequest(bzapiurl +
-                                 "bug?comment_type=" + querytype + "&comment=" + urllib.quote(query))
+    url = (bzapiurl +
+           "bug?classification=Client%20Software&classification=Components" +
+           "&comment_type=" + querytype +
+           "&comment=" + urllib.quote(query))
+
+    if keywords is not None:
+        url += "&keywords_type=contains_all&keywords=" + urllib.quote(keywords)
+
+    resp, content = timedHttpRequest(url)
+
     return resp, content
 
-def searchBugzillaText(query, querytype='contains'):
+def searchBugzillaText(query, querytype='contains', keywords=None):
     """
     Search bugzilla using the bugzilla rest api for bugs containing
-    the string query in either the summary or comments returning the
-    response and content as a json 2-tuple.
+    the string query in either the summary or comments and optionally
+    the keywords returning the response and content as a json 2-tuple.
 
     usage: resp, content = searchBugzillaText('yomama')
 
+    NOTE: Only searches the Client Software and Components classifications.
     """
 
     query = urllib.quote(query)
-    resp, content = timedHttpRequest(bzapiurl +
-                                 "bug?field0-0-0=summary&type0-0-0=" + querytype + "&value0-0-0=" + query +
-                                 "&field0-0-1=comment&type0-0-1=" + querytype + "&value0-0-1=" + query)
+    url   = (bzapiurl +
+             "bug?classification=Client%20Software&classification=Components" +
+             "&field0-0-0=summary&type0-0-0=" + querytype + "&value0-0-0=" + query +
+             "&field0-0-1=comment&type0-0-1=" + querytype + "&value0-0-1=" + query)
+
+    if keywords is not None:
+        url += "&keywords_type=contains_all&keywords=" + urllib.quote(keywords)
+
+    resp, content = timedHttpRequest(url)
+
+    return resp, content
+
+def searchBugzillaTextAttachments(query, querytype='contains', keywords=None):
+    """
+    Search bugzilla using the bugzilla rest api matching the keywords
+    and the string query in text attachments the response and content
+    as a json 2-tuple.
+
+    The keywords are absolutely necessary as bugzilla will timeout
+    without limiting the query. Therefore the function raises an error
+    should keywords not be specified.
+
+    usage: resp, content = searchBugzillaTextAttachments('yomama','contains','crash')
+
+    NOTE: Only searches the Client Software and Components classifications.
+    """
+
+    if keywords == None:
+        raise Exception('searchBugzillaTextAttachmentsKeywords')
+
+    query    = urllib.quote(query)
+    keywords = urllib.quote(keywords)
+
+    url   = (bzapiurl +
+             "bug?classification=Client%20Software&classification=Components" +
+             "&keywords_type=contains_all&keywords=" + keywords +
+             "&field0-0-0=attachment.content_type&type0-0-0=contains&value0-0-0=text" +
+             "&field0-1-0=attachment.data&type0-1-0=" + querytype + "&value0-1-0=" + query)
+
+    resp, content = timedHttpRequest(url)
 
     return resp, content
 
@@ -149,6 +207,11 @@ if __name__ == "__main__":
 
     print "searchBugzillaText"
     resp, content = searchBugzillaText("Wrong scope, this is really bad!: 'JS_GetGlobalForObject(cx, obj) == newScope'")
+    print "resp: %s" % json.dumps(resp)
+    print "content: %s" % json.dumps(content)
+
+    print "searchBugzillaTextAttachments"
+    resp, content = searchBugzillaTextAttachments("qcms_transform_data_rgba qcms_transform_data row_callback MOZ_PNG_push_have_row MOZ_PNG_push_proc_row", "contains_all", "crash")
     print "resp: %s" % json.dumps(resp)
     print "content: %s" % json.dumps(content)
 

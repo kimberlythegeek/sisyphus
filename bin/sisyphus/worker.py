@@ -248,7 +248,7 @@ class Worker():
                     for state in 'open', 'closed':
                         bug_list[state].extend(related_assertion["bug_list"][state])
 
-            if not bug_list:
+            if not bug_list and assertionmessage:
                 # look up any bugs that match this assertion
                 # update any of the matching historical assertions
                 resp, content = sisyphus.bugzilla.searchBugzillaText(assertionmessage)
@@ -483,7 +483,7 @@ class Worker():
                     for state in 'open', 'closed':
                         bug_list[state].extend(related_valgrind["bug_list"][state])
 
-            if not bug_list:
+            if not bug_list and valgrindsignature:
                 # look up any bugs that match this valgrind
                 # update any of the matching historical valgrinds
                 resp, content = sisyphus.bugzilla.searchBugzillaText(valgrindsignature, 'contains_all')
@@ -621,7 +621,7 @@ class Worker():
         reAddress    = re.compile(r'Crash address:\s+(.*)')
         reThread     = re.compile(r'Thread ([0-9]+) [(]crashed[)]')
         reFrameDecl  = re.compile(r'\s([0-9]+)\s+([^)]+[)]).*')
-        reFrameOff   = re.compile(r'\s([0-9]+)\s+(.*)')
+        reFrameOff   = re.compile(r'\s([0-9]+)\s+([^\[]*).*')
         reason       = None
         address      = None
         thread       = None
@@ -656,30 +656,26 @@ class Worker():
                 break
             else:
                 match = reFrameDecl.match(line)
+                if not match:
+                    match = reFrameOff.match(line)
                 if match:
                     frame_number = match.group(1)
                     frame_text   = match.group(2)
-                    frame_text   = frame_text[frame_text.find('!')+1:] # foo.dll!Func(...) => Func(...)
-                else:
-                    match = reFrameOff.match(line)
-                    if match:
-                        frame_number = match.group(1)
-                        frame_text   = match.group(2)
-                        frame_text   = re.sub(' \+ ', '@', frame_text) # foo.dll + 0x1234 => foo.dll@0x1234
-                if match:
+                    frame_text   = re.sub(' \+ ', '@', frame_text) # foo.dll + 0x1234 => foo.dll@0x1234
+                    frame_text   = re.sub('\s*[^\s]*[!]', ' ', frame_text) # foo!bar => bar
+                    frame_text   = re.sub('\s\[[^\]]*\]\s*', ' ', frame_text) # foo [bar] => foo
+                    frame_text   = re.sub('[(][^)]*[)]', '', frame_text)    # foo(bar) => foo
+                    frame_text   = re.sub('\s+', ' ', frame_text)
+                    frame_text   = frame_text.strip()
                     frames.append({'number': frame_number, 'text': frame_text})
                     if len(frames) > frames_max:
                         break
 
         if len(frames) > 0:
             message   = frames[0]['text']
-            #message   = re.sub(reHexNumbers, '', message)
-            #message   = re.sub(reNumbers, '', message)
             signature = ''
             for frame in frames:
                 signature += ' ' + frame['text']
-            #signature = re.sub(reHexNumbers, '', signature)
-            #signature = re.sub(reNumbers, '', signature)
             message = message.strip()
             signature = signature.strip()
 
@@ -767,10 +763,14 @@ class Worker():
                     for state in 'open', 'closed':
                         bug_list[state].extend(related_crash["bug_list"][state])
 
-            if not bug_list:
-                # look up any bugs that match this crashes
-                # update any of the matching historical crashes
+            if not bug_list and crashsignature:
+                # look up any bugs that match this crash
+                # update any of the matching historical crashes.
+                # first search only summary and comments for speed.
+                # if that fails, search text attachments.
                 resp, content = sisyphus.bugzilla.searchBugzillaText(crashsignature, 'contains_all')
+                if 'bugs' not in content:
+                    resp, content = sisyphus.bugzilla.searchBugzillaTextAttachments(crashsignature, 'contains_all', 'crash')
                 if 'bugs' in content:
                     if not bug_list:
                         bug_list = {'open' : [], 'closed' : []}
@@ -1079,7 +1079,7 @@ class Worker():
             exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
 
             errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
-            self.logMessage("update_bug_histories: error in update_crash_bugs. %s exception: %s" %
+            self.logMessage("update_bug_histories: error in update_valgrind_bugs. %s exception: %s" %
                             (exceptionValue, errorMessage))
 
         try:
@@ -1090,7 +1090,7 @@ class Worker():
             exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
 
             errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
-            self.logMessage("update_bug_histories: error in update_crash_bugs. %s exception: %s" %
+            self.logMessage("update_bug_histories: error in update_assertion_bugs. %s exception: %s" %
                             (exceptionValue, errorMessage))
 
         self.unlock_history_update()
@@ -1175,9 +1175,17 @@ class Worker():
         now         = sisyphus.utils.convertTimestamp(timestamp)
         yesterday   = now - datetime.timedelta(days=1)
 
+        checkup_interval = datetime.timedelta(minutes=5)
+        last_checkup_time = datetime.datetime.now() - 2*checkup_interval
+
         crash_rows = self.getRows(self.testdb.db.views.default.crashes)
 
         for crash_doc in crash_rows:
+
+            if datetime.datetime.now() - last_checkup_time > checkup_interval:
+                self.document['datetime'] = sisyphus.utils.getTimestamp()
+                self.updateWorker(self.document)
+                last_checkup_time = datetime.datetime.now()
 
             crash_updatetime = sisyphus.utils.convertTimestamp(crash_doc['updatetime'])
             if crash_updatetime > yesterday:
@@ -1189,10 +1197,12 @@ class Worker():
 
             curr_key = crashmessage + ':' + crashsignature
 
-            if last_key != curr_key:
+            if last_key != curr_key and crashsignature:
                 # look up the bugs for the current key.
                 bug_list = {'open' : [], 'closed' : []}
                 resp, content = sisyphus.bugzilla.searchBugzillaText(crashsignature, 'contains_all')
+                if 'bugs' not in content:
+                    resp, content = sisyphus.bugzilla.searchBugzillaTextAttachments(crashsignature, 'contains_all', 'crash')
                 if 'bugs' in content:
                     for bug in content['bugs']:
                         if bug['resolution']:
@@ -1244,9 +1254,17 @@ class Worker():
         now         = sisyphus.utils.convertTimestamp(timestamp)
         yesterday   = now - datetime.timedelta(days=1)
 
+        checkup_interval = datetime.timedelta(minutes=5)
+        last_checkup_time = datetime.datetime.now() - 2*checkup_interval
+
         valgrind_rows = self.getRows(self.testdb.db.views.default.valgrind)
 
         for valgrind_doc in valgrind_rows:
+
+            if datetime.datetime.now() - last_checkup_time > checkup_interval:
+                self.document['datetime'] = sisyphus.utils.getTimestamp()
+                self.updateWorker(self.document)
+                last_checkup_time = datetime.datetime.now()
 
             valgrind_updatetime = sisyphus.utils.convertTimestamp(valgrind_doc['updatetime'])
             if valgrind_updatetime > yesterday:
@@ -1258,7 +1276,7 @@ class Worker():
 
             curr_key = valgrindmessage + ':' + valgrindsignature
 
-            if last_key != curr_key:
+            if last_key != curr_key and valgrindsignature:
                 # look up the bugs for the current key.
                 bug_list = {'open' : [], 'closed' : []}
                 resp, content = sisyphus.bugzilla.searchBugzillaText(valgrindsignature, 'contains_all')
@@ -1312,9 +1330,17 @@ class Worker():
         now         = sisyphus.utils.convertTimestamp(timestamp)
         yesterday   = now - datetime.timedelta(days=1)
 
+        checkup_interval = datetime.timedelta(minutes=5)
+        last_checkup_time = datetime.datetime.now() - 2*checkup_interval
+
         assertion_rows = self.getRows(self.testdb.db.views.default.assertions)
 
         for assertion_doc in assertion_rows:
+
+            if datetime.datetime.now() - last_checkup_time > checkup_interval:
+                self.document['datetime'] = sisyphus.utils.getTimestamp()
+                self.updateWorker(self.document)
+                last_checkup_time = datetime.datetime.now()
 
             assertion_updatetime = sisyphus.utils.convertTimestamp(assertion_doc['updatetime'])
             if assertion_updatetime > yesterday:
@@ -1326,7 +1352,7 @@ class Worker():
 
             curr_key = assertionmessage + ':' + assertionsignature
 
-            if last_key != curr_key:
+            if last_key != curr_key and assertionmessage:
                 # look up the bugs for the current key.
                 bug_list = {'open' : [], 'closed' : []}
                 resp, content = sisyphus.bugzilla.searchBugzillaText(assertionmessage)
