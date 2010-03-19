@@ -44,9 +44,11 @@ try:
 except:
     import simplejson as json
 
-import urllib
-
 import signal
+import sys
+import re
+import time
+import urllib
 
 bzapiurl = 'https://api-dev.bugzilla.mozilla.org/latest/'
 
@@ -57,25 +59,29 @@ def timedHttpRequest_handler(signum, frame):
 def timedHttpRequest(url, timeout = 300):
     """
     Attempt to perform an http request. If it does not return within
-    timeout seconds, raise an empty response.
+    timeout seconds, raise an empty response. Retry once after a delay
+    of 1 minute if the http request throws an exception.
 
     usage: resp, content = timedHttpRequest('http://example.com/?yomama', 300)
 
     """
-    try:
+    for attempt in range(2):
+        try:
+            signal.signal(signal.SIGALRM, timedHttpRequest_handler)
 
-        signal.signal(signal.SIGALRM, timedHttpRequest_handler)
-        signal.alarm(timeout)
+            http = httplib2.Http()
+            signal.alarm(timeout)
+            resp, content = http.request(url)
+            signal.alarm(0)
 
-        http = httplib2.Http()
-        resp, content = http.request(url)
-        signal.alarm(0)
-
-    except IOError:
-        resp = {}
-        content = '{}'
-    except:
-        raise
+        except:
+            signal.alarm(0)
+            exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+            if exceptionType != IOError and not re.search('/httplib2/', str(exceptionValue)):
+                raise
+            resp = {}
+            content = '{}'
+            time.sleep(60)
 
     try:
         jcontent = json.loads(content)
