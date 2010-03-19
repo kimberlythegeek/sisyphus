@@ -119,7 +119,10 @@ def timedReadLine(filehandle, timeout = 300):
     signal.signal(signal.SIGALRM, timedReadLine_handler)
     signal.alarm(timeout)
 
-    line = filehandle.readline()
+    try:
+        line = filehandle.readline()
+    except:
+        line = ''
 
     signal.alarm(0)
 
