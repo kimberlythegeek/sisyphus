@@ -321,6 +321,134 @@ class Database():
         if attempt > 0:
             self.logMessage('deleteDocument: attempt: %d, success' % (attempt))
 
+    def createLock(self, document, reconnect = True, attempts = None):
+        """
+        createLock will attempt to create a lock document of the format:
+        {'type' : 'lock', 'owner' : 'ownerid', '_id' : 'lockname' }
+
+        createLock will return True upon successful completion of the lock
+        and False if the lock was not able to be created.
+
+        createLock will raise Exception('InvalidLockDocument') if called with a non lock
+        document.
+
+        createLock will pass through any exceptions not related to CouchDB update conflicts.
+        """
+
+        if document['type'] != 'lock':
+            raise Exception('InvalidLockDocument')
+
+        if attempts is None:
+            attempts = self.max_db_attempts
+
+        for attempt in attempts:
+            try:
+                docinfo = self.db.create(document)
+                document["_id"] = docinfo["id"]
+                document["_rev"] = docinfo["rev"]
+                break
+            except KeyboardInterrupt:
+                raise
+            except SystemExit:
+                raise
+            except:
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+
+                if exceptionType == couchquery.CouchDBException and re.search('Document update conflict', str(exceptionValue)):
+                    # treat couchdb update exceptions as temporary recoverable
+                    # errors.
+                    pass
+
+                elif not re.search('/(couchquery|httplib2)/', errorMessage):
+                    raise
+
+                if reconnect:
+                    self.connectToDatabase(range(1))
+                    self.debugMessage('createLock: attempt: %d, type: %s, exception: %s' % (attempt, document['type'], errorMessage))
+
+            if attempt == attempts[-1]:
+                self.logMessage("createLock: aborting after %d attempts" % (attempts[-1]+1))
+                return False
+
+            time.sleep(5)
+
+        if attempt > 0:
+            self.debugMessage('createLock: attempt: %d, success' % (attempt))
+
+        return True
+
+    def deleteLock(self, document, reconnect = True, owned = False):
+        """
+        Delete an existing lock document.
+
+        deleteLock will raise Exception('InvalidLockDocument') if called with a non lock
+        document.
+
+        deleteLock will raise Exception("deleteDocument: aborting after %d attempts"
+                                        % (self.max_db_attempts[-1] + 1))
+        if it fails to delete the lock after the maximum number of attempts.
+        This may result in broken lock which must be resolved by user intervention.
+
+        deleteLock will pass through any exceptions not related to CouchDB.
+        This may result in broken lock which must be resolved by user intervention.
+        """
+
+        if document['type'] != 'lock':
+            raise Exception('InvalidLockDocument')
+
+        for attempt in self.max_db_attempts:
+            try:
+                lock_document = self.getDocument(document['_id'])
+                if not lock_document:
+                    self.logMessage('deleteLock: ignoring attempt to delete missing lock %s' % document)
+                    break
+                if lock_document['owner'] != document['owner']:
+                    self.logMessage('deleteLock: ignoring attempt to delete unowned lock %s' % lock_document)
+                    break
+
+                docinfo = self.db.delete(document)
+                document["_rev"] = docinfo["rev"]
+                break
+            except KeyboardInterrupt:
+                raise
+            except SystemExit:
+                raise
+            except:
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+
+                if exceptionType == couchquery.CouchDBException:
+                    if re.search('Delete failed {"error":"not_found","reason":"deleted"}', str(exceptionValue)):
+                        self.logMessage('deleteLock: ignoring already deleted lock: %s' % document)
+                        break
+                    if re.search('Document update conflict', str(exceptionValue)):
+                        lock_document = self.getDocument(document["_id"])
+                        if lock_document['owner'] != document['owner']:
+                            self.logMessage('deleteLock: ignoring attempt to delete unowned conflicted lock %s' % lock_document)
+                            break
+                        self.logMessage('deleteLock: attempt to delete owned conflicted lock %s' % lock_document)
+                        document["_rev"] = lock_document["_rev"]
+                        docinfo = self.db.delete(document)
+                        document["_rev"] = docinfo["rev"]
+                        break
+
+                if not re.search('/(couchquery|httplib2)/', errorMessage):
+                    raise
+
+                if reconnect:
+                    self.connectToDatabase(range(1))
+                    self.logMessage('deleteLock: attempt: %d, type: %s, id: %s, rev: %s, exception: %s' %
+                                    (attempt, document['type'], document['_id'], document['_rev'], errorMessage))
+
+            if attempt == self.max_db_attempts[-1]:
+                raise Exception("deleteLock: aborting after %d attempts" % (self.max_db_attempts[-1] + 1))
+
+            time.sleep(5)
+
+        if attempt > 0:
+            self.logMessage('deleteLock: attempt: %d, success' % (attempt))
+
     def connectToDatabase(self, attempts = None):
         """
         Attempt to access the database and keep trying for attempts.
