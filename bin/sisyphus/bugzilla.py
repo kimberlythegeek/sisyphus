@@ -49,6 +49,7 @@ import sys
 import re
 import time
 import urllib
+import datetime
 
 bzapiurl = 'https://api-dev.bugzilla.mozilla.org/latest/'
 
@@ -90,11 +91,17 @@ def timedHttpRequest(url, timeout = 300):
 
     return resp, jcontent
 
-def searchBugzillaSummary(query, querytype='contains', keywords=None):
+def ageToDate(age):
+    return datetime.datetime.strftime(datetime.datetime.now() - datetime.timedelta(days = age), "%Y-%m-%d")
+
+def searchBugzillaSummary(query, querytype='contains', keywords=None, age=None):
     """
     Search bugzilla using the bugzilla rest api for bugs containing
     the string query in the summary and optionally all of the keywords
     returning the response and content as a json 2-tuple.
+
+    To limit the scope of the query, you can specify the number of days
+    since the bug was modified in the age argument.
 
     usage: resp, content = searchBugzillaSummary('yomama')
 
@@ -109,17 +116,23 @@ def searchBugzillaSummary(query, querytype='contains', keywords=None):
     if keywords is not None:
         url += "&keywords_type=contains_all&keywords=" + urllib.quote(keywords)
 
+    if age is not None:
+        url += "&changed_after=" + ageToDate(age)
+
     resp, content = timedHttpRequest(url)
 
     return resp, content
 
-def searchBugzillaComments(query, querytype='contains', keywords=None):
+def searchBugzillaComments(query, querytype='contains', keywords=None, age=None):
     """
     Search bugzilla using the bugzilla rest api for bugs containing
     the string query in the comments and optionally all of the
     keywords returning the response and content as a json 2-tuple.
 
     usage: resp, content = searchBugzillaComments('yomama')
+
+    To limit the scope of the query, you can specify the number of days
+    since the bug was modified in the age argument.
 
     NOTE: Only searches the Client Software and Components classifications.
     """
@@ -131,17 +144,53 @@ def searchBugzillaComments(query, querytype='contains', keywords=None):
     if keywords is not None:
         url += "&keywords_type=contains_all&keywords=" + urllib.quote(keywords)
 
+    if age is not None:
+        url += "&changed_after=" + ageToDate(age)
+
     resp, content = timedHttpRequest(url)
 
     return resp, content
 
-def searchBugzillaText(query, querytype='contains', keywords=None):
+def searchBugzillaUrls(query, querytype='contains', keywords=None, age=None):
+    """
+    Search bugzilla using the bugzilla rest api for bugs containing
+    the string query in either the url or comments and optionally
+    the keywords returning the response and content as a json 2-tuple.
+
+    usage: resp, content = searchBugzillaUrls('yomama')
+
+    To limit the scope of the query, you can specify the number of days
+    since the bug was modified in the age argument.
+
+    NOTE: Only searches the Client Software and Components classifications.
+    """
+
+    query = urllib.quote(query)
+    url   = (bzapiurl +
+             "bug?classification=Client%20Software&classification=Components" +
+             "&field0-0-0=url&type0-0-0=" + querytype + "&value0-0-0=" + query +
+             "&field0-0-1=comment&type0-0-1=" + querytype + "&value0-0-1=" + query)
+
+    if keywords is not None:
+        url += "&keywords_type=contains_all&keywords=" + urllib.quote(keywords)
+
+    if age is not None:
+        url += "&changed_after=" + ageToDate(age)
+
+    resp, content = timedHttpRequest(url)
+
+    return resp, content
+
+def searchBugzillaText(query, querytype='contains', keywords=None, age=None):
     """
     Search bugzilla using the bugzilla rest api for bugs containing
     the string query in either the summary or comments and optionally
     the keywords returning the response and content as a json 2-tuple.
 
     usage: resp, content = searchBugzillaText('yomama')
+
+    To limit the scope of the query, you can specify the number of days
+    since the bug was modified in the age argument.
 
     NOTE: Only searches the Client Software and Components classifications.
     """
@@ -155,11 +204,14 @@ def searchBugzillaText(query, querytype='contains', keywords=None):
     if keywords is not None:
         url += "&keywords_type=contains_all&keywords=" + urllib.quote(keywords)
 
+    if age is not None:
+        url += "&changed_after=" + ageToDate(age)
+
     resp, content = timedHttpRequest(url)
 
     return resp, content
 
-def searchBugzillaTextAttachments(query, querytype='contains', keywords=None):
+def searchBugzillaTextAttachments(query, querytype='contains', keywords=None, age=None):
     """
     Search bugzilla using the bugzilla rest api matching the keywords
     and the string query in text attachments the response and content
@@ -168,6 +220,9 @@ def searchBugzillaTextAttachments(query, querytype='contains', keywords=None):
     The keywords are absolutely necessary as bugzilla will timeout
     without limiting the query. Therefore the function raises an error
     should keywords not be specified.
+
+    To limit the scope of the query, you can specify the number of days
+    since the bug was modified in the age argument.
 
     usage: resp, content = searchBugzillaTextAttachments('yomama','contains','crash')
 
@@ -186,6 +241,9 @@ def searchBugzillaTextAttachments(query, querytype='contains', keywords=None):
              "&field0-0-0=attachment.content_type&type0-0-0=contains&value0-0-0=text" +
              "&field0-1-0=attachment.data&type0-1-0=" + querytype + "&value0-1-0=" + query)
 
+    if age is not None:
+        url += "&changed_after=" + ageToDate(age)
+
     resp, content = timedHttpRequest(url)
 
     return resp, content
@@ -195,24 +253,34 @@ if __name__ == "__main__":
     Tests which run when the script is executed rather than imported.
     Usage: python bugzilla.py
     """
+    def dump_content(resp, content):
+        print "resp: %s" % json.dumps(resp)
+        if 'bugs' not in content:
+            print "content: %s" % json.dumps(content)
+        else:
+            bug_list = [bug['id'] for bug in content['bugs']]
+            print "bugs: %s" % bug_list
+
     print "searchBugzillaSummary"
     resp, content = searchBugzillaSummary("Wrong scope, this is really bad!: 'JS_GetGlobalForObject(cx, obj) == newScope'")
-    print "resp: %s" % json.dumps(resp)
-    print "content: %s" % json.dumps(content)
+    dump_content(resp, content)
 
     print "searchBugzillaComments"
     resp, content = searchBugzillaComments("Wrong scope, this is really bad!: 'JS_GetGlobalForObject(cx, obj) == newScope'")
-    print "resp: %s" % json.dumps(resp)
-    print "content: %s" % json.dumps(content)
+    dump_content(resp, content)
 
     print "searchBugzillaText"
     resp, content = searchBugzillaText("Wrong scope, this is really bad!: 'JS_GetGlobalForObject(cx, obj) == newScope'")
-    print "resp: %s" % json.dumps(resp)
-    print "content: %s" % json.dumps(content)
+    dump_content(resp, content)
 
     print "searchBugzillaTextAttachments"
     resp, content = searchBugzillaTextAttachments("qcms_transform_data_rgba qcms_transform_data row_callback MOZ_PNG_push_have_row MOZ_PNG_push_proc_row", "contains_all", "crash")
-    print "resp: %s" % json.dumps(resp)
-    print "content: %s" % json.dumps(content)
+    dump_content(resp, content)
 
+    print "searchBugzillaComments"
+    resp, content = searchBugzillaComments("crash", "contains_all", None, 7)
+    dump_content(resp, content)
 
+    print "searchBugzillaUrls"
+    resp, content = searchBugzillaUrls("http://test.bclary.com/tests/mozilla.org/js/")
+    dump_content(resp, content)

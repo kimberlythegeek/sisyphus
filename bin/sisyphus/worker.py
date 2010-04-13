@@ -177,6 +177,8 @@ class Worker():
         def cmp_bug_numbers(lbug, rbug):
             return int(lbug) - int(rbug)
 
+        self.debugMessage('process_related_assertions: start: %s %s' % (assertionmessage, assertionfile))
+
         os_name            = self.document["os_name"]
         os_version         = self.document["os_version"]
         cpu_name           = self.document["cpu_name"]
@@ -190,7 +192,7 @@ class Worker():
             if (product    != related_assertion["product"]  or
                 branch     != related_assertion["branch"]   or
                 os_name    != related_assertion["os_name"]  or
-                os_version != related_assertion["os_name"]  or
+                os_version != related_assertion["os_version"]  or
                 cpu_name   != related_assertion["cpu_name"] or
                 assertionfile != related_assertion["assertionfile"]):
                 continue
@@ -251,7 +253,9 @@ class Worker():
             if not bug_list and assertionmessage:
                 # look up any bugs that match this assertion
                 # update any of the matching historical assertions
+                self.debugMessage('process_related_assertions: begin searchBugzillaText: %s' % assertionmessage)
                 resp, content = sisyphus.bugzilla.searchBugzillaText(assertionmessage)
+                self.debugMessage('process_related_assertions: end  searchBugzillaText: %s' % assertionmessage)
                 if 'bugs' in content:
                     if not bug_list:
                         bug_list = {'open' : [], 'closed' : []}
@@ -261,7 +265,9 @@ class Worker():
                         else:
                             bug_list['open'].append(bug['id'])
 
-            if bug_list:
+            if not bug_list:
+                bug_list = {'open' : [], 'closed' : []}
+            else:
                 # uniqify and sort the bug_list
                 for state in 'open', 'closed':
                     bug_list[state] = list(sets.Set(bug_list[state]))
@@ -272,6 +278,8 @@ class Worker():
                 matching_assertion["lastdatetime"] = timestamp
                 matching_assertion["updatetime"] = timestamp
                 self.historydb.updateDocument(matching_assertion, True)
+
+        self.debugMessage('process_related_assertions: end %s' % bug_list)
 
         return bug_list
 
@@ -412,6 +420,8 @@ class Worker():
         def cmp_bug_numbers(lbug, rbug):
             return int(lbug) - int(rbug)
 
+        self.debugMessage('process_related_valgrinds: start: %s %s' % (valgrindmessage, valgrindsignature))
+
         os_name            = self.document["os_name"]
         os_version         = self.document["os_version"]
         cpu_name           = self.document["cpu_name"]
@@ -425,7 +435,7 @@ class Worker():
             if (product    != related_valgrind["product"]  or
                 branch     != related_valgrind["branch"]   or
                 os_name    != related_valgrind["os_name"]  or
-                os_version != related_valgrind["os_name"]  or
+                os_version != related_valgrind["os_version"]  or
                 cpu_name   != related_valgrind["cpu_name"] or
                 valgrindsignature != related_valgrind["valgrindsignature"]):
                 continue
@@ -486,7 +496,9 @@ class Worker():
             if not bug_list and valgrindsignature:
                 # look up any bugs that match this valgrind
                 # update any of the matching historical valgrinds
+                self.debugMessage('process_related_valgrinds: begin searchBugzillaText: %s' % valgrindsignature)
                 resp, content = sisyphus.bugzilla.searchBugzillaText(valgrindsignature, 'contains_all')
+                self.debugMessage('process_related_valgrinds: end   searchBugzillaText: %s' % valgrindsignature)
                 if 'bugs' in content:
                     if not bug_list:
                         bug_list = {'open' : [], 'closed' : []}
@@ -496,7 +508,9 @@ class Worker():
                         else:
                             bug_list['open'].append(bug['id'])
 
-            if bug_list:
+            if not bug_list:
+                bug_list = {'open' : [], 'closed' : []}
+            else:
                 # uniqify and sort the bug_list
                 for state in 'open', 'closed':
                     bug_list[state] = list(sets.Set(bug_list[state]))
@@ -507,6 +521,8 @@ class Worker():
                 matching_valgrind["lastdatetime"] = timestamp
                 matching_valgrind["updatetime"] = timestamp
                 self.historydb.updateDocument(matching_valgrind, True)
+
+        self.debugMessage('process_related_valgrinds: end %s' % bug_list)
 
         return bug_list
 
@@ -690,6 +706,8 @@ class Worker():
         def cmp_bug_numbers(lbug, rbug):
             return int(lbug) - int(rbug)
 
+        self.debugMessage('process_related_crashreports: start: %s %s %s' % (crashmessage, crashsignature, crashurl))
+
         os_name            = self.document["os_name"]
         os_version         = self.document["os_version"]
         cpu_name           = self.document["cpu_name"]
@@ -703,17 +721,15 @@ class Worker():
             if (product    != related_crash["product"]  or
                 branch     != related_crash["branch"]   or
                 os_name    != related_crash["os_name"]  or
-                os_version != related_crash["os_name"]  or
+                os_version != related_crash["os_version"]  or
                 cpu_name   != related_crash["cpu_name"] or
+                crashmessage != related_crash["crash"] or
                 crashsignature != related_crash["crashsignature"]):
                 continue
 
             bug_list = related_crash["bug_list"]
             if bug_list:
                 break
-
-        # XXX: Bug 548016 need to search by url too.
-        # need to add another view and change viewnames to be more meaningful.
 
         if not bug_list:
             # there was no cached bug data in the crashtests for the last day
@@ -752,6 +768,7 @@ class Worker():
                     os_name    != related_crash["os_name"]  or
                     os_version != related_crash["os_version"]  or
                     cpu_name   != related_crash["cpu_name"] or
+                    crashmessage != related_crash["crash"] or
                     crashsignature != related_crash["crashsignature"]):
                     continue
 
@@ -765,22 +782,31 @@ class Worker():
 
             if not bug_list and crashsignature:
                 # look up any bugs that match this crash
-                # update any of the matching historical crashes.
-                # first search only summary and comments for speed.
+                # updating any of the matching historical crashes.
+                # first search urls and comments for the crash url, then
+                # the summary and comments for the crashsignature.
                 # if that fails, search text attachments.
+                bug_list = {'open' : [], 'closed' : []}
+                resp, content = sisyphus.bugzilla.searchBugzillaText(crashurl)
+                if 'bugs' in content:
+                    for bug in content['bugs']:
+                        if bug['resolution']:
+                            bug_list['closed'].append(bug['id'])
+                        else:
+                            bug_list['open'].append(bug['id'])
                 resp, content = sisyphus.bugzilla.searchBugzillaText(crashsignature, 'contains_all')
                 if 'bugs' not in content:
                     resp, content = sisyphus.bugzilla.searchBugzillaTextAttachments(crashsignature, 'contains_all', 'crash')
                 if 'bugs' in content:
-                    if not bug_list:
-                        bug_list = {'open' : [], 'closed' : []}
                     for bug in content['bugs']:
                         if bug['resolution']:
                             bug_list['closed'].append(bug['id'])
                         else:
                             bug_list['open'].append(bug['id'])
 
-            if bug_list:
+            if not bug_list:
+                bug_list = {'open' : [], 'closed' : []}
+            else:
                 # uniqify and sort the bug_list
                 for state in 'open', 'closed':
                     bug_list[state] = list(sets.Set(bug_list[state]))
@@ -1169,6 +1195,8 @@ class Worker():
         def cmp_bug_numbers(lbug, rbug):
             return int(lbug) - int(rbug)
 
+        self.debugMessage('update_crash_bugs: start')
+
         last_key    = ''
         bug_list    = None
         timestamp   = sisyphus.utils.getTimestamp()
@@ -1194,21 +1222,75 @@ class Worker():
 
             crashmessage   = crash_doc['crash']
             crashsignature = crash_doc['crashsignature']
+            crashurl       = crash_doc['location_id']
 
             curr_key = crashmessage + ':' + crashsignature
 
             if last_key != curr_key and crashsignature:
                 # look up the bugs for the current key.
-                bug_list = {'open' : [], 'closed' : []}
-                resp, content = sisyphus.bugzilla.searchBugzillaText(crashsignature, 'contains_all')
-                if 'bugs' not in content:
-                    resp, content = sisyphus.bugzilla.searchBugzillaTextAttachments(crashsignature, 'contains_all', 'crash')
+                if crash_doc['bug_list'] is None:
+                    # the current crash document does not have any bug data.
+                    # search bugzilla for all dates.
+                    bug_list = {'open' : [], 'closed' : []}
+                    bug_age = None
+                else:
+                    # the current crash document does have old bug data.
+                    # search bugzilla for changes in the last week to be
+                    # conservative.
+                    bug_list = crash_doc['bug_list']
+                    bug_age = 7
+
+                self.debugMessage('update_crash_bugs: begin searchBugzillaUrls: %s, age: %s' % (crashurl, bug_age))
+                resp, content = sisyphus.bugzilla.searchBugzillaUrls(crashurl, 'contains', None, bug_age)
+                self.debugMessage('update_crash_bugs: end   searchBugzillaUrls: %s' % crashurl)
+
                 if 'bugs' in content:
                     for bug in content['bugs']:
                         if bug['resolution']:
-                            bug_list['closed'].append(bug['id'])
+                            this_resolution = 'closed'
+                            that_resolution = 'open'
                         else:
-                            bug_list['open'].append(bug['id'])
+                            this_resolution = 'open'
+                            that_resolution = 'closed'
+
+                        # reusing cached data while adding new data from the
+                        # last 7 days can result in bugs which have been fixed
+                        # being added to the closed list while they remain in
+                        # the open list. Therefore when adding a bug to one
+                        # resolution, be sure to delete it from the other.
+                        bug_list[this_resolution].append(bug['id'])
+                        try:
+                            del bug_list[that_resolution][bug_list[that_resolution].index(bug['id'])]
+                        except ValueError:
+                            pass
+
+                self.debugMessage('update_crash_bugs: begin searchBugzillaText: %s, age: %s' % (crashsignature, bug_age))
+                resp, content = sisyphus.bugzilla.searchBugzillaText(crashsignature, 'contains_all', None, bug_age)
+                self.debugMessage('update_crash_bugs: end   searchBugzillaText: %s' % crashsignature)
+                if 'bugs' not in content:
+                    self.debugMessage('update_crash_bugs: begin searchBugzillaTextAttachments: %s, age: %s' % (crashsignature, bug_age))
+                    resp, content = sisyphus.bugzilla.searchBugzillaTextAttachments(crashsignature, 'contains_all', 'crash', bug_age)
+                    self.debugMessage('update_crash_bugs: end   searchBugzillaTextAttachments: %s' % crashsignature)
+
+                if 'bugs' in content:
+                    for bug in content['bugs']:
+                        if bug['resolution']:
+                            this_resolution = 'closed'
+                            that_resolution = 'open'
+                        else:
+                            this_resolution = 'open'
+                            that_resolution = 'closed'
+
+                        # reusing cached data while adding new data from the
+                        # last 7 days can result in bugs which have been fixed
+                        # being added to the closed list while they remain in
+                        # the open list. Therefore when adding a bug to one
+                        # resolution, be sure to delete it from the other.
+                        bug_list[this_resolution].append(bug['id'])
+                        try:
+                            del bug_list[that_resolution][bug_list[that_resolution].index(bug['id'])]
+                        except ValueError:
+                            pass
 
                 for state in 'open', 'closed':
                     bug_list[state] = list(sets.Set(bug_list[state]))
@@ -1227,8 +1309,9 @@ class Worker():
                         if str(exceptionValue) != 'updateDocumentConflict':
                             raise
 
-
                 last_key = curr_key
+
+            self.debugMessage('update_crash_bugs: end %s' % bug_list)
 
             crash_doc['updatetime'] = timestamp
             crash_doc['bug_list']   = bug_list
@@ -1247,6 +1330,8 @@ class Worker():
 
         def cmp_bug_numbers(lbug, rbug):
             return int(lbug) - int(rbug)
+
+        self.debugMessage('update_valgrind_bugs: start')
 
         last_key    = ''
         bug_list    = None
@@ -1278,14 +1363,41 @@ class Worker():
 
             if last_key != curr_key and valgrindsignature:
                 # look up the bugs for the current key.
-                bug_list = {'open' : [], 'closed' : []}
-                resp, content = sisyphus.bugzilla.searchBugzillaText(valgrindsignature, 'contains_all')
+                if valgrind_doc['bug_list'] is None:
+                    # the current valgrind document does not have any bug data.
+                    # search bugzilla for all dates.
+                    bug_list = {'open' : [], 'closed' : []}
+                    bug_age = None
+                else:
+                    # the current valgrind document does have old bug data.
+                    # search bugzilla for changes in the last week to be
+                    # conservative.
+                    bug_list = valgrind_doc['bug_list']
+                    bug_age = 7
+
+                self.debugMessage('update_valgrind_bugs: begin searchBugzillaText: %s, age: %s' % (valgrindsignature, bug_age))
+                resp, content = sisyphus.bugzilla.searchBugzillaText(valgrindsignature, 'contains_all', None, bug_age)
+                self.debugMessage('update_valgrind_bugs: end   searchBugzillaText: %s' % valgrindsignature)
+
                 if 'bugs' in content:
                     for bug in content['bugs']:
                         if bug['resolution']:
-                            bug_list['closed'].append(bug['id'])
+                            this_resolution = 'closed'
+                            that_resolution = 'open'
                         else:
-                            bug_list['open'].append(bug['id'])
+                            this_resolution = 'open'
+                            that_resolution = 'closed'
+
+                        # reusing cached data while adding new data from the
+                        # last 7 days can result in bugs which have been fixed
+                        # being added to the closed list while they remain in
+                        # the open list. Therefore when adding a bug to one
+                        # resolution, be sure to delete it from the other.
+                        bug_list[this_resolution].append(bug['id'])
+                        try:
+                            del bug_list[that_resolution][bug_list[that_resolution].index(bug['id'])]
+                        except ValueError:
+                            pass
 
                 for state in 'open', 'closed':
                     bug_list[state] = list(sets.Set(bug_list[state]))
@@ -1306,6 +1418,8 @@ class Worker():
 
                 last_key = curr_key
 
+            self.debugMessage('update_valgrind_bugs: end %s' % bug_list)
+
             valgrind_doc['updatetime'] = timestamp
             valgrind_doc['bug_list']   = bug_list
             try:
@@ -1323,6 +1437,8 @@ class Worker():
 
         def cmp_bug_numbers(lbug, rbug):
             return int(lbug) - int(rbug)
+
+        self.debugMessage('update_assertion_bugs: start')
 
         last_key    = ''
         bug_list    = None
@@ -1354,14 +1470,41 @@ class Worker():
 
             if last_key != curr_key and assertionmessage:
                 # look up the bugs for the current key.
-                bug_list = {'open' : [], 'closed' : []}
-                resp, content = sisyphus.bugzilla.searchBugzillaText(assertionmessage)
+                if assertion_doc['bug_list'] is None:
+                    # the current assertion document does not have any bug data.
+                    # search bugzilla for all dates.
+                    bug_list = {'open' : [], 'closed' : []}
+                    bug_age = None
+                else:
+                    # the current assertion document does have old bug data.
+                    # search bugzilla for changes in the last week to be
+                    # conservative.
+                    bug_list = assertion_doc['bug_list']
+                    bug_age = 7
+
+                self.debugMessage('update_assertion_bugs: begin searchBugzillaText: %s, age: %s' % (assertionmessage, bug_age))
+                resp, content = sisyphus.bugzilla.searchBugzillaText(assertionmessage, 'contains', None, bug_age)
+                self.debugMessage('update_assertion_bugs: end   searchBugzillaText: %s' % assertionmessage)
+
                 if 'bugs' in content:
                     for bug in content['bugs']:
                         if bug['resolution']:
-                            bug_list['closed'].append(bug['id'])
+                            this_resolution = 'closed'
+                            that_resolution = 'open'
                         else:
-                            bug_list['open'].append(bug['id'])
+                            this_resolution = 'open'
+                            that_resolution = 'closed'
+
+                        # reusing cached data while adding new data from the
+                        # last 7 days can result in bugs which have been fixed
+                        # being added to the closed list while they remain in
+                        # the open list. Therefore when adding a bug to one
+                        # resolution, be sure to delete it from the other.
+                        bug_list[this_resolution].append(bug['id'])
+                        try:
+                            del bug_list[that_resolution][bug_list[that_resolution].index(bug['id'])]
+                        except ValueError:
+                            pass
 
                 for state in 'open', 'closed':
                     bug_list[state] = list(sets.Set(bug_list[state]))
@@ -1381,6 +1524,8 @@ class Worker():
                             raise
 
                 last_key = curr_key
+
+            self.debugMessage('update_assertion_bugs: end %s' % bug_list)
 
             assertion_doc['updatetime'] = timestamp
             assertion_doc['bug_list']   = bug_list
