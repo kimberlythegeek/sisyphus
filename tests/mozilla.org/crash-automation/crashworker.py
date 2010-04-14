@@ -303,7 +303,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
         timestamp = sisyphus.utils.getTimestamp()
 
         result_doc = {
-            "_id"               : "%s_result_%05d" % (self.signature_doc["_id"], url_index),
+            "_id"               : "%s_result_%05d_%s" % (self.signature_doc["_id"], url_index, self.document['_id']),
             "type"              : "result",
             "product"           : product,
             "branch"            : branch,
@@ -532,12 +532,21 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
     def checkIfUrlAlreadyTested(self, signature_doc, url_index):
 
-        startkey = "%s_result_%05d" % (signature_doc["_id"], url_index)
-        endkey   = startkey + '\u9999';
+        startkey = "%s_result_%05d_%s" % (signature_doc["_id"], url_index, self.document['_id'])
+        endkey   = "%s_result_%05d\u9999" % (signature_doc["_id"], url_index);
         result_rows = self.getRows(self.testdb.db.views.default.results_all, startkey, endkey)
         self.debugMessage('checkIfUrlAlreadyTested: %s' % (len(result_rows) != 0))
 
-        return len(result_rows) != 0
+        # only count already tested if this worker has tested the url.
+        # the isBetterAvailable algorithm will have prevented different
+        # though equivalent workers from calling checkIfUrlAlreadyTested.
+        for result in result_rows:
+            if self.document['_id'] == result['worker_id']:
+                self.debugMessage('checkIfUrlAlreadyTested: True')
+                return True
+
+        self.debugMessage('checkIfUrlAlreadyTested: False')
+        return False
 
     def getPendingJobs(self, startkey=None, endkey=None, skip=None, limit=1000000):
 
