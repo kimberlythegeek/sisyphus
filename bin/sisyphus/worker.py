@@ -78,7 +78,7 @@ class Worker():
             proc = subprocess.Popen(["sw_vers"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             stdout,stderr = proc.communicate()
             lines = stdout.split('\n')
-            os_name = re.search('ProductName:\t(.*)', lines[0]).group(1)
+            #os_name = re.search('ProductName:\t(.*)', lines[0]).group(1)
             os_version = re.search('ProductVersion:\t([0-9]+\.[0-9]+).*', lines[1]).group(1)
         elif os_name.find("CYGWIN") != -1:
             os_name = "Windows NT"
@@ -95,6 +95,8 @@ class Worker():
                 cpu_name = "x86"
             elif bits == "64bit":
                 cpu_name = "x86_64"
+        elif cpu_name == 'Power Macintosh':
+            cpu_name = 'ppc'
 
         worker_doc = self.testdb.getDocument(host_name)
 
@@ -171,118 +173,160 @@ class Worker():
                 self.testdb.createDocument(job_doc)
             self.reloadProgram()
 
-    def process_related_assertions(self, product, branch, buildtype, timestamp, assertionmessage, assertionfile):
+    def extractBugzillaBugList(self, bug_list, bugzilla_content):
+        # reusing cached data while adding new data from the
+        # last 7 days can result in bugs which have been fixed
+        # being added to the closed list while they remain in
+        # the open list. Therefore when adding a bug to one
+        # resolution, be sure to delete it from the other.
+
+        def cmp_bug_numbers(lbug, rbug):
+            return int(lbug) - int(rbug)
+
+        if 'bugs' in bugzilla_content:
+            for bug in bugzilla_content['bugs']:
+                if bug['resolution']:
+                    this_resolution = 'closed'
+                    that_resolution = 'open'
+                else:
+                    this_resolution = 'open'
+                    that_resolution = 'closed'
+
+                bug_list[this_resolution].append(bug['id'])
+                try:
+                    del bug_list[that_resolution][bug_list[that_resolution].index(bug['id'])]
+                except ValueError:
+                    pass
+
+        # uniqify and sort the bug_list
+        for state in 'open', 'closed':
+            bug_list[state] = list(sets.Set(bug_list[state]))
+            bug_list[state].sort(cmp_bug_numbers)
+
+        return bug_list
+
+    def update_bug_list_assertions(self, product, branch, buildtype, os_name, os_version, cpu_name, timestamp, assertionmessage, assertionfile):
         """
         check for cached bug data in similar assertions in the
         last day of unittests or the assertion history.
         """
 
-        def cmp_bug_numbers(lbug, rbug):
-            return int(lbug) - int(rbug)
+        self.debugMessage('update_bug_list_assertions: start: %s %s' % (assertionmessage, assertionfile))
 
-        self.debugMessage('process_related_assertions: start: %s %s' % (assertionmessage, assertionfile))
-
-        os_name            = self.document["os_name"]
-        os_version         = self.document["os_version"]
-        cpu_name           = self.document["cpu_name"]
         bug_list           = None
-        starttimestamp     = sisyphus.utils.convertTimeToString(sisyphus.utils.convertTimestamp(timestamp) - datetime.timedelta(days=1))
+        now                = datetime.datetime.now()
 
-        related_assertions = self.getRows(self.testdb.db.views.default.assertions_by_value_when_who_where_what,
-                                          [assertionmessage, starttimestamp],
-                                          [assertionmessage, timestamp])
-        for related_assertion in related_assertions:
-            if (product    != related_assertion["product"]  or
-                branch     != related_assertion["branch"]   or
-                os_name    != related_assertion["os_name"]  or
-                os_version != related_assertion["os_version"]  or
-                cpu_name   != related_assertion["cpu_name"] or
-                assertionfile != related_assertion["assertionfile"]):
-                continue
+        history_assertions = self.getRows(self.historydb.db.views.default.assertions,
+                                          [assertionmessage, assertionfile, product, branch, buildtype, os_name, os_version, cpu_name],
+                                          [assertionmessage, assertionfile, product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"])
 
-            bug_list = related_assertion["bug_list"]
-            if bug_list:
-                break
+        if len(history_assertions) > 0:
 
-        if not bug_list:
-            # there was no cached bug data in the unittests for the last day
-            # check the assertions in the history database for an exact match
-            # on message and file
-            related_assertions = self.getRows(self.historydb.db.views.default.assertions,
-                                              [assertionmessage, assertionfile],
-                                              [assertionmessage, assertionfile + "\u9999"])
+            history_assertion  = history_assertions[0]
+            if "bug_list" not in history_assertion:
+                history_assertion["bug_list"] = None
+            bug_list           = history_assertion["bug_list"]
+            history_updatetime = sisyphus.utils.convertTimestamp(history_assertion["updatetime"])
+            history_stale      = (history_updatetime < now - datetime.timedelta(days=1))
+            bug_age            = 7
 
-            if len(related_assertions) == 0:
-                # there is no historical assertion with an exact match
-                # we need to create a new one.
-                history_assertion_doc = {
-                    "type"            : "assertion",
-                    "product"         : product,
-                    "branch"          : branch,
-                    "buildtype"       : buildtype,
-                    "os_name"         : os_name,
-                    "os_version"      : os_version,
-                    "cpu_name"        : cpu_name,
-                    "firstdatetime"   : timestamp,
-                    "lastdatetime"    : timestamp,
-                    "assertion"       : assertionmessage,
-                    "assertionfile"   : assertionfile,
-                    "updatetime"      : timestamp,
-                    "bug_list"        : None,
-                    "suppress"        : False
-                    }
-                # we need to look up any bugs that match this assertion
-                self.historydb.createDocument(history_assertion_doc)
-                related_assertions = [history_assertion_doc]
+            if not bug_list: # shouldn't be needed, but just in case db is not correct...
+                history_stale = True
 
-            matching_assertions = []
-            for related_assertion in related_assertions:
-                if (product    != related_assertion["product"]  or
-                    branch     != related_assertion["branch"]   or
-                    os_name    != related_assertion["os_name"]  or
-                    os_version != related_assertion["os_version"]  or
-                    cpu_name   != related_assertion["cpu_name"] or
-                    assertionfile != related_assertion["assertionfile"]):
-                    continue
+            if len(history_assertions) > 1:
+                self.logMessage("update_bug_list_assertions: deleting %d duplicates %s %s from history" %
+                                (len(history_assertions) - 1, assertionmessage, assertionfile))
+                iassertion = 1
+                lassertion = len(history_assertions)
+                while iassertion < lassertion:
+                    try:
+                        # We can have update conflicts if the update bug history is currently running
+                        # on another worker. Just ignore them but pass through any other exceptions.
+                        self.historydb.deleteDocument(history_assertions[iassertion])
+                    except KeyboardInterrupt:
+                        raise
+                    except SystemExit:
+                        raise
+                    except:
+                        exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                        errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
-                matching_assertions.append(related_assertion)
+                        if not re.search('deleteDocumentConflict', str(exceptionValue)):
+                            raise
 
-                if related_assertion["bug_list"]:
-                    if not bug_list:
-                        bug_list = {'open' : [], 'closed' : []}
-                    for state in 'open', 'closed':
-                        bug_list[state].extend(related_assertion["bug_list"][state])
+                    iassertion += 1
 
-            if not bug_list and assertionmessage:
-                # look up any bugs that match this assertion
-                # update any of the matching historical assertions
-                self.debugMessage('process_related_assertions: begin searchBugzillaText: %s' % assertionmessage)
-                resp, content = sisyphus.bugzilla.searchBugzillaText(assertionmessage)
-                self.debugMessage('process_related_assertions: end  searchBugzillaText: %s' % assertionmessage)
-                if 'bugs' in content:
-                    if not bug_list:
-                        bug_list = {'open' : [], 'closed' : []}
-                    for bug in content['bugs']:
-                        if bug['resolution']:
-                            bug_list['closed'].append(bug['id'])
-                        else:
-                            bug_list['open'].append(bug['id'])
+        else:
+            # there is no historical assertion with an exact match
+            # we need to create a new one.
+            history_assertion = {
+                "type"            : "assertion",
+                "product"         : product,
+                "branch"          : branch,
+                "buildtype"       : buildtype,
+                "os_name"         : os_name,
+                "os_version"      : os_version,
+                "cpu_name"        : cpu_name,
+                "firstdatetime"   : timestamp,
+                "lastdatetime"    : timestamp,
+                "assertion"       : assertionmessage,
+                "assertionfile"   : assertionfile,
+                "updatetime"      : timestamp,
+                "bug_list"        : None,
+                "suppress"        : False
+                }
+            history_stale  = True
+            bug_age        = None
+
+            # since the bug list does not depend on the full key
+            # try to get a matching assertion using just the assertionmessage.
+
+            history_assertions = self.getRows(self.historydb.db.views.default.assertions,
+                                              [assertionmessage],
+                                              [assertionmessage + "\u9999"])
+
+            if len(history_assertions) > 0:
+                for cache in history_assertions:
+                    if cache["bug_list"]:
+                        break
+                if cache["bug_list"]:
+                    history_assertion["bug_list"]   = cache["bug_list"]
+                    history_assertion["updatetime"] = cache["updatetime"]
+                    bug_age  = 7
+                    bug_list = cache["bug_list"]
+
+            try:
+                self.historydb.createDocument(history_assertion)
+            except:
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+
+                if not re.search('updateDocumentConflict', str(exceptionValue)):
+                    raise
+
+        if history_stale and assertionmessage:
+
+            # We do not have a bug_list yet, or the assertion was last updated over a day ago.
+            # Look up any bugs that match this assertion
 
             if not bug_list:
+                bug_age = None # need to do a full bugzilla search the first time.
                 bug_list = {'open' : [], 'closed' : []}
-            else:
-                # uniqify and sort the bug_list
-                for state in 'open', 'closed':
-                    bug_list[state] = list(sets.Set(bug_list[state]))
-                    bug_list[state].sort(cmp_bug_numbers)
 
-            for matching_assertion in matching_assertions:
-                matching_assertion["bug_list"] = bug_list
-                matching_assertion["lastdatetime"] = timestamp
-                matching_assertion["updatetime"] = timestamp
-                self.historydb.updateDocument(matching_assertion, True)
+            self.debugMessage('update_bug_list_assertions: begin searchBugzillaText: %s %s' % (assertionmessage, bug_age))
+            resp, content = sisyphus.bugzilla.searchBugzillaText(assertionmessage, 'contains', None, bug_age)
+            self.debugMessage('update_bug_list_assertions: end   searchBugzillaText: %s %s' % (assertionmessage, bug_age))
 
-        self.debugMessage('process_related_assertions: end %s' % bug_list)
+            if 'bugs' in content:
+                bug_list = self.extractBugzillaBugList(bug_list, content)
+
+        if history_stale:
+            history_assertion["bug_list"]     = bug_list
+            history_assertion["lastdatetime"] = timestamp
+            history_assertion["updatetime"]   = timestamp
+            self.historydb.updateDocument(history_assertion, True)
+
+        self.debugMessage('update_bug_list_assertions: end %s' % bug_list)
 
         return bug_list
 
@@ -320,7 +364,9 @@ class Worker():
 
             elif result_assertion_doc is None:
 
-                bug_list = self.process_related_assertions(product, branch, buildtype, timestamp, assertionmessage, assertionfile)
+                bug_list = self.update_bug_list_assertions(product, branch, buildtype,
+                                                           os_name, os_version, cpu_name,
+                                                           timestamp, assertionmessage, assertionfile)
 
                 result_assertion_doc = {
                     "type"            : "result_assertion",
@@ -339,7 +385,9 @@ class Worker():
                     "assertionfile"   : assertionfile,
                     "location_id"     : location_id,
                     "updatetime"      : timestamp,
-                    "bug_list"        : bug_list
+                    "bug_list"        : bug_list,
+                    "bug"             : "",
+                    "comment"         : ""
                     }
 
             count  += 1
@@ -414,118 +462,129 @@ class Worker():
 
         return valgrind_list
 
-    def process_related_valgrinds(self, product, branch, buildtype, timestamp, valgrindmessage, valgrindsignature):
+    def update_bug_list_valgrinds(self, product, branch, buildtype, os_name, os_version, cpu_name, timestamp, valgrindmessage, valgrindsignature):
         """
         check for cached bug data in similar valgrinds in the
         last day of unittests or the valgrind history.
         """
 
-        def cmp_bug_numbers(lbug, rbug):
-            return int(lbug) - int(rbug)
+        self.debugMessage('update_bug_list_valgrinds: start: %s %s' % (valgrindmessage, valgrindsignature))
 
-        self.debugMessage('process_related_valgrinds: start: %s %s' % (valgrindmessage, valgrindsignature))
-
-        os_name            = self.document["os_name"]
-        os_version         = self.document["os_version"]
-        cpu_name           = self.document["cpu_name"]
         bug_list           = None
-        starttimestamp     = sisyphus.utils.convertTimeToString(sisyphus.utils.convertTimestamp(timestamp) - datetime.timedelta(days=1))
+        now                = datetime.datetime.now()
 
-        related_valgrinds = self.getRows(self.testdb.db.views.default.valgrind_by_value_when_who_where_what,
-                                         [valgrindmessage, starttimestamp],
-                                         [valgrindmessage, timestamp])
-        for related_valgrind in related_valgrinds:
-            if (product    != related_valgrind["product"]  or
-                branch     != related_valgrind["branch"]   or
-                os_name    != related_valgrind["os_name"]  or
-                os_version != related_valgrind["os_version"]  or
-                cpu_name   != related_valgrind["cpu_name"] or
-                valgrindsignature != related_valgrind["valgrindsignature"]):
-                continue
+        history_valgrinds = self.getRows(self.historydb.db.views.default.valgrind,
+                                         [valgrindmessage, valgrindsignature, product, branch, buildtype, os_name, os_version, cpu_name],
+                                         [valgrindmessage, valgrindsignature, product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"])
 
-            bug_list = related_valgrind["bug_list"]
-            if bug_list:
-                break
+        if len(history_valgrinds) > 0:
 
-        if not bug_list:
-            # there was no cached bug data in the unittests for the last day
-            # check the valgrinds in the history database for an exact match
-            # on message and file
-            related_valgrinds = self.getRows(self.historydb.db.views.default.valgrind,
+            history_valgrind   = history_valgrinds[0]
+            if "bug_list" not in history_valgrind:
+                history_valgrind["bug_list"] = None
+            bug_list           = history_valgrind["bug_list"]
+            history_updatetime = sisyphus.utils.convertTimestamp(history_valgrind["updatetime"])
+            history_stale      = (history_updatetime < now - datetime.timedelta(days=1))
+            bug_age            = 7
+
+            if not bug_list: # shouldn't be needed, but just in case db is not correct...
+                history_stale = True
+
+            if len(history_valgrinds) > 1:
+                self.logMessage("update_bug_list_valgrinds: deleting %d duplicates %s %s from history" %
+                                (len(history_valgrinds) - 1, valgrindmessage, valgrindsignature))
+                ivalgrind = 1
+                lvalgrind = len(history_valgrinds)
+                while ivalgrind < lvalgrind:
+                    try:
+                        # We can have update conflicts if the update bug history is currently running
+                        # on another worker. Just ignore them but pass through any other exceptions.
+                        self.historydb.deleteDocument(history_valgrinds[ivalgrind])
+                    except KeyboardInterrupt:
+                        raise
+                    except SystemExit:
+                        raise
+                    except:
+                        exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                        errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+
+                        if not re.search('deleteDocumentConflict', str(exceptionValue)):
+                            raise
+
+                    ivalgrind += 1
+
+        else:
+            # there is no historical valgrind with an exact match
+            # we need to create a new one.
+            history_valgrind = {
+                "type"            : "valgrind",
+                "product"         : product,
+                "branch"          : branch,
+                "buildtype"       : buildtype,
+                "os_name"         : os_name,
+                "os_version"      : os_version,
+                "cpu_name"        : cpu_name,
+                "firstdatetime"   : timestamp,
+                "lastdatetime"    : timestamp,
+                "valgrind"        : valgrindmessage,
+                "valgrindsignature" : valgrindsignature,
+                "updatetime"      : timestamp,
+                "bug_list"        : None,
+                "suppress"        : False
+                }
+            history_stale = True
+            bug_age       = None
+
+            # since the bug list does not depend on the full key
+            # try to get a matching valgrind using just the valgrindmessage
+            # and valgrindsignature.
+
+            history_valgrinds = self.getRows(self.historydb.db.views.default.valgrind,
                                              [valgrindmessage, valgrindsignature],
                                              [valgrindmessage, valgrindsignature + "\u9999"])
 
-            if len(related_valgrinds) == 0:
-                # there is no historical valgrind with an exact match
-                # we need to create a new one.
-                history_valgrind_doc = {
-                    "type"            : "valgrind",
-                    "product"         : product,
-                    "branch"          : branch,
-                    "buildtype"       : buildtype,
-                    "os_name"         : os_name,
-                    "os_version"      : os_version,
-                    "cpu_name"        : cpu_name,
-                    "firstdatetime"   : timestamp,
-                    "lastdatetime"    : timestamp,
-                    "valgrind"       : valgrindmessage,
-                    "valgrindsignature" : valgrindsignature,
-                    "updatetime"      : timestamp,
-                    "bug_list"        : None,
-                    "suppress"        : False
-                    }
-                # we need to look up any bugs that match this valgrind
-                self.historydb.createDocument(history_valgrind_doc)
-                related_valgrinds = [history_valgrind_doc]
+            if len(history_valgrinds) > 0:
+                for cache in history_valgrinds:
+                    if cache["bug_list"]:
+                        break
+                if cache["bug_list"]:
+                    history_valgrind["bug_list"]   = cache["bug_list"]
+                    history_valgrind["updatetime"] = cache["updatetime"]
+                    bug_age  = 7
+                    bug_list = cache["bug_list"]
 
-            matching_valgrinds = []
-            for related_valgrind in related_valgrinds:
-                if (product    != related_valgrind["product"]  or
-                    branch     != related_valgrind["branch"]   or
-                    os_name    != related_valgrind["os_name"]  or
-                    os_version != related_valgrind["os_version"]  or
-                    cpu_name   != related_valgrind["cpu_name"] or
-                    valgrindsignature != related_valgrind["valgrindsignature"]):
-                    continue
+            try:
+                self.historydb.createDocument(history_valgrind)
+            except:
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
-                matching_valgrinds.append(related_valgrind)
+                if not re.search('updateDocumentConflict', str(exceptionValue)):
+                    raise
 
-                if related_valgrind["bug_list"]:
-                    if not bug_list:
-                        bug_list = {'open' : [], 'closed' : []}
-                    for state in 'open', 'closed':
-                        bug_list[state].extend(related_valgrind["bug_list"][state])
+        if history_stale and valgrindsignature:
 
-            if not bug_list and valgrindsignature:
-                # look up any bugs that match this valgrind
-                # update any of the matching historical valgrinds
-                self.debugMessage('process_related_valgrinds: begin searchBugzillaText: %s' % valgrindsignature)
-                resp, content = sisyphus.bugzilla.searchBugzillaText(valgrindsignature, 'contains_all')
-                self.debugMessage('process_related_valgrinds: end   searchBugzillaText: %s' % valgrindsignature)
-                if 'bugs' in content:
-                    if not bug_list:
-                        bug_list = {'open' : [], 'closed' : []}
-                    for bug in content['bugs']:
-                        if bug['resolution']:
-                            bug_list['closed'].append(bug['id'])
-                        else:
-                            bug_list['open'].append(bug['id'])
+            # We do not have a bug_list yet, or the valgrind was last updated over a day ago.
+            # Look up any bugs that match this valgrind
 
             if not bug_list:
+                bug_age = None # need to do a full bugzilla search the first time.
                 bug_list = {'open' : [], 'closed' : []}
-            else:
-                # uniqify and sort the bug_list
-                for state in 'open', 'closed':
-                    bug_list[state] = list(sets.Set(bug_list[state]))
-                    bug_list[state].sort(cmp_bug_numbers)
 
-            for matching_valgrind in matching_valgrinds:
-                matching_valgrind["bug_list"] = bug_list
-                matching_valgrind["lastdatetime"] = timestamp
-                matching_valgrind["updatetime"] = timestamp
-                self.historydb.updateDocument(matching_valgrind, True)
+            self.debugMessage('update_bug_list_valgrinds: begin searchBugzillaText: %s %s' % (valgrindsignature, bug_age))
+            resp, content = sisyphus.bugzilla.searchBugzillaText(valgrindsignature, 'contains_all', None, bug_age)
+            self.debugMessage('update_bug_list_valgrinds: end   searchBugzillaText: %s %s' % (valgrindsignature, bug_age))
 
-        self.debugMessage('process_related_valgrinds: end %s' % bug_list)
+            if 'bugs' in content:
+                bug_list = self.extractBugzillaBugList(bug_list, content)
+
+        if history_stale:
+            history_valgrind["bug_list"]     = bug_list
+            history_valgrind["lastdatetime"] = timestamp
+            history_valgrind["updatetime"]   = timestamp
+            self.historydb.updateDocument(history_valgrind, True)
+
+        self.debugMessage('update_bug_list_valgrinds: end %s' % bug_list)
 
         return bug_list
 
@@ -563,7 +622,9 @@ class Worker():
 
             elif result_valgrind_doc is None:
 
-                bug_list = self.process_related_valgrinds(product, branch, buildtype, timestamp, valgrindmessage, valgrindsignature)
+                bug_list = self.update_bug_list_valgrinds(product, branch, buildtype,
+                                                          os_name, os_version, cpu_name,
+                                                          timestamp, valgrindmessage, valgrindsignature)
 
                 result_valgrind_doc = {
                     "type"            : "result_valgrind",
@@ -583,7 +644,9 @@ class Worker():
                     "valgrinddata"    : valgrinddata,
                     "location_id"     : location_id,
                     "updatetime"      : timestamp,
-                    "bug_list"        : bug_list
+                    "bug_list"        : bug_list,
+                    "bug"             : "",
+                    "comment"         : ""
                     }
                 self.testdb.createDocument(result_valgrind_doc)
 
@@ -697,129 +760,155 @@ class Worker():
                 signature += ' ' + frame['text']
             message = message.strip()
             signature = signature.strip()
+            if re.search('^0x[0-9a-fA-F]+$', message):
+                # top frame is a pure address. pull in next frame.
+                # in format address | frame
+                topframe_list = signature.replace('Flash Player', 'Flash_Player').split(' ')
+                if len(topframe_list) > 1:
+                    message  = topframe_list[0] + ' | ' + topframe_list[1].replace('Flash_Player', 'Flash Player')
 
         return {'reason' : reason, 'address' : address, 'thread' : thread, 'message' : message, 'signature' : signature}
 
-    def process_related_crashreports(self, product, branch, buildtype, timestamp, crashmessage, crashsignature, crashurl):
+    def update_bug_list_crashreports(self, product, branch, buildtype, os_name, os_version, cpu_name, timestamp, crashmessage, crashsignature, crashurl_list):
         """
         check for cached bug data in similar crashreports in the
         last day of crashreports or the crashreport history.
         """
 
-        def cmp_bug_numbers(lbug, rbug):
-            return int(lbug) - int(rbug)
+        self.debugMessage('update_bug_list_crashreports: start: %s %s %s' % (crashmessage, crashsignature, crashurl_list))
 
-        self.debugMessage('process_related_crashreports: start: %s %s %s' % (crashmessage, crashsignature, crashurl))
-
-        os_name            = self.document["os_name"]
-        os_version         = self.document["os_version"]
-        cpu_name           = self.document["cpu_name"]
         bug_list           = None
-        starttimestamp     = sisyphus.utils.convertTimeToString(sisyphus.utils.convertTimestamp(timestamp) - datetime.timedelta(days=1))
+        now                = datetime.datetime.now()
 
-        related_crashes = self.getRows(self.testdb.db.views.default.crashes_by_value_when_who_where_what,
-                                       [crashmessage, starttimestamp],
-                                       [crashmessage, timestamp])
-        for related_crash in related_crashes:
-            if (product    != related_crash["product"]  or
-                branch     != related_crash["branch"]   or
-                os_name    != related_crash["os_name"]  or
-                os_version != related_crash["os_version"]  or
-                cpu_name   != related_crash["cpu_name"] or
-                crashmessage != related_crash["crash"] or
-                crashsignature != related_crash["crashsignature"]):
-                continue
+        history_crashes = self.getRows(self.historydb.db.views.default.crashes,
+                                       [crashmessage, crashsignature, product, branch, buildtype, os_name, os_version, cpu_name],
+                                       [crashmessage, crashsignature, product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"])
 
-            bug_list = related_crash["bug_list"]
-            if bug_list:
-                break
+        if len(history_crashes) > 0:
 
-        if not bug_list:
-            # there was no cached bug data in the crashtests for the last day
-            # check the crashes in the history database for an exact match
-            # on message and file
-            related_crashes = self.getRows(self.historydb.db.views.default.crashes,
+            history_crash      = history_crashes[0]
+            if "bug_list" not in history_crash:
+                history_crash["bug_list"] = None
+            bug_list           = history_crash["bug_list"]
+            history_updatetime = sisyphus.utils.convertTimestamp(history_crash["updatetime"])
+            history_stale      = (history_updatetime < now - datetime.timedelta(days=1))
+            bug_age            = 7
+
+            if not bug_list: # shouldn't be needed, but just in case db is not correct...
+                history_stale = True
+
+            if len(history_crashes) > 1:
+                self.logMessage("update_bug_list_crashreports: deleting %d duplicates %s %s from history" %
+                                (len(history_crashes) - 1, crashmessage, crashsignature))
+                icrash = 1
+                lcrash = len(history_crashes)
+                while icrash < lcrash:
+                    try:
+                        # We can have update conflicts if the update bug history is currently running
+                        # on another worker. Just ignore them but pass through any other exceptions.
+                        self.historydb.deleteDocument(history_crashes[icrash])
+                    except KeyboardInterrupt:
+                        raise
+                    except SystemExit:
+                        raise
+                    except:
+                        exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                        errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+
+                        if not re.search('deleteDocumentConflict', str(exceptionValue)):
+                            raise
+
+                    icrash += 1
+
+        else:
+            # there is no historical crash with an exact match
+            # we need to create a new one.
+            history_crash = {
+                "type"            : "crash",
+                "product"         : product,
+                "branch"          : branch,
+                "buildtype"       : buildtype,
+                "os_name"         : os_name,
+                "os_version"      : os_version,
+                "cpu_name"        : cpu_name,
+                "firstdatetime"   : timestamp,
+                "lastdatetime"    : timestamp,
+                "crash"           : crashmessage,
+                "crashsignature"  : crashsignature,
+                "updatetime"      : timestamp,
+                "location_id_list" : [],
+                "bug_list"        : None,
+                "suppress"        : False
+                }
+            history_stale = True
+            bug_age       = None
+
+            # since the bug list does not depend on the full key
+            # try to get a matching crash using just the crashmessage
+            # and crashsignature.
+
+            history_crashes = self.getRows(self.historydb.db.views.default.crashes,
                                            [crashmessage, crashsignature],
                                            [crashmessage, crashsignature + "\u9999"])
 
-            if len(related_crashes) == 0:
-                # there is no historical crash with an exact match
-                # we need to create a new one.
-                history_crash_doc = {
-                    "type"            : "crash",
-                    "product"         : product,
-                    "branch"          : branch,
-                    "buildtype"       : buildtype,
-                    "os_name"         : os_name,
-                    "os_version"      : os_version,
-                    "cpu_name"        : cpu_name,
-                    "firstdatetime"   : timestamp,
-                    "lastdatetime"    : timestamp,
-                    "crash"           : crashmessage,
-                    "crashsignature"  : crashsignature,
-                    "updatetime"      : timestamp,
-                    "bug_list"        : None
-                    }
-                # we need to look up any bugs that match this crash
-                self.historydb.createDocument(history_crash_doc)
-                related_crashes = [history_crash_doc]
+            if len(history_crashes) > 0:
+                for cache in history_crashes:
+                    if cache["bug_list"]:
+                        break
+                if cache["bug_list"]:
+                    history_crash["bug_list"]   = cache["bug_list"]
+                    history_crash["updatetime"] = cache["updatetime"]
+                    bug_age  = 7
+                    bug_list = cache["bug_list"]
 
-            matching_crashes = []
-            for related_crash in related_crashes:
-                if (product    != related_crash["product"]  or
-                    branch     != related_crash["branch"]   or
-                    os_name    != related_crash["os_name"]  or
-                    os_version != related_crash["os_version"]  or
-                    cpu_name   != related_crash["cpu_name"] or
-                    crashmessage != related_crash["crash"] or
-                    crashsignature != related_crash["crashsignature"]):
-                    continue
+            try:
+                self.historydb.createDocument(history_crash)
+            except:
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
-                matching_crashes.append(related_crash)
+                if not re.search('updateDocumentConflict', str(exceptionValue)):
+                    raise
 
-                if related_crash["bug_list"]:
-                    if not bug_list:
-                        bug_list = {'open' : [], 'closed' : []}
-                    for state in 'open', 'closed':
-                        bug_list[state].extend(related_crash["bug_list"][state])
+        if not bug_list:
+            bug_age = None # need to do a full bugzilla search the first time.
+            bug_list = {'open' : [], 'closed' : []}
 
-            if not bug_list and crashsignature:
-                # look up any bugs that match this crash
-                # updating any of the matching historical crashes.
-                # first search urls and comments for the crash url, then
-                # the summary and comments for the crashsignature.
-                # if that fails, search text attachments.
-                bug_list = {'open' : [], 'closed' : []}
-                resp, content = sisyphus.bugzilla.searchBugzillaText(crashurl)
+        if history_stale:
+
+            # We do not have a bug_list yet, or the crash was last updated over a day ago.
+            # Look up any bugs that match this crash
+
+            if len(crashurl_list) > 0:
+                crashurls = ' '.join(crashurl_list)
+                self.debugMessage('update_bug_list_crashreports: begin searchBugzillaUrls: %s %s' % (crashurls, bug_age))
+                resp, content = sisyphus.bugzilla.searchBugzillaUrls(crashurls, 'contains_any', None, bug_age)
+                self.debugMessage('update_bug_list_crashreports: end   searchBugzillaUrls: %s %s' % (crashurls, bug_age))
                 if 'bugs' in content:
-                    for bug in content['bugs']:
-                        if bug['resolution']:
-                            bug_list['closed'].append(bug['id'])
-                        else:
-                            bug_list['open'].append(bug['id'])
-                resp, content = sisyphus.bugzilla.searchBugzillaText(crashsignature, 'contains_all')
+                    bug_list = self.extractBugzillaBugList(bug_list, content)
+
+            if crashsignature:
+                self.debugMessage('update_bug_list_crashreports: begin searchBugzillaText: %s %s' % (crashsignature, bug_age))
+                resp, content = sisyphus.bugzilla.searchBugzillaText(crashsignature, 'contains_all', None, bug_age)
+                self.debugMessage('update_bug_list_crashreports: end   searchBugzillaText: %s %s' % (crashsignature, bug_age))
                 if 'bugs' not in content:
-                    resp, content = sisyphus.bugzilla.searchBugzillaTextAttachments(crashsignature, 'contains_all', 'crash')
+                    self.debugMessage('update_bug_list_crashreports: begin searchBugzillaTextAttachments: %s %s' % (crashsignature, bug_age))
+                    resp, content = sisyphus.bugzilla.searchBugzillaTextAttachments(crashsignature, 'contains_all', 'crash', bug_age)
+                    self.debugMessage('update_bug_list_crashreports: end   searchBugzillaTextAttachments: %s %s' % (crashsignature, bug_age))
                 if 'bugs' in content:
-                    for bug in content['bugs']:
-                        if bug['resolution']:
-                            bug_list['closed'].append(bug['id'])
-                        else:
-                            bug_list['open'].append(bug['id'])
+                    bug_list = self.extractBugzillaBugList(bug_list, content)
 
-            if not bug_list:
-                bug_list = {'open' : [], 'closed' : []}
-            else:
-                # uniqify and sort the bug_list
-                for state in 'open', 'closed':
-                    bug_list[state] = list(sets.Set(bug_list[state]))
-                    bug_list[state].sort(cmp_bug_numbers)
+        if history_stale:
+            history_crash["location_id_list"].extend(crashurl_list)
+            # uniqify the location id list.
+            history_crash["location_id_list"] = list(sets.Set(history_crash["location_id_list"]))
+            history_crash["location_id_list"].sort()
+            history_crash["bug_list"]     = bug_list
+            history_crash["lastdatetime"] = timestamp
+            history_crash["updatetime"]   = timestamp
+            self.historydb.updateDocument(history_crash, True)
 
-            for matching_crash in matching_crashes:
-                matching_crash["bug_list"] = bug_list
-                matching_crash["lastdatetime"] = timestamp
-                matching_crash["updatetime"] = timestamp
-                self.historydb.updateDocument(matching_crash, True)
+        self.debugMessage('update_bug_list_crashreports: end %s' % bug_list)
 
         return bug_list
 
@@ -837,7 +926,9 @@ class Worker():
         crashsignature = crash_data["signature"]
         currkey = crashmessage + ":" + crashsignature
 
-        bug_list = self.process_related_crashreports(product, branch, buildtype, timestamp, crashmessage, crashsignature, location_id)
+        bug_list = self.update_bug_list_crashreports(product, branch, buildtype,
+                                                     os_name, os_version, cpu_name,
+                                                     timestamp, crashmessage, crashsignature, [location_id])
 
         result_crash_doc = {
             "type"            : "result_crash",
@@ -856,7 +947,9 @@ class Worker():
             "crashsignature"  : crashsignature,
             "location_id"     : location_id,
             "updatetime"      : timestamp,
-            "bug_list"        : bug_list
+            "bug_list"        : bug_list,
+            "bug"             : "",
+            "comment"         : ""
             }
         self.testdb.createDocument(result_crash_doc)
 
@@ -1087,39 +1180,76 @@ class Worker():
         if not self.lock_history_update():
             return
 
-        # XXX: kludge to not have to implement this in each descendent class
+        timestamp   = sisyphus.utils.getTimestamp()
+        now         = sisyphus.utils.convertTimestamp(timestamp)
+        yesterday   = now - datetime.timedelta(days=1)
+
+        checkup_interval = datetime.timedelta(minutes=5)
+        last_checkup_time = datetime.datetime.now() - 2*checkup_interval
+
         try:
-            self.update_crash_bugs()
+            crash_rows = self.getRows(self.historydb.db.views.default.crashes)
+
+            for crash_doc in crash_rows:
+                if datetime.datetime.now() - last_checkup_time > checkup_interval:
+                    self.document['datetime'] = sisyphus.utils.getTimestamp()
+                    self.updateWorker(self.document)
+                    last_checkup_time = datetime.datetime.now()
+
+                self.update_bug_list_crashreports(crash_doc["product"], crash_doc["branch"], crash_doc["buildtype"],
+                                                  crash_doc["os_name"], crash_doc["os_version"], crash_doc["cpu_name"], timestamp,
+                                                  crash_doc["crash"], crash_doc["crashsignature"], crash_doc["location_id_list"])
         except KeyboardInterrupt:
             raise
         except:
             exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
 
+            # XXX: kludge to not have to implement this in each descendent class
             if str(exceptionValue) != 'No view named crashes. ':
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
-                self.logMessage("update_bug_histories: error in update_crash_bugs. %s exception: %s" %
+                self.logMessage("update_bug_histories: error updating crashes: %s exception: %s" %
                                 (exceptionValue, errorMessage))
 
         try:
-            self.update_valgrind_bugs()
+            valgrind_rows = self.getRows(self.historydb.db.views.default.valgrind)
+
+            for valgrind_doc in valgrind_rows:
+                if datetime.datetime.now() - last_checkup_time > checkup_interval:
+                    self.document['datetime'] = sisyphus.utils.getTimestamp()
+                    self.updateWorker(self.document)
+                    last_checkup_time = datetime.datetime.now()
+
+                self.update_bug_list_valgrinds(valgrind_doc["product"], valgrind_doc["branch"], valgrind_doc["buildtype"],
+                                               valgrind_doc["os_name"], valgrind_doc["os_version"], valgrind_doc["cpu_name"], timestamp,
+                                               valgrind_doc["valgrind"], valgrind_doc["valgrindsignature"])
         except KeyboardInterrupt:
             raise
         except:
             exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
 
             errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
-            self.logMessage("update_bug_histories: error in update_valgrind_bugs. %s exception: %s" %
+            self.logMessage("update_bug_histories: error updating valgrinds: %s exception: %s" %
                             (exceptionValue, errorMessage))
 
         try:
-            self.update_assertion_bugs()
+            assertion_rows = self.getRows(self.testdb.db.views.default.assertions)
+
+            for assertion_doc in assertion_rows:
+                if datetime.datetime.now() - last_checkup_time > checkup_interval:
+                    self.document['datetime'] = sisyphus.utils.getTimestamp()
+                    self.updateWorker(self.document)
+                    last_checkup_time = datetime.datetime.now()
+
+                self.update_bug_list_assertions(assertion_doc["product"], assertion_doc["branch"], assertion_doc["buildtype"],
+                                                assertion_doc["os_name"], assertion_doc["os_version"], assertion_doc["cpu_name"], timestamp,
+                                                assertion_doc["assertion"], assertion_doc["assertionfile"])
         except KeyboardInterrupt:
             raise
         except:
             exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
 
             errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
-            self.logMessage("update_bug_histories: error in update_assertion_bugs. %s exception: %s" %
+            self.logMessage("update_bug_histories: error updating assertions. %s exception: %s" %
                             (exceptionValue, errorMessage))
 
         self.unlock_history_update()
@@ -1188,356 +1318,6 @@ class Worker():
         update_doc[dburi]["worker_id"] = None
         update_doc[dburi]["datetime"]  = sisyphus.utils.getTimestamp()
         self.historydb.updateDocument(update_doc, True)
-
-    def update_crash_bugs(self):
-        """
-        update the cached bug data for all crashreports older than one day in the
-        test database and history database.
-        """
-
-        def cmp_bug_numbers(lbug, rbug):
-            return int(lbug) - int(rbug)
-
-        self.debugMessage('update_crash_bugs: start')
-
-        last_key    = ''
-        bug_list    = None
-        timestamp   = sisyphus.utils.getTimestamp()
-        now         = sisyphus.utils.convertTimestamp(timestamp)
-        yesterday   = now - datetime.timedelta(days=1)
-
-        checkup_interval = datetime.timedelta(minutes=5)
-        last_checkup_time = datetime.datetime.now() - 2*checkup_interval
-
-        crash_rows = self.getRows(self.testdb.db.views.default.crashes)
-
-        for crash_doc in crash_rows:
-
-            if datetime.datetime.now() - last_checkup_time > checkup_interval:
-                self.document['datetime'] = sisyphus.utils.getTimestamp()
-                self.updateWorker(self.document)
-                last_checkup_time = datetime.datetime.now()
-
-            crash_updatetime = sisyphus.utils.convertTimestamp(crash_doc['updatetime'])
-            if crash_updatetime > yesterday:
-                # skip it. someone else updated it.
-                continue
-
-            crashmessage   = crash_doc['crash']
-            crashsignature = crash_doc['crashsignature']
-            crashurl       = crash_doc['location_id']
-
-            curr_key = crashmessage + ':' + crashsignature
-
-            if last_key != curr_key and crashsignature:
-                # look up the bugs for the current key.
-                if crash_doc['bug_list'] is None:
-                    # the current crash document does not have any bug data.
-                    # search bugzilla for all dates.
-                    bug_list = {'open' : [], 'closed' : []}
-                    bug_age = None
-                else:
-                    # the current crash document does have old bug data.
-                    # search bugzilla for changes in the last week to be
-                    # conservative.
-                    bug_list = crash_doc['bug_list']
-                    bug_age = 7
-
-                self.debugMessage('update_crash_bugs: begin searchBugzillaUrls: %s, age: %s' % (crashurl, bug_age))
-                resp, content = sisyphus.bugzilla.searchBugzillaUrls(crashurl, 'contains', None, bug_age)
-                self.debugMessage('update_crash_bugs: end   searchBugzillaUrls: %s' % crashurl)
-
-                if 'bugs' in content:
-                    for bug in content['bugs']:
-                        if bug['resolution']:
-                            this_resolution = 'closed'
-                            that_resolution = 'open'
-                        else:
-                            this_resolution = 'open'
-                            that_resolution = 'closed'
-
-                        # reusing cached data while adding new data from the
-                        # last 7 days can result in bugs which have been fixed
-                        # being added to the closed list while they remain in
-                        # the open list. Therefore when adding a bug to one
-                        # resolution, be sure to delete it from the other.
-                        bug_list[this_resolution].append(bug['id'])
-                        try:
-                            del bug_list[that_resolution][bug_list[that_resolution].index(bug['id'])]
-                        except ValueError:
-                            pass
-
-                self.debugMessage('update_crash_bugs: begin searchBugzillaText: %s, age: %s' % (crashsignature, bug_age))
-                resp, content = sisyphus.bugzilla.searchBugzillaText(crashsignature, 'contains_all', None, bug_age)
-                self.debugMessage('update_crash_bugs: end   searchBugzillaText: %s' % crashsignature)
-                if 'bugs' not in content:
-                    self.debugMessage('update_crash_bugs: begin searchBugzillaTextAttachments: %s, age: %s' % (crashsignature, bug_age))
-                    resp, content = sisyphus.bugzilla.searchBugzillaTextAttachments(crashsignature, 'contains_all', 'crash', bug_age)
-                    self.debugMessage('update_crash_bugs: end   searchBugzillaTextAttachments: %s' % crashsignature)
-
-                if 'bugs' in content:
-                    for bug in content['bugs']:
-                        if bug['resolution']:
-                            this_resolution = 'closed'
-                            that_resolution = 'open'
-                        else:
-                            this_resolution = 'open'
-                            that_resolution = 'closed'
-
-                        # reusing cached data while adding new data from the
-                        # last 7 days can result in bugs which have been fixed
-                        # being added to the closed list while they remain in
-                        # the open list. Therefore when adding a bug to one
-                        # resolution, be sure to delete it from the other.
-                        bug_list[this_resolution].append(bug['id'])
-                        try:
-                            del bug_list[that_resolution][bug_list[that_resolution].index(bug['id'])]
-                        except ValueError:
-                            pass
-
-                for state in 'open', 'closed':
-                    bug_list[state] = list(sets.Set(bug_list[state]))
-                    bug_list[state].sort(cmp_bug_numbers)
-
-                history_rows = self.getRows(self.historydb.db.views.default.crashes,
-                                            [crashmessage, crashsignature],
-                                            [crashmessage, crashsignature + "\u9999"])
-                for history_doc in history_rows:
-                    history_doc['updatetime'] = timestamp
-                    history_doc['bug_list'] = bug_list
-                    try:
-                        self.historydb.updateDocument(history_doc)
-                    except:
-                        exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-                        if str(exceptionValue) != 'updateDocumentConflict':
-                            raise
-
-                last_key = curr_key
-
-            self.debugMessage('update_crash_bugs: end %s' % bug_list)
-
-            crash_doc['updatetime'] = timestamp
-            crash_doc['bug_list']   = bug_list
-            try:
-                self.testdb.updateDocument(crash_doc)
-            except:
-                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-                if str(exceptionValue) != 'updateDocumentConflict':
-                    raise
-
-    def update_valgrind_bugs(self):
-        """
-        update the cached bug data for all valgrind reports older than one day in the
-        test database and history database.
-        """
-
-        def cmp_bug_numbers(lbug, rbug):
-            return int(lbug) - int(rbug)
-
-        self.debugMessage('update_valgrind_bugs: start')
-
-        last_key    = ''
-        bug_list    = None
-        timestamp   = sisyphus.utils.getTimestamp()
-        now         = sisyphus.utils.convertTimestamp(timestamp)
-        yesterday   = now - datetime.timedelta(days=1)
-
-        checkup_interval = datetime.timedelta(minutes=5)
-        last_checkup_time = datetime.datetime.now() - 2*checkup_interval
-
-        valgrind_rows = self.getRows(self.testdb.db.views.default.valgrind)
-
-        for valgrind_doc in valgrind_rows:
-
-            if datetime.datetime.now() - last_checkup_time > checkup_interval:
-                self.document['datetime'] = sisyphus.utils.getTimestamp()
-                self.updateWorker(self.document)
-                last_checkup_time = datetime.datetime.now()
-
-            valgrind_updatetime = sisyphus.utils.convertTimestamp(valgrind_doc['updatetime'])
-            if valgrind_updatetime > yesterday:
-                # skip it. someone else updated it.
-                continue
-
-            valgrindmessage   = valgrind_doc['valgrind']
-            valgrindsignature = valgrind_doc['valgrindsignature']
-
-            curr_key = valgrindmessage + ':' + valgrindsignature
-
-            if last_key != curr_key and valgrindsignature:
-                # look up the bugs for the current key.
-                if valgrind_doc['bug_list'] is None:
-                    # the current valgrind document does not have any bug data.
-                    # search bugzilla for all dates.
-                    bug_list = {'open' : [], 'closed' : []}
-                    bug_age = None
-                else:
-                    # the current valgrind document does have old bug data.
-                    # search bugzilla for changes in the last week to be
-                    # conservative.
-                    bug_list = valgrind_doc['bug_list']
-                    bug_age = 7
-
-                self.debugMessage('update_valgrind_bugs: begin searchBugzillaText: %s, age: %s' % (valgrindsignature, bug_age))
-                resp, content = sisyphus.bugzilla.searchBugzillaText(valgrindsignature, 'contains_all', None, bug_age)
-                self.debugMessage('update_valgrind_bugs: end   searchBugzillaText: %s' % valgrindsignature)
-
-                if 'bugs' in content:
-                    for bug in content['bugs']:
-                        if bug['resolution']:
-                            this_resolution = 'closed'
-                            that_resolution = 'open'
-                        else:
-                            this_resolution = 'open'
-                            that_resolution = 'closed'
-
-                        # reusing cached data while adding new data from the
-                        # last 7 days can result in bugs which have been fixed
-                        # being added to the closed list while they remain in
-                        # the open list. Therefore when adding a bug to one
-                        # resolution, be sure to delete it from the other.
-                        bug_list[this_resolution].append(bug['id'])
-                        try:
-                            del bug_list[that_resolution][bug_list[that_resolution].index(bug['id'])]
-                        except ValueError:
-                            pass
-
-                for state in 'open', 'closed':
-                    bug_list[state] = list(sets.Set(bug_list[state]))
-                    bug_list[state].sort(cmp_bug_numbers)
-
-                history_rows = self.getRows(self.historydb.db.views.default.valgrind,
-                                            [valgrindmessage, valgrindsignature],
-                                            [valgrindmessage, valgrindsignature + "\u9999"])
-                for history_doc in history_rows:
-                    history_doc['updatetime'] = timestamp
-                    history_doc['bug_list'] = bug_list
-                    try:
-                        self.historydb.updateDocument(history_doc)
-                    except:
-                        exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-                        if str(exceptionValue) != 'updateDocumentConflict':
-                            raise
-
-                last_key = curr_key
-
-            self.debugMessage('update_valgrind_bugs: end %s' % bug_list)
-
-            valgrind_doc['updatetime'] = timestamp
-            valgrind_doc['bug_list']   = bug_list
-            try:
-                self.testdb.updateDocument(valgrind_doc)
-            except:
-                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-                if str(exceptionValue) != 'updateDocumentConflict':
-                    raise
-
-    def update_assertion_bugs(self):
-        """
-        update the cached bug data for all assertion reports older than one day in the
-        test database and history database.
-        """
-
-        def cmp_bug_numbers(lbug, rbug):
-            return int(lbug) - int(rbug)
-
-        self.debugMessage('update_assertion_bugs: start')
-
-        last_key    = ''
-        bug_list    = None
-        timestamp   = sisyphus.utils.getTimestamp()
-        now         = sisyphus.utils.convertTimestamp(timestamp)
-        yesterday   = now - datetime.timedelta(days=1)
-
-        checkup_interval = datetime.timedelta(minutes=5)
-        last_checkup_time = datetime.datetime.now() - 2*checkup_interval
-
-        assertion_rows = self.getRows(self.testdb.db.views.default.assertions)
-
-        for assertion_doc in assertion_rows:
-
-            if datetime.datetime.now() - last_checkup_time > checkup_interval:
-                self.document['datetime'] = sisyphus.utils.getTimestamp()
-                self.updateWorker(self.document)
-                last_checkup_time = datetime.datetime.now()
-
-            assertion_updatetime = sisyphus.utils.convertTimestamp(assertion_doc['updatetime'])
-            if assertion_updatetime > yesterday:
-                # skip it. someone else updated it.
-                continue
-
-            assertionmessage   = assertion_doc['assertion']
-            assertionsignature = assertion_doc['assertionfile']
-
-            curr_key = assertionmessage + ':' + assertionsignature
-
-            if last_key != curr_key and assertionmessage:
-                # look up the bugs for the current key.
-                if assertion_doc['bug_list'] is None:
-                    # the current assertion document does not have any bug data.
-                    # search bugzilla for all dates.
-                    bug_list = {'open' : [], 'closed' : []}
-                    bug_age = None
-                else:
-                    # the current assertion document does have old bug data.
-                    # search bugzilla for changes in the last week to be
-                    # conservative.
-                    bug_list = assertion_doc['bug_list']
-                    bug_age = 7
-
-                self.debugMessage('update_assertion_bugs: begin searchBugzillaText: %s, age: %s' % (assertionmessage, bug_age))
-                resp, content = sisyphus.bugzilla.searchBugzillaText(assertionmessage, 'contains', None, bug_age)
-                self.debugMessage('update_assertion_bugs: end   searchBugzillaText: %s' % assertionmessage)
-
-                if 'bugs' in content:
-                    for bug in content['bugs']:
-                        if bug['resolution']:
-                            this_resolution = 'closed'
-                            that_resolution = 'open'
-                        else:
-                            this_resolution = 'open'
-                            that_resolution = 'closed'
-
-                        # reusing cached data while adding new data from the
-                        # last 7 days can result in bugs which have been fixed
-                        # being added to the closed list while they remain in
-                        # the open list. Therefore when adding a bug to one
-                        # resolution, be sure to delete it from the other.
-                        bug_list[this_resolution].append(bug['id'])
-                        try:
-                            del bug_list[that_resolution][bug_list[that_resolution].index(bug['id'])]
-                        except ValueError:
-                            pass
-
-                for state in 'open', 'closed':
-                    bug_list[state] = list(sets.Set(bug_list[state]))
-                    bug_list[state].sort(cmp_bug_numbers)
-
-                history_rows = self.getRows(self.historydb.db.views.default.assertions,
-                                            [assertionmessage, assertionsignature],
-                                            [assertionmessage, assertionsignature + "\u9999"])
-                for history_doc in history_rows:
-                    history_doc['updatetime'] = timestamp
-                    history_doc['bug_list'] = bug_list
-                    try:
-                        self.historydb.updateDocument(history_doc)
-                    except:
-                        exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-                        if str(exceptionValue) != 'updateDocumentConflict':
-                            raise
-
-                last_key = curr_key
-
-            self.debugMessage('update_assertion_bugs: end %s' % bug_list)
-
-            assertion_doc['updatetime'] = timestamp
-            assertion_doc['bug_list']   = bug_list
-            try:
-                self.testdb.updateDocument(assertion_doc)
-            except:
-                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-                if str(exceptionValue) != 'updateDocumentConflict':
-                    raise
 
     def killTest(self):
         # XXX: os.kill fails to kill the entire test process and children when
