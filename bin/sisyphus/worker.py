@@ -337,8 +337,6 @@ class Worker():
 
         self.debugMessage('update_bug_list_assertions: end %s' % bug_list)
 
-        return bug_list
-
 
     def process_assertions(self, result_id, product, branch, buildtype, timestamp, assertion_list, location_id, test, extra_test_args):
 
@@ -373,9 +371,9 @@ class Worker():
 
             elif result_assertion_doc is None:
 
-                bug_list = self.update_bug_list_assertions(product, branch, buildtype,
-                                                           os_name, os_version, cpu_name,
-                                                           timestamp, assertionmessage, assertionfile)
+                self.update_bug_list_assertions(product, branch, buildtype,
+                                                os_name, os_version, cpu_name,
+                                                timestamp, assertionmessage, assertionfile)
 
                 result_assertion_doc = {
                     "type"            : "result_assertion",
@@ -394,7 +392,6 @@ class Worker():
                     "assertionfile"   : assertionfile,
                     "location_id"     : location_id,
                     "updatetime"      : timestamp,
-                    "bug_list"        : bug_list,
                     "bug"             : "",
                     "comment"         : ""
                     }
@@ -461,12 +458,13 @@ class Worker():
             valgrind_signature = re.sub('\W+', ' ', valgrind_signature)
             valgrind_signature = re.sub(' {2,}', ' ', valgrind_signature)
 
-            valgrind = {
-                "message"   : valgrind_msg.strip(),
-                "data"      : valgrind_data.strip(),
-                "signature" : valgrind_signature.strip(),
-                }
-            valgrind_list.append(valgrind)
+            if not re.search('^HEAP', valgrind_signature):
+                valgrind = {
+                    "message"   : valgrind_msg.strip(),
+                    "data"      : valgrind_data.strip(),
+                    "signature" : valgrind_signature.strip(),
+                    }
+                valgrind_list.append(valgrind)
             valgrind_text = valgrind_text[len(match.group(0)):]
 
         return valgrind_list
@@ -604,7 +602,6 @@ class Worker():
 
         self.debugMessage('update_bug_list_valgrinds: end %s' % bug_list)
 
-        return bug_list
 
     def process_valgrind(self, result_id, product, branch, buildtype, timestamp, valgrind_list, location_id, test, extra_test_args):
 
@@ -640,9 +637,9 @@ class Worker():
 
             elif result_valgrind_doc is None:
 
-                bug_list = self.update_bug_list_valgrinds(product, branch, buildtype,
-                                                          os_name, os_version, cpu_name,
-                                                          timestamp, valgrindmessage, valgrindsignature)
+                self.update_bug_list_valgrinds(product, branch, buildtype,
+                                               os_name, os_version, cpu_name,
+                                               timestamp, valgrindmessage, valgrindsignature)
 
                 result_valgrind_doc = {
                     "type"            : "result_valgrind",
@@ -662,7 +659,6 @@ class Worker():
                     "valgrinddata"    : valgrinddata,
                     "location_id"     : location_id,
                     "updatetime"      : timestamp,
-                    "bug_list"        : bug_list,
                     "bug"             : "",
                     "comment"         : ""
                     }
@@ -899,6 +895,13 @@ class Worker():
             # We do not have a bug_list yet, or the crash was last updated over a day ago.
             # Look up any bugs that match this crash
 
+            # remove special 'head' url.
+            while len(crashurl_list) > 0:
+                try:
+                    crashurl_list.remove('head')
+                except ValueError:
+                    break
+
             if len(crashurl_list) > 0:
                 crashurls = ' '.join(crashurl_list)
                 self.debugMessage('update_bug_list_crashreports: begin searchBugzillaUrls: %s %s' % (crashurls, bug_age))
@@ -907,7 +910,7 @@ class Worker():
                 if 'bugs' in content:
                     bug_list = self.extractBugzillaBugList(bug_list, content)
 
-            if crashsignature:
+            if crashsignature and crashsignature != "0x0":
                 self.debugMessage('update_bug_list_crashreports: begin searchBugzillaText: %s %s' % (crashsignature, bug_age))
                 resp, content = sisyphus.bugzilla.searchBugzillaText(crashsignature, 'contains_all', None, bug_age)
                 self.debugMessage('update_bug_list_crashreports: end   searchBugzillaText: %s %s' % (crashsignature, bug_age))
@@ -937,8 +940,6 @@ class Worker():
 
         self.debugMessage('update_bug_list_crashreports: end %s' % bug_list)
 
-        return bug_list
-
     def process_crashreport(self, result_id, product, branch, buildtype, timestamp, crash_data, location_id, test, extra_test_args):
 
         os_name              = self.document["os_name"]
@@ -953,9 +954,9 @@ class Worker():
         crashsignature = crash_data["signature"]
         currkey = crashmessage + ":" + crashsignature
 
-        bug_list = self.update_bug_list_crashreports(product, branch, buildtype,
-                                                     os_name, os_version, cpu_name,
-                                                     timestamp, crashmessage, crashsignature, [location_id])
+        self.update_bug_list_crashreports(product, branch, buildtype,
+                                          os_name, os_version, cpu_name,
+                                          timestamp, crashmessage, crashsignature, [location_id])
 
         result_crash_doc = {
             "type"            : "result_crash",
@@ -974,7 +975,6 @@ class Worker():
             "crashsignature"  : crashsignature,
             "location_id"     : location_id,
             "updatetime"      : timestamp,
-            "bug_list"        : bug_list,
             "bug"             : "",
             "comment"         : ""
             }
@@ -1259,7 +1259,7 @@ class Worker():
                             (exceptionValue, errorMessage))
 
         try:
-            assertion_rows = self.getRows(self.testdb.db.views.default.assertions, include_docs=True)
+            assertion_rows = self.getRows(self.historydb.db.views.default.assertions, include_docs=True)
 
             for assertion_doc in assertion_rows:
                 if datetime.datetime.now() - last_checkup_time > checkup_interval:
