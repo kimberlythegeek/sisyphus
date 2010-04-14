@@ -520,6 +520,52 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
         self.testdb.updateDocument(result_doc)
 
+        if result_doc['reproduced'] and re.search('\d{8}_', self.signature_doc['_id']):
+
+            # for reproduced results whose original signature
+            # documents match the normal id pattern starting with a
+            # CCYYMMDD_ date, issue new signature documents with
+            # automatically generated ids for the url for each major
+            # version for the other os_name, cpu_name, os_version
+            # combinations available for testing.
+
+            try:
+                worker_rows = self.getAllWorkers()
+                build_data  = getBuildData(self.testdb)
+
+                for worker_doc in worker_rows:
+                    # Skip other workers who match us exactly but do reissue a
+                    # signature for us so that we can test if the crash is also
+                    # reproducible on the same machine where it originally occured.
+                    if (worker_doc['_id']        != self.document['_id'] and
+                        worker_doc['os_name']    == self.document['os_name'] and
+                        worker_doc['cpu_name']   == self.document['cpu_name'] and
+                        worker_doc['os_version'] == self.document['os_version']):
+                        continue
+
+                    for major_version in build_data:
+
+                        new_signature_doc = dict(self.signature_doc)
+                        del new_signature_doc['_id']
+                        del new_signature_doc['_rev']
+
+                        for field in 'os_name', 'cpu_name', 'os_version':
+                            new_signature_doc[field] = worker_doc[field]
+
+                        new_signature_doc['major_version'] = major_version
+                        new_signature_doc['priority']      = '0'
+                        new_signature_doc['processed_by']  = {}
+                        new_signature_doc['urls']          = [page]
+                        new_signature_doc['worker']        = None
+
+                        self.testdb.createDocument(new_signature_doc)
+                        self.debugMessage('runTest: adding reproducer signature document: %s' % new_signature_doc)
+
+            except:
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+                self.testdb.logMessage('runTest: unable to duplicate signature %s for reproduction: %s' % (self.signature_doc, errorMessage))
+
         # process any remaining assertion or valgrind messages.
         self.process_assertions(result_doc["_id"], product, branch, buildtype, timestamp, assertion_list, page, "crashtest", extra_test_args)
         valgrind_list = self.parse_valgrind(valgrind_text)
