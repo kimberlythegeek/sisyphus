@@ -1287,30 +1287,30 @@ class Worker():
         now       = sisyphus.utils.convertTimestamp(timestamp)
         yesterday = now - datetime.timedelta(days=1)
 
-        dburi = self.testdb.db.__dict__['uri']
+        historydburi = self.historydb.db.__dict__['uri']
 
         try:
             update_doc = self.historydb.getDocument('update')
 
             if not update_doc:
                 # first time bug history updated.
-                update_doc = { "_id" : "update", dburi : { "datetime" : timestamp, "worker_id" : self.document["_id"] }}
+                update_doc = { "_id" : "update", historydburi : { "datetime" : timestamp, "worker_id" : self.document["_id"] }}
                 self.historydb.createDocument(update_doc)
 
-            elif dburi not in update_doc:
+            elif historydburi not in update_doc:
                 # first time bug history updated for this db.
-                update_doc[dburi] = { "datetime" : timestamp, "worker_id" : self.document["_id"]}
+                update_doc[historydburi] = { "datetime" : timestamp, "worker_id" : self.document["_id"]}
 
-            elif sisyphus.utils.convertTimestamp(update_doc[dburi]["datetime"]) > yesterday:
+            elif sisyphus.utils.convertTimestamp(update_doc[historydburi]["datetime"]) > yesterday:
                 # either someone else is updating history or it is current and doesn't need updating
                 return False
 
             # any worker_id information is stale and can be ignored.
-            update_doc[dburi]["worker_id"] = self.document["_id"]
-            update_doc[dburi]["datetime"]  = timestamp
+            update_doc[historydburi]["worker_id"] = self.document["_id"]
+            update_doc[historydburi]["datetime"]  = timestamp
             self.historydb.updateDocument(update_doc)
             update_doc = self.historydb.getDocument("update")
-            if update_doc[dburi]["worker_id"] != self.document["_id"]:
+            if update_doc[historydburi]["worker_id"] != self.document["_id"]:
                 # race condition. someone beat us to it.
                 return False
 
@@ -1329,11 +1329,11 @@ class Worker():
 
     def unlock_history_update(self):
 
-        dburi = self.testdb.db.__dict__['uri']
+        historydburi = self.historydb.db.__dict__['uri']
 
         update_doc = self.historydb.getDocument('update')
 
-        if not update_doc or dburi not in update_doc or update_doc[dburi]["worker_id"] != self.document["_id"]:
+        if not update_doc or historydburi not in update_doc or update_doc[historydburi]["worker_id"] != self.document["_id"]:
             raise Exception('HistoryUpdateLockConflict')
 
         self.testdb.logMessage("finished updating bug histories")
@@ -1342,8 +1342,8 @@ class Worker():
         self.document["datetime"] = sisyphus.utils.getTimestamp()
         self.updateWorker(self.document)
 
-        update_doc[dburi]["worker_id"] = None
-        update_doc[dburi]["datetime"]  = sisyphus.utils.getTimestamp()
+        update_doc[historydburi]["worker_id"] = None
+        update_doc[historydburi]["datetime"]  = sisyphus.utils.getTimestamp()
         self.historydb.updateDocument(update_doc, True)
 
     def killTest(self):
