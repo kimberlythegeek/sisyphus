@@ -473,37 +473,47 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 # use timed_run.py to run stackwalker since it can hang on
                 # win2k3 at least...
                 self.debugMessage("/usr/bin/python " + sisyphus_dir + "/bin/timed_run.py")
-                proc = subprocess.Popen(
-                    [
-                        "python",
-                        sisyphus_dir + "/bin/timed_run.py",
-                        "300",
-                        "-",
-                        stackwalkPath,
-                        dumpFile,
-                        symbolsPath
-                        ],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE)
-                stdout, stderr = proc.communicate()
-                self.debugMessage("stackwalking: stdout: %s" % (stdout))
-                self.debugMessage("stackwalking: stderr: %s" % (stderr))
+                try:
+                    proc = subprocess.Popen(
+                        [
+                            "python",
+                            sisyphus_dir + "/bin/timed_run.py",
+                            "300",
+                            "-",
+                            stackwalkPath,
+                            dumpFile,
+                            symbolsPath
+                            ],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE)
+                    stdout, stderr = proc.communicate()
+                    self.debugMessage("stackwalking: stdout: %s" % (stdout))
+                    self.debugMessage("stackwalking: stderr: %s" % (stderr))
 
-                data = sisyphus.utils.makeUnicodeString(stdout)
+                    data = sisyphus.utils.makeUnicodeString(stdout)
+                    result_doc["_attachments"]["crashreport"]["data"] += base64.b64encode(data.encode('utf-8'))
+                except:
+                    exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                    errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+                    self.logMessage('runTest: exception processing dump: %s, %s' % (exceptionValue, errorMessage))
 
                 result_doc["reproduced"] = True
-                result_doc["_attachments"]["crashreport"]["data"] += base64.b64encode(data.encode('utf-8'))
 
                 crash_data = self.parse_crashreport(data)
                 self.process_crashreport(result_doc["_id"], product, branch, buildtype, timestamp, crash_data, page, "crashtest", extra_test_args)
 
                 data = ''
                 extraFile = dumpFile.replace('.dmp', '.extra')
-                extraFileHandle = open(extraFile, 'r')
-                for extraline in extraFileHandle:
-                    data += extraline
-                data = sisyphus.utils.makeUnicodeString(data)
-                result_doc["_attachments"]["extra"]["data"] += base64.b64encode(data.encode('utf-8'))
+                try:
+                    extraFileHandle = open(extraFile, 'r')
+                    for extraline in extraFileHandle:
+                        data += extraline
+                    data = sisyphus.utils.makeUnicodeString(data)
+                    result_doc["_attachments"]["extra"]["data"] += base64.b64encode(data.encode('utf-8'))
+                except:
+                    exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                    errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+                    self.logMessage('runTest: exception processing extra: %s, %s' % (exceptionValue, errorMessage))
 
                 # Ignore multiple dumps
                 break
