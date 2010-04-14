@@ -140,6 +140,13 @@ class Worker():
     def debugMessage(self, msg):
         self.testdb.debugMessage(msg)
 
+    def reloadProgram(self):
+        sys.stdout.flush()
+        newargv = sys.argv
+        newargv.insert(0, sys.executable)
+        os.chdir(self.startdir)
+        os.execvp(sys.executable, newargv)
+
     def checkForUpdate(self, job_doc):
         # Note this will restart the program leaving the self.document
         # in the database where it will be picked up on restart
@@ -162,11 +169,7 @@ class Worker():
             if job_doc is not None:
                 # reinsert the job
                 self.testdb.createDocument(job_doc)
-            sys.stdout.flush()
-            newargv = sys.argv
-            newargv.insert(0, sys.executable)
-            os.chdir(self.startdir)
-            os.execvp(sys.executable, newargv)
+            self.reloadProgram()
 
     def process_related_assertions(self, product, branch, buildtype, timestamp, assertionmessage, assertionfile):
         """

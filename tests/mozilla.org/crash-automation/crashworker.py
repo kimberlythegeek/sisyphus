@@ -1040,7 +1040,9 @@ def getBuildData(crashtestdb, worker=None):
 
 def main():
 
-    global options
+    global options, this_worker
+
+    this_worker = None
 
     usage = '''usage: %prog [options]
 
@@ -1096,9 +1098,9 @@ Example:
         try:
             this_worker.doWork()
         except KeyboardInterrupt:
-            break
+            raise
         except SystemExit:
-            break
+            raise
         except:
 
             this_worker.signature_doc = None
@@ -1128,9 +1130,27 @@ Example:
 
             time.sleep(60)
 
-    this_worker.logMessage('terminating.', False)
-    this_worker.testdb.deleteDocument(this_worker.document, False)
 
 if __name__ == "__main__":
-    main()
+    try:
+        restart = True
+        main()
+    except KeyboardInterrupt:
+        restart = False
+    except SystemExit:
+        restart = False
+    except:
+        exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+        print 'main: exception %s: %s' % (str(exceptionValue), sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback))
+
+    if this_worker is None:
+        exit(2)
+
+    if restart:
+        this_worker.logMessage('Program restarting', False)
+        this_worker.reloadProgram()
+    else:
+        this_worker.logMessage('Program terminating', False)
+        this_worker.testdb.deleteDocument(this_worker.document, False)
+
 

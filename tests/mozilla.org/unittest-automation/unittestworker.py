@@ -534,7 +534,9 @@ def getTestData(testdb, worker=None):
     return tests_doc
 
 def main():
-    global options
+    global options, this_worker
+
+    this_worker = None
 
     usage = '''usage: %prog [options]
 
@@ -621,7 +623,6 @@ Example:
     this_worker.logMessage('starting worker %s %s %s with program dated %s' %
                           (this_worker.document['os_name'], this_worker.document['os_version'], this_worker.document['cpu_name'],
                            time.ctime(programModTime)))
-
     while True:
         try:
             this_worker.doWork()
@@ -659,9 +660,27 @@ Example:
 
             time.sleep(60)
 
-    this_worker.logMessage('terminating.', False)
-    this_worker.testdb.deleteDocument(this_worker.document, False)
 
 if __name__ == "__main__":
-    main()
+    try:
+        restart = True
+        main()
+    except KeyboardInterrupt:
+        restart = False
+    except SystemExit:
+        restart = False
+    except:
+        exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+        print 'main: exception %s: %s' % (str(exceptionValue), sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback))
+
+    if this_worker is None:
+        exit(2)
+
+    if restart:
+        this_worker.logMessage('Program restarting', False)
+        this_worker.reloadProgram()
+    else:
+        this_worker.logMessage('Program terminating', False)
+        this_worker.testdb.deleteDocument(this_worker.document, False)
+
 
