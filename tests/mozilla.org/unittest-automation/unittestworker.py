@@ -93,6 +93,9 @@ class UnitTestWorker(sisyphus.worker.Worker):
 
     def runTest(self, product, branch, buildtype, test, extra_test_args):
 
+        # kill any test processes still running.
+        self.killTest()
+
         timestamp = sisyphus.utils.getTimestamp()
 
         result_doc = {
@@ -367,6 +370,8 @@ class UnitTestWorker(sisyphus.worker.Worker):
 
                 self.update_bug_histories()
 
+                # kill any test processes still running.
+                self.killTest()
                 buildstatus =  self.buildProduct("firefox", branch, buildtype)
 
                 if not buildstatus["success"]:
@@ -658,6 +663,10 @@ if __name__ == "__main__":
     except:
         exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
         print 'main: exception %s: %s' % (str(exceptionValue), sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback))
+
+    # kill any test processes still running.
+    if this_worker:
+        this_worker.killTest()
 
     if this_worker is None:
         exit(2)

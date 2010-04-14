@@ -294,6 +294,9 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
     def runTest(self, product, branch, buildtype, url, url_index, extra_test_args):
 
+        # kill any test processes still running.
+        self.killTest()
+
         # encode the url
         url            = sisyphus.utils.makeUnicodeString(url)
         urlParseObject = urlparse.urlparse(url)
@@ -971,6 +974,8 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
                 self.update_bug_histories()
 
+                # kill any test processes still running.
+                self.killTest()
                 buildstatus =  self.buildProduct("firefox", branch, buildtype)
 
                 if not buildstatus["success"]:
@@ -1177,6 +1182,10 @@ if __name__ == "__main__":
     except:
         exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
         print 'main: exception %s: %s' % (str(exceptionValue), sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback))
+
+    # kill any test processes still running.
+    if this_worker:
+        this_worker.killTest()
 
     if this_worker is None:
         exit(2)

@@ -1350,8 +1350,13 @@ class Worker():
         # XXX: os.kill fails to kill the entire test process and children when
         # a test times out. This is most noticible on Windows but can occur on
         # Linux as well. To kill the test reliably, use the external kill program
-        # to kill all processes running from the /work/mozilla/builds/ directory
-        # tree.
+        # to kill all processes running from the /work/mozilla/builds/[^/]+/mozilla/ directory
+        # build tree.
+        # Windows will have a leading space, however Linux, Mac OS X will not.
+
+        #build_dir     = os.environ["BUILD_DIR"]
+        build_dir     = '/work/mozilla/builds'
+        build_pattern = r' *([0-9]+).*%s[/\\][^/\\]+[/\\]mozilla[/\\]' % build_dir.replace('/', '[/\\]')
 
         if self.document["os_name"] != "Windows NT":
             ps_proc = subprocess.Popen(["ps", "-ax"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -1362,8 +1367,7 @@ class Worker():
 
         kill_pids = []
         for ps_line in ps_proc.stdout:
-            # Windows will have a leading space, however Linux, Mac OS X will not.
-            ps_match = re.search(' *([0-9]+).*work.mozilla.builds', ps_line)
+            ps_match = re.search(build_pattern, ps_line)
             if ps_match:
                 kill_pids.append(ps_match.group(1))
 
