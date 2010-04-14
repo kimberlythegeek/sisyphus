@@ -325,20 +325,6 @@ class CrashTestWorker(sisyphus.worker.Worker):
             "reproduced"        : False,
             "test"              : "crashtest",
             "extra_test_args"   : None,
-            "_attachments" : {
-                "log" : {
-                    "content_type" : "text/plain",
-                    "data"         : u""
-                    },
-                "crashreport" : {
-                    "content_type" : "text/plain",
-                    "data"         : u""
-                    },
-                "extra" : {
-                    "content_type" : "text/plain",
-                    "data"         : u""
-                    },
-                }
             }
 
         self.testdb.createDocument(result_doc)
@@ -456,7 +442,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
         if not result_doc["reproduced"]:
             os.unlink(logfilename)
 
-        result_doc["_attachments"]["log"]["data"] = base64.b64encode(data.encode('utf-8'))
+        result_doc = self.testdb.saveAttachment(result_doc, 'log', data, 'text/plain', True, True)
 
         symbolsPath = os.path.join(executablepath, 'crashreporter-symbols')
 
@@ -490,8 +476,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     self.debugMessage("stackwalking: stdout: %s" % (stdout))
                     self.debugMessage("stackwalking: stderr: %s" % (stderr))
 
-                    data = sisyphus.utils.makeUnicodeString(stdout)
-                    result_doc["_attachments"]["crashreport"]["data"] += base64.b64encode(data.encode('utf-8'))
+                    result_doc = self.testdb.saveAttachment(result_doc, 'crashreport', stdout, 'text/plain', True, True)
                 except:
                     exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
                     errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
@@ -499,7 +484,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
                 result_doc["reproduced"] = True
 
-                crash_data = self.parse_crashreport(data)
+                crash_data = self.parse_crashreport(stdout)
                 self.process_crashreport(result_doc["_id"], product, branch, buildtype, timestamp, crash_data, page, "crashtest", extra_test_args)
 
                 data = ''
@@ -508,13 +493,17 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     extraFileHandle = open(extraFile, 'r')
                     for extraline in extraFileHandle:
                         data += extraline
-                    data = sisyphus.utils.makeUnicodeString(data)
-                    result_doc["_attachments"]["extra"]["data"] += base64.b64encode(data.encode('utf-8'))
+                    result_doc = self.testdb.saveAttachment(result_doc, 'extra', data, 'text/plain', True, True)
                 except:
                     exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
                     errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
                     self.logMessage('runTest: exception processing extra: %s, %s' % (exceptionValue, errorMessage))
 
+                finally:
+                    try:
+                        extraFileHandle.close()
+                    except:
+                        pass
                 # Ignore multiple dumps
                 break
 

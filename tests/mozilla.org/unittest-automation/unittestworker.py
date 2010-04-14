@@ -111,20 +111,6 @@ class UnitTestWorker(sisyphus.worker.Worker):
             "exitstatus"      : "",
             "returncode"      : 0,
             "ASSERTIONS"      : {},
-            "_attachments"    : {
-                "log" : {
-                    "content_type" : "text/plain",
-                    "data"         : u""
-                    },
-                "crashreport" : {
-                    "content_type" : "text/plain",
-                    "data"         : u""
-                    },
-                "extra" : {
-                    "content_type" : "text/plain",
-                    "data"         : u""
-                    },
-                },
             }
 
         self.testdb.createDocument(result_doc)
@@ -330,7 +316,7 @@ class UnitTestWorker(sisyphus.worker.Worker):
         if proc.returncode == -2:
             raise KeyboardInterrupt
 
-        result_doc["_attachments"]["log"]["data"] = base64.b64encode(data.encode('utf-8'))
+        result_doc = self.testdb.saveAttachment(result_doc, 'log', data, 'text/plain', True, True)
         self.testdb.updateDocument(result_doc)
 
         # process any valgrind messages not associated with a test.

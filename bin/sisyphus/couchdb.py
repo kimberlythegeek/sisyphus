@@ -266,6 +266,60 @@ class Database():
         if attempt > 0:
             self.logMessage('updateDocument: attempt: %d, success' % (attempt))
 
+    def saveAttachment(self, document, name, data, content_type, reconnect = True, owned = False,):
+        """
+        Save the string contained in data as an external attachment of the document with name
+        and content_type. Return the updated document.
+        """
+
+        resp = None
+        content = None
+
+        if content_type is None:
+            content_type = 'text/plain'
+
+        data = data.encode('utf-8')
+
+        for attempt in self.max_db_attempts:
+            try:
+                # to keep the revisions current we need to save the current revision of the document
+                # first.
+                self.updateDocument(document)
+                http = httplib2.Http()
+                uri  = '%s/%s/%s?rev=%s' % (self.dburi, document['_id'], name, document['_rev'])
+                self.debugMessage('saveAttachment: %s' % uri)
+                resp, content = http.request(uri, 'PUT', body=data, headers={'content-type':content_type})
+                content = json.loads(content)
+                # need to retrieve the document to obtain the attachment info
+                document = self.getDocument(document['_id'])
+                self.debugMessage('saveAttachment: %s, %s' % (resp, content))
+                break
+            except KeyboardInterrupt:
+                raise
+            except SystemExit:
+                raise
+            except:
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+
+                if not re.search('/(httplib2)/', errorMessage):
+                    raise
+
+                if reconnect:
+                    self.connectToDatabase(range(1))
+                    self.logMessage('saveAttachment: attempt: %d, type: %s, id: %s, rev: %s, exception: %s' %
+                                    (attempt, document['type'], document['_id'], document['_rev'], errorMessage))
+
+            if attempt == self.max_db_attempts[-1]:
+                raise Exception("saveAttachment: aborting after %d attempts" % (self.max_db_attempts[-1] + 1))
+
+            time.sleep(60)
+
+        if attempt > 0:
+            self.logMessage('saveAttachment: attempt: %d, success' % (attempt))
+
+        return document
+
     def deleteDocument(self, document, reconnect = True, owned = False):
         """
         Delete a document handling database connection errors.
