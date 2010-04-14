@@ -562,14 +562,14 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
     def getMatchingWorkerIds(self, startkey=None, endkey=None):
 
-        matching_worker_rows = self.getRows(self.testdb.db.views.default.matching_workers, startkey, endkey)
+        matching_worker_rows = self.getRows(self.testdb.db.views.default.matching_workers, startkey=startkey, endkey=endkey)
         return matching_worker_rows
 
     def checkIfUrlAlreadyTested(self, signature_doc, url_index):
 
         startkey = "%s_result_%05d_%s" % (signature_doc["_id"], url_index, self.document['_id'])
         endkey   = "%s_result_%05d\u9999" % (signature_doc["_id"], url_index);
-        result_rows = self.getRows(self.testdb.db.views.default.results_all, startkey, endkey)
+        result_rows = self.getRows(self.testdb.db.views.default.results_all, startkey=startkey, endkey=endkey, include_docs=True)
         self.debugMessage('checkIfUrlAlreadyTested: %s' % (len(result_rows) != 0))
 
         # only count already tested if this worker has tested the url.

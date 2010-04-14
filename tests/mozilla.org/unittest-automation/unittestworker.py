@@ -399,7 +399,7 @@ class UnitTestWorker(sisyphus.worker.Worker):
         startkey = [self.document["os_name"], self.document["cpu_name"], self.document["os_version"]]
         endkey   = [self.document["os_name"], self.document["cpu_name"], self.document["os_version"] + '\u9999']
 
-        job_rows = self.getRows(self.testdb.db.views.default.jobs, startkey, endkey)
+        job_rows = self.getRows(self.testdb.db.views.default.jobs, startkey=startkey, endkey=endkey)
 
         return job_rows
 

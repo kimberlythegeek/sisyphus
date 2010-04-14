@@ -138,7 +138,7 @@ specified, the default is equivalent to a tests.json file containing:
         raise Exception('Bad database uri')
 
     unittestdb     = sisyphus.couchdb.Database(options.databaseuri)
-    unittestdb.db.sync_design_doc('default', os.path.join(os.path.dirname(sys.argv[0]), 'unittest_views'))
+    unittestdb.sync_design_doc(os.path.join(os.path.dirname(sys.argv[0]), '_design'))
 
     tests_doc = {"_id" : "tests", "type" : "tests", "branches" : {}}
 

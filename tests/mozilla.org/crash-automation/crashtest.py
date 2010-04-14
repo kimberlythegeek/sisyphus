@@ -94,7 +94,7 @@ Example:
 
     crashtestdb = sisyphus.couchdb.Database(options.databaseuri)
 
-    crashtestdb.db.sync_design_doc('default', os.path.join(os.path.dirname(sys.argv[0]), 'crashtest_views'))
+    crashtestdb.sync_design_doc(os.path.join(os.path.dirname(sys.argv[0]), '_design'))
 
     supported_versions_doc = {"_id" : "supported_versions", "type" : "supported_versions", "supported_versions": {}}
     versionsbranches    = options.supported_versions.split(',')

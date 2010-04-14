@@ -217,8 +217,9 @@ class Worker():
         now                = datetime.datetime.now()
 
         history_assertions = self.getRows(self.historydb.db.views.default.assertions,
-                                          [assertionmessage, assertionfile, product, branch, buildtype, os_name, os_version, cpu_name],
-                                          [assertionmessage, assertionfile, product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"])
+                                          startkey=[assertionmessage, assertionfile, product, branch, buildtype, os_name, os_version, cpu_name],
+                                          endkey=[assertionmessage, assertionfile, product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"],
+                                          include_docs=True)
 
         if len(history_assertions) > 0:
 
@@ -282,8 +283,9 @@ class Worker():
             # try to get a matching assertion using just the assertionmessage.
 
             history_assertions = self.getRows(self.historydb.db.views.default.assertions,
-                                              [assertionmessage],
-                                              [assertionmessage + "\u9999"])
+                                              startkey=[assertionmessage],
+                                              endkey=[assertionmessage + "\u9999"],
+                                              include_docs=True)
 
             if len(history_assertions) > 0:
                 for cache in history_assertions:
@@ -324,7 +326,14 @@ class Worker():
             history_assertion["bug_list"]     = bug_list
             history_assertion["lastdatetime"] = timestamp
             history_assertion["updatetime"]   = timestamp
-            self.historydb.updateDocument(history_assertion, True)
+            try:
+                self.historydb.updateDocument(history_assertion, True)
+            except:
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+
+                if not re.search('updateDocumentConflict', str(exceptionValue)):
+                    raise
 
         self.debugMessage('update_bug_list_assertions: end %s' % bug_list)
 
@@ -474,8 +483,9 @@ class Worker():
         now                = datetime.datetime.now()
 
         history_valgrinds = self.getRows(self.historydb.db.views.default.valgrind,
-                                         [valgrindmessage, valgrindsignature, product, branch, buildtype, os_name, os_version, cpu_name],
-                                         [valgrindmessage, valgrindsignature, product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"])
+                                         startkey=[valgrindmessage, valgrindsignature, product, branch, buildtype, os_name, os_version, cpu_name],
+                                         endkey=[valgrindmessage, valgrindsignature, product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"],
+                                         include_docs=True)
 
         if len(history_valgrinds) > 0:
 
@@ -540,8 +550,9 @@ class Worker():
             # and valgrindsignature.
 
             history_valgrinds = self.getRows(self.historydb.db.views.default.valgrind,
-                                             [valgrindmessage, valgrindsignature],
-                                             [valgrindmessage, valgrindsignature + "\u9999"])
+                                             startkey=[valgrindmessage, valgrindsignature],
+                                             endkey=[valgrindmessage, valgrindsignature + "\u9999"],
+                                             include_docs=True)
 
             if len(history_valgrinds) > 0:
                 for cache in history_valgrinds:
@@ -582,7 +593,14 @@ class Worker():
             history_valgrind["bug_list"]     = bug_list
             history_valgrind["lastdatetime"] = timestamp
             history_valgrind["updatetime"]   = timestamp
-            self.historydb.updateDocument(history_valgrind, True)
+            try:
+                self.historydb.updateDocument(history_valgrind, True)
+            except:
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+
+                if not re.search('updateDocumentConflict', str(exceptionValue)):
+                    raise
 
         self.debugMessage('update_bug_list_valgrinds: end %s' % bug_list)
 
@@ -781,8 +799,9 @@ class Worker():
         now                = datetime.datetime.now()
 
         history_crashes = self.getRows(self.historydb.db.views.default.crashes,
-                                       [crashmessage, crashsignature, product, branch, buildtype, os_name, os_version, cpu_name],
-                                       [crashmessage, crashsignature, product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"])
+                                       startkey=[crashmessage, crashsignature, product, branch, buildtype, os_name, os_version, cpu_name],
+                                       endkey=[crashmessage, crashsignature, product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"],
+                                       include_docs=True)
 
         if len(history_crashes) > 0:
 
@@ -848,8 +867,9 @@ class Worker():
             # and crashsignature.
 
             history_crashes = self.getRows(self.historydb.db.views.default.crashes,
-                                           [crashmessage, crashsignature],
-                                           [crashmessage, crashsignature + "\u9999"])
+                                           startkey=[crashmessage, crashsignature],
+                                           endkey=[crashmessage, crashsignature + "\u9999"],
+                                           include_docs=True)
 
             if len(history_crashes) > 0:
                 for cache in history_crashes:
@@ -906,7 +926,14 @@ class Worker():
             history_crash["bug_list"]     = bug_list
             history_crash["lastdatetime"] = timestamp
             history_crash["updatetime"]   = timestamp
-            self.historydb.updateDocument(history_crash, True)
+            try:
+                self.historydb.updateDocument(history_crash, True)
+            except:
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+
+                if not re.search('updateDocumentConflict', str(exceptionValue)):
+                    raise
 
         self.debugMessage('update_bug_list_crashreports: end %s' % bug_list)
 
@@ -1188,7 +1215,7 @@ class Worker():
         last_checkup_time = datetime.datetime.now() - 2*checkup_interval
 
         try:
-            crash_rows = self.getRows(self.historydb.db.views.default.crashes)
+            crash_rows = self.getRows(self.historydb.db.views.default.crashes, include_docs=True)
 
             for crash_doc in crash_rows:
                 if datetime.datetime.now() - last_checkup_time > checkup_interval:
@@ -1211,7 +1238,7 @@ class Worker():
                                 (exceptionValue, errorMessage))
 
         try:
-            valgrind_rows = self.getRows(self.historydb.db.views.default.valgrind)
+            valgrind_rows = self.getRows(self.historydb.db.views.default.valgrind, include_docs=True)
 
             for valgrind_doc in valgrind_rows:
                 if datetime.datetime.now() - last_checkup_time > checkup_interval:
@@ -1232,7 +1259,7 @@ class Worker():
                             (exceptionValue, errorMessage))
 
         try:
-            assertion_rows = self.getRows(self.testdb.db.views.default.assertions)
+            assertion_rows = self.getRows(self.testdb.db.views.default.assertions, include_docs=True)
 
             for assertion_doc in assertion_rows:
                 if datetime.datetime.now() - last_checkup_time > checkup_interval:
@@ -1345,22 +1372,29 @@ class Worker():
             kill_args.extend(kill_pids)
             subprocess.call(kill_args)
 
-    def getRows(self, view, startkey = None, endkey = None):
+    def getRows(self, view, startkey = None, endkey = None, include_docs = None):
         """
         return rows from view in self.testdb matching startkey, endkey with
         connection recovery.
         """
+        if include_docs is None:
+            include_docs = False
+
         rows = None
 
         for attempt in self.testdb.max_db_attempts:
             try:
                 if startkey and endkey:
-                    rows = view(startkey=startkey, endkey=endkey)
+                    rows = view(startkey=startkey, endkey=endkey, include_docs=include_docs)
                 elif startkey:
-                    rows = view(startkey=startkey)
+                    rows = view(startkey=startkey, include_docs=include_docs)
                 else:
-                    rows = view()
+                    rows = view(include_docs=include_docs)
 
+                if include_docs:
+                    # the view does not define the value as the full document.
+                    # retrieve the document from the raw_rows.
+                    rows = [row['doc'] for row in rows.raw_rows()]
                 break
             except KeyboardInterrupt:
                 raise

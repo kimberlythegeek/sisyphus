@@ -80,7 +80,7 @@ Initializes the history couchdb database for the unittest/crashtest framework.
 
     historydb = sisyphus.couchdb.Database(options.databaseuri)
 
-    historydb.db.sync_design_doc('default',  os.path.join(os.path.dirname(sys.argv[0]), 'history_views'))
+    historydb.sync_design_doc(os.path.join(os.path.dirname(sys.argv[0]), '_design'))
 
 if __name__ == '__main__':
     main()

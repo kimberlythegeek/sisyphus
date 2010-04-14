@@ -62,6 +62,7 @@ class Database():
         self.db      = couchquery.Database(dburi)
         self.http    = httplib2.Http()
         self.status  = None
+        self._design = {}
         self.debug   = False
         self.max_db_attempts  = range(10) # used outside of module
 
@@ -548,6 +549,7 @@ class Database():
     def checkDatabase(self):
         try:
 
+            # compact database if its size has doubled.
             resp, content = self.http.request(self.dburi, method = 'GET')
 
             if resp['status'].find('2') != 0:
@@ -558,16 +560,13 @@ class Database():
                 if not self.status:
                     self.status = new_status
                 elif new_status['compact_running']:
-                    # the database is being compacted. wait 1 minute to help
-                    # prevent the compaction from never completing due to updates.
-                    time.sleep(60)
                     pass
                 elif new_status['disk_size'] < self.status['disk_size']:
                     self.status = new_status
                 elif new_status['disk_size'] > 2 * self.status['disk_size']:
                     self.logMessage('checkDatabase: compacting %s' % self.dburi)
                     self.status = new_status
-                    time.sleep(5)
+
                     resp, content = self.http.request(self.dburi + '/_compact', method='POST')
                     if resp['status'].find('2') != 0:
                         self.logMessage('checkDatabase: POST %s/_compact response: %s, %s' % (self.dburi, resp, content))
@@ -578,11 +577,34 @@ class Database():
                             self.logMessage('checkDatabase: POST %s/_compact/_view_cleanup response: %s, %s' % (self.dburi, resp, content))
                         else:
                             time.sleep(5)
-                            # TODO: figure out a way to enumerate the design docs to compact
-                            # them automatically. Until then, everyone uses the same design id 'default'.
-                            resp, content = self.http.request(self.dburi + '/_compact/default', method='POST')
-                            if resp['status'].find('2') != 0:
-                                self.logMessage('checkDatabase: POST %s/_compact/default response: %s, %s' % (self.dburi, resp, content))
+
+            # compact design documents if their sizes have doubled.
+            design_docs = self.getRows(self.db.views.all, '_design/', '_design/' + 100*'z', include_docs=True)
+
+            for design_doc in design_docs:
+                design_doc_name = design_doc['_id'][len('_design/'):]
+
+
+                resp, content = self.http.request('%s/_design/%s/_info' % (self.dburi, design_doc_name), method='GET')
+                if resp['status'].find('2') != 0:
+                    self.logMessage('checkDatabase: GET %s/_design/%s/_info response: %s, %s' % (self.dburi, design_doc_name, resp, content))
+                else:
+                    new_status = json.loads(content)
+
+                    if design_doc_name not in self._design:
+                        self._design[design_doc_name] = new_status
+                    elif new_status['view_index']['compact_running'] or new_status['view_index']['updater_running']:
+                        pass
+                    elif new_status['view_index']['disk_size'] < self._design[design_doc_name]['view_index']['disk_size']:
+                        self._design[design_doc_name] = new_status
+                    elif new_status['view_index']['disk_size'] > 2 * self._design[design_doc_name]['view_index']['disk_size']:
+                        self.logMessage('checkDatabase: compacting %s/_design/%s' % (self.dburi, design_doc_name))
+                        self._design[design_doc_name] = new_status
+
+                        resp, content = self.http.request('%s/_compact/%s' % (self.dburi, design_doc_name), method='POST')
+                        if resp['status'].find('2') != 0:
+                            self.logMessage('checkDatabase: POST %s/_compact/%s response: %s, %s' % (self.dburi, design_doc_name, resp, content))
+
         except KeyboardInterrupt:
             raise
         except SystemExit:
@@ -599,3 +621,57 @@ class Database():
 
     def getDatabase(self):
         return self.db
+
+    def sync_design_doc(self, design_dir):
+        import glob
+
+        design_doc_dirs = glob.glob(os.path.join(design_dir, '*'))
+
+        for design_doc_dir in design_doc_dirs:
+            if os.path.isdir(design_doc_dir):
+                self.db.sync_design_doc(os.path.basename(design_doc_dir), design_doc_dir)
+
+    def getRows(self, view, startkey = None, endkey = None, include_docs = None):
+        """
+        return rows from view matching startkey, endkey with
+        connection recovery.
+        """
+        if include_docs is None:
+            include_docs = False
+
+        rows = None
+
+        for attempt in self.max_db_attempts:
+            try:
+                if startkey and endkey:
+                    rows = view(startkey=startkey, endkey=endkey, include_docs=include_docs)
+                elif startkey:
+                    rows = view(startkey=startkey, include_docs=include_docs)
+                else:
+                    rows = view(include_docs=include_docs)
+
+                if include_docs:
+                    # the view does not define the value as the full document.
+                    # retrieve the document from the raw_rows.
+                    rows = [row['doc'] for row in rows.raw_rows()]
+                break
+            except KeyboardInterrupt:
+                raise
+            except SystemExit:
+                raise
+            except:
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+
+                if not re.search('/(couchquery|httplib2)/', errorMessage):
+                    raise
+
+                # reconnect to the database in case it has dropped
+                self.connectToDatabase(None)
+
+            if attempt == self.max_db_attempts[-1]:
+                raise Exception("getRows: aborting after %d attempts" % (self.max_db_attempts[-1] + 1))
+            time.sleep(60)
+
+        return rows
+
