@@ -7,12 +7,16 @@ mk_add_options MOZ_MAKE_FLAGS=-j${J}
 mk_add_options MOZ_CO_PROJECT=browser
 mk_add_options AUTOCONF=autoconf213
 
+# required for running the build process via a python Popen
+# since it sets MACOSX_DEPLOYMENT_TARGET to 10.5
+mk_add_options MACOSX_DEPLOYMENT_TARGET=10.4
+
 ac_add_options --with-macos-sdk=/Developer/SDKs/MacOSX10.4u.sdk
 
 ac_add_options --enable-application=browser
 ac_add_options --enable-debug
 ac_add_options --disable-optimize
-ac_add_options --enable-debug-symbols="-gdwarf-2"
+ac_add_options --enable-debug-symbols
 # libxul required for packaging.
 ac_add_options --enable-libxul
 # do not strip symbols in packaged builds
