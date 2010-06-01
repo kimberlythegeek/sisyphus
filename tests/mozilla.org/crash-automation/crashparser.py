@@ -347,13 +347,13 @@ def main():
     usage = '''usage: %prog [options] crashdump
 
 Example:
-%prog -d http://couchserver/crashtest 20091128-crashdata.csv.gz
+%prog --couch http://couchserver 20091128-crashdata.csv.gz
 '''
     parser = OptionParser(usage=usage)
-    parser.add_option('-d', '--database', action='store', type='string',
-                      dest='databaseuri',
-                      default='http://127.0.0.1:5984/crashtest',
-                      help='uri to crashtest couchdb database')
+    parser.add_option('--couch', action='store', type='string',
+                      dest='couchserveruri',
+                      default='http://127.0.0.1:5984',
+                      help='uri to couchdb server')
     parser.add_option('-s', '--skipurls', action='store', type='string',
                       dest='skipurlsfile',
                       default=None,
@@ -366,11 +366,13 @@ Example:
     crashlogfile = args[0]
     crashlogdate = os.path.basename(crashlogfile)[0:8]
 
-    db = couchquery.Database(options.databaseuri)
+    crashtestdb = couchquery.Database(options.couchserveruri + '/crashtest')
+    buildsdb    = couchquery.Database(options.couchserveruri + '/builds')
+
     try:
         # attempt to create the database
-        couchquery.createdb(db)
-        couchquery.deletedb(db)
+        couchquery.createdb(crashtestdb)
+        couchquery.deletedb(crashtestdb)
         raise Exception('The crashtest database does not exist. It must be created via crashtest.py')
 
     except Exception, ex:
@@ -383,15 +385,12 @@ Example:
             skipurl = skipurl.rstrip('\n')
             skipurls.append(skipurl)
 
-    supported_versions_rows = db.views.default.supported_versions()
+    branches_doc = buildsdb.get('branches')
 
-    if len(supported_versions_rows) > 1:
-        raise Exception("crashtest view supported_versions has more than one row")
+    if branches_doc is None:
+        raise Exception("crashtest requires the branches document in the builds database.")
 
-    if len(supported_versions_rows) == 0:
-        raise Exception("crashtest view supported_versions is empty.")
-
-    supported_versions = [supported_version for supported_version in supported_versions_rows[0]["supported_versions"]]
+    supported_versions = list(branches_doc["major_versions"])
     supported_versions.sort()
     supported_versions_hash = {}
     for supported_version in supported_versions:
@@ -402,7 +401,7 @@ Example:
     load_crashdata(crashlogfile, crash_docs, ffversionshash, supported_versions_hash)
 
     print '__main__: crashlogdate: %s, total docs: %d, supported_versions: %s, ffversionshash: %s' % (crashlogdate, len(crash_docs), supported_versions, ffversionshash)
-    process_crashdata(db, crashlogdate, crash_docs, ffversionshash, supported_versions_hash, supported_versions)
+    process_crashdata(crashtestdb, crashlogdate, crash_docs, ffversionshash, supported_versions_hash, supported_versions)
 
 if __name__ == '__main__':
     main()

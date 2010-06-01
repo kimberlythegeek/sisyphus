@@ -44,6 +44,7 @@ import subprocess
 import re
 import platform
 import sets
+import glob
 
 sisyphus_dir     = os.environ["TEST_DIR"]
 sys.path.append(os.path.join(sisyphus_dir,'bin'))
@@ -53,16 +54,27 @@ import sisyphus.couchdb
 import sisyphus.bugzilla
 
 class Worker():
-    def __init__(self, startdir, programPath, testdb, historydb, worker_comment, branches, debug = False):
+    def __init__(self, startdir, programPath, couchserveruri, testdbname, worker_comment, debug = False):
         self.startdir       = startdir
         self.programPath    = programPath
         self.programModTime = os.stat(programPath)[stat.ST_MTIME]
-        self.debug          = debug
-        self.testdb         = testdb
-        self.testdb.debug   = debug
-        self.historydb      = historydb
-        self.historydb.debug = debug
         self.zombie_time    = 6 # if a worker hasn't updated datetime in zombie_time hours, it will be killed.
+
+        urimatch = re.search('(https?:)(.*)', couchserveruri)
+        if not urimatch:
+            raise Exception('Bad database uri')
+
+        testdburi      = couchserveruri + '/' + testdbname
+        historydburi   = couchserveruri + '/history'
+        buildsdburi    = couchserveruri + '/builds'
+
+        self.testdb          = sisyphus.couchdb.Database(testdburi)
+        self.historydb       = sisyphus.couchdb.Database(historydburi)
+        self.buildsdb        = sisyphus.couchdb.Database(buildsdburi)
+        self.debug           = debug
+        self.testdb.debug    = debug
+        self.historydb.debug = debug
+        self.buildsdb.debug  = debug
 
         uname      = os.uname()
         os_name    = uname[0]
@@ -99,6 +111,9 @@ class Worker():
             cpu_name = 'ppc'
 
         worker_doc = self.testdb.getDocument(host_name)
+        branches_doc = self.buildsdb.getDocument('branches')
+
+        branches = branches_doc['branches']
 
         if not worker_doc:
             self.document = {"_id"          : host_name,
@@ -113,7 +128,15 @@ class Worker():
 
             # add build information to the worker document.
             for branch in branches:
-                self.document[branch] = {"builddate" : None, "changeset" : None }
+                self.document[branch] = {
+                    "builddate"       : None,
+                    "buildsuccess"    : None,
+                    "changeset"       : None,
+                    "executablepath"  : None,
+                    "packagesuccess"  : None,
+                    "clobbersuccess"  : None,
+                    "uploadsuccess"   : None
+                    }
 
             self.testdb.createDocument(self.document)
 
@@ -132,7 +155,15 @@ class Worker():
             # add build information to the worker document if it isn't there already.
             for branch in branches:
                 if not branch in self.document:
-                    self.document[branch] = {"builddate" : None, "changeset" : None }
+                    self.document[branch] = {
+                        "builddate"       : None,
+                        "buildsuccess"    : None,
+                        "changeset"       : None,
+                        "executablepath"  : None,
+                        "packagesuccess"  : None,
+                        "clobbersuccess"  : None,
+                        "uploadsuccess"   : None
+                        }
 
             self.updateWorker(self.document)
 
@@ -149,7 +180,7 @@ class Worker():
         os.chdir(self.startdir)
         os.execvp(sys.executable, newargv)
 
-    def checkForUpdate(self, job_doc):
+    def checkForUpdate(self, job_doc = None):
         # Note this will restart the program leaving the self.document
         # in the database where it will be picked up on restart
         # preserving the most recent build data.
@@ -1101,16 +1132,192 @@ class Worker():
                 worker_row["state"] = "zombie"
                 self.updateWorker(worker_row)
 
-    def buildProduct(self, product, branch, buildtype):
-        buildsteps  = "checkout build"
-        buildchangeset = None
-        buildsuccess = True
+    def BuildDocument(self, product, branch, buildtype, os_name, cpu_name):
 
-        self.document["state"]    = "building %s %s %s" % (product, branch, buildtype)
+        build_id = "%s_%s_%s_%s_%s" % (product, branch, buildtype,
+                                       self.document["os_name"].replace(' ', '_'), self.document["cpu_name"])
+        build_doc = self.buildsdb.getDocument(build_id)
+
+        if build_doc is None:
+            build_doc = {
+                "_id"       : build_id,
+                "type"      : "build",
+                "product"   : product,
+                "branch"    : branch,
+                "buildtype" : buildtype,
+                "os_name"   : os_name,
+                "cpu_name"  : cpu_name,
+                "builddate" : None,
+                "changeset" : None,
+                "worker_id" : self.document["_id"],
+                "buildavailable"     : False,
+                "state"     : "initializing",
+                "datetime"  : sisyphus.utils.getTimestamp()
+                }
+            try:
+                self.buildsdb.createDocument(build_doc)
+            except:
+                # assume someone else got it first and try the next branch.
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                if exceptionType == KeyboardInterrupt or exceptionType == SystemExit:
+                    raise
+
+                if not re.search('DocumentConflict', str(exceptionValue)):
+                    raise
+                # Someone beat us to creating the new document. Just return their copy.
+                build_doc = self.buildsdb.getDocument(build_id)
+
+        return build_doc
+
+    def DownloadAndInstallBuild(self, build_doc):
+        product   = build_doc["product"]
+        branch    = build_doc["branch"]
+        buildtype = build_doc["buildtype"]
+        os_name   = build_doc["os_name"]
+        cpu_name  = build_doc["cpu_name"]
+
+        if not build_doc["buildavailable"]:
+            self.logMessage('DownloadAndInstallBuild: build not available %s %s %s' %
+                            (product, branch, buildtype))
+            return False
+
+        self.document["state"]    = "begin installing %s %s %s" % (product, branch, buildtype)
+        self.testdb.logMessage(self.document["state"])
+
+        build_data = self.document[branch]
+
+        build_data["builddate"]       = None
+        build_data["buildsuccess"]    = None
+        build_data["changeset"]       = None
+        build_data["executablepath"]  = None
+
+        self.updateWorker(self.document)
+
+        # clobber old build to make sure we don't mix builds.
+        # note clobber essentially rm's the objdir. Pass
+        # update_build False to prevent the worker from trying
+        # to upload the clobber log to the build document.
+        build_doc = self.clobberProduct(build_doc, False)
+
+        productfilename = product + '-' + branch
+        symbolsfilename = productfilename + '.crashreporter-symbols.zip'
+
+        # XXX: Do we need to generalize this?
+        objdir = '/work/mozilla/builds/%s/mozilla/%s-%s' % (branch, product, buildtype)
+
+        if os_name == 'Windows NT':
+            productfilename += '.zip'
+            objsubdir = '/dist/bin'
+        elif os_name == 'Mac OS X':
+            productfilename += '.dmg'
+            objsubdir = '/dist'
+        elif os_name == 'Linux':
+            productfilename += '.tar.bz2'
+            objsubdir = '/dist/bin'
+        else:
+            raise Exception('DownloadAndInstallBuild: unsupported operating system: %s' % os_name)
+
+        build_doc_uri = self.buildsdb.dburi + '/' + build_doc['_id']
+        producturi = build_doc_uri + '/' + productfilename
+        symbolsuri = build_doc_uri + '/' + symbolsfilename
+
+        if not sisyphus.utils.downloadFile(producturi, '/tmp/' + productfilename):
+            self.logMessage('DownloadAndInstallBuild: failed to download %s %s %s failed' %
+                            (product, branch, buildtype))
+            return False
+
+        # install-build.sh -p product -b branch -x objdir/dist/bin -f /tmp/productfilename
+        cmd = [sisyphus_dir + "/bin/install-build.sh", "-p", product, "-b", branch,
+               "-x", objdir + objsubdir, "-f", "/tmp/" + productfilename]
+
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        stdout = proc.communicate()[0]
+
+        if proc.returncode != 0:
+            self.logMessage('DownloadAndInstallBuild: install-build.sh %s %s %s failed: %s' %
+                            (product, branch, buildtype, stdout))
+            return False
+
+        if sisyphus.utils.downloadFile(symbolsuri, '/tmp/' + symbolsfilename):
+            # use command line since ZipFile.extractall isn't available until Python 2.6
+            # unzip -d /objdir/dist/crashreporter-symbols /tmp/symbolsfilename
+            os.mkdir(objdir + '/dist/crashreporter-symbols')
+            cmd = ["unzip", "-d", objdir + "/dist/crashreporter-symbols", "/tmp/" + symbolsfilename]
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            stdout = proc.communicate()[0]
+
+            if proc.returncode != 0:
+                self.logMessage('DownloadAndInstallBuild: unzip crashreporter-symbols.zip %s %s %s failed: %s' %
+                                (product, branch, buildtype, stdout))
+                return False
+
+        build_data["builddate"]       = build_doc["builddate"]
+        build_data["buildsuccess"]    = True
+        build_data["changeset"]       = build_doc["changeset"]
+        build_data["executablepath"]  = objdir + '/dist/'
+
+        self.document["state"]    = "success installing %s %s %s" % (product, branch, buildtype)
+        self.testdb.logMessage(self.document["state"])
         self.document["datetime"] = sisyphus.utils.getTimestamp()
         self.updateWorker(self.document)
 
-        self.testdb.logMessage('begin building %s %s %s' % (product, branch, buildtype))
+        return True
+
+    def NewBuildNeeded(self, build_doc, build_checkup_interval):
+        """
+        Checks the current state of the build information to determine if a new build
+        needs to be created.
+        """
+        build_needed = False
+
+        if sisyphus.utils.convertTimestamp(build_doc["datetime"]).day != datetime.date.today().day:
+            # the build document is over a day old. regardless of its state, it should be rebuilt.
+            build_needed = True
+        elif build_doc["state"] == "complete":
+              if sisyphus.utils.convertTimestamp(build_doc["builddate"]).day != datetime.date.today().day:
+                  # the build is over a day old.
+                  build_needed = True
+        elif build_doc["state"] == "building":
+            # someone else is building it.
+            if datetime.datetime.now() - sisyphus.utils.convertTimestamp(build_doc["datetime"]) > build_checkup_interval:
+                # the build has been "in process" for too long. Consider it dead.
+                build_needed = True
+        elif build_doc["state"] == "error":
+            build_needed = True
+        elif build_doc["state"] == "initializing":
+            build_needed = True
+        else:
+            self.logMessage("doWork: unknown build_doc state: %s" % build_doc["state"])
+
+        return build_needed
+
+    def buildProduct(self, build_doc):
+        buildsteps      = "checkout build"
+        buildchangeset  = None
+        buildsuccess    = True
+        checkoutlogpath = ''
+        buildlogpath    = ''
+        builddate       = sisyphus.utils.getTimestamp()
+        executablepath  = ''
+
+        product = build_doc["product"]
+        branch  = build_doc["branch"]
+        buildtype = build_doc["buildtype"]
+
+        build_data = self.document[branch]
+
+        build_data["builddate"]       = None
+        build_data["buildsuccess"]    = None
+        build_data["changeset"]       = None
+        build_data["executablepath"]  = None
+        build_data["packagesuccess"]  = None
+        build_data["clobbersuccess"]  = None
+
+        self.document["state"]    = "begin building %s %s %s" % (product, branch, buildtype)
+        self.document["datetime"] = sisyphus.utils.getTimestamp()
+        self.updateWorker(self.document)
+
+        self.testdb.logMessage(self.document["state"])
 
         proc = subprocess.Popen(
             [
@@ -1130,45 +1337,78 @@ class Worker():
 
         logs = stdout.split('\n')
         for logline in logs:
-            logfilenamematch = re.search('log: (.*\.log)', logline)
-            if logfilenamematch:
-                logfilename = logfilenamematch.group(1)
-                checkoutlogmatch = re.search('.*checkout.log', logfilename)
+            logpathmatch = re.search('log: (.*\.log)', logline)
+            if logpathmatch:
+                logpath = logpathmatch.group(1)
+                checkoutlogmatch = re.search('checkout.log', logpath)
                 if checkoutlogmatch:
-                    logfile = open(logfilename, 'rb')
+                    checkoutlogpath = logpath
+                    logfile = open(logpath, 'rb')
                     for line in logfile:
                         matchchangeset = re.search('build changeset:.* id (.*)', line)
                         if matchchangeset:
                             buildchangeset = matchchangeset.group(1)
+                        if buildchangeset:
+                            break
+                    logfile.close()
+                buildlogmatch = re.search('build.log', logpath)
+                if buildlogmatch:
+                    buildlogpath = logpath
+                    logfile = open(logpath, 'rb')
+                    for line in logfile:
+                        matchexecutablepath = re.match('environment: executablepath=(.*)', line)
+                        if matchexecutablepath:
+                            executablepath = matchexecutablepath.group(1)
+                        if executablepath:
+                            break
                     logfile.close()
 
-                # only delete the log file if successful.
-                if buildsuccess:
-                    os.unlink(logfilename)
-
         if buildsuccess:
-            self.testdb.logMessage('success building %s %s %s changeset %s' % (product, branch, buildtype, buildchangeset))
-            self.document["state"]    = "success building %s %s %s" % (product, branch, buildtype)
-            self.document["datetime"] = sisyphus.utils.getTimestamp()
-            self.document[branch]["builddate"] = sisyphus.utils.getTimestamp()
-            self.document[branch]["changeset"] = buildchangeset
-            self.updateWorker(self.document)
+            self.document["state"] = "success building %s %s %s changeset %s" % (product, branch, buildtype, buildchangeset)
         else:
-            self.testdb.logMessage('failure building %s %s %s changeset %s' % (product, branch, buildtype, buildchangeset))
-            self.document["state"]        = "failure building %s %s %s, clobbering..." % (product, branch, buildtype)
-            self.document["datetime"]     = sisyphus.utils.getTimestamp()
-            self.document[branch]["builddate"] = None
-            self.document[branch]["changeset"] = None
-            self.updateWorker(self.document)
+            self.document["state"] = "failure building %s %s %s changeset %s" % (product, branch, buildtype, buildchangeset)
 
-        return {"changeset" : buildchangeset, "success" : buildsuccess}
+        self.testdb.logMessage(self.document["state"])
 
-    def clobberProduct(self, product, branch, buildtype):
+        build_data["builddate"]       = builddate
+        build_data["buildsuccess"]    = buildsuccess
+        build_data["changeset"]       = buildchangeset
+        build_data["executablepath"]  = executablepath
+
+        self.document["datetime"] = sisyphus.utils.getTimestamp()
+        self.updateWorker(self.document)
+
+        if checkoutlogpath:
+            build_doc = self.buildsdb.saveFileAttachment(build_doc, "checkout.log", checkoutlogpath, "text/plain")
+            os.unlink(checkoutlogpath)
+
+        if buildlogpath:
+            build_doc = self.buildsdb.saveFileAttachment(build_doc, "build.log", buildlogpath, "text/plain")
+            os.unlink(buildlogpath)
+
+        return build_doc
+
+    def clobberProduct(self, build_doc, update_build =True):
+        """
+        Call Sisyphus to clobber the build. If the worker is
+        installing the build rather than building it, pass
+        update_build False to prevent the worker from attempting to
+        upload the clobber log to the the build_doc.
+        """
         buildsteps  = "clobber"
-        buildchangeset = None
-        buildsuccess = True
+        clobbersuccess = True
+        clobberlogpath = ''
 
-        self.testdb.logMessage('begin clobbering %s %s %s' % (product, branch, buildtype))
+        product = build_doc["product"]
+        branch  = build_doc["branch"]
+        buildtype = build_doc["buildtype"]
+
+        self.document["state"]    = "begin clobbering %s %s %s" % (product, branch, buildtype)
+
+        self.testdb.logMessage(self.document["state"])
+
+        self.document["datetime"] = sisyphus.utils.getTimestamp()
+        self.updateWorker(self.document)
 
         proc = subprocess.Popen(
             [
@@ -1184,23 +1424,234 @@ class Worker():
         stdout, stderr = proc.communicate()
 
         if re.search('^FATAL ERROR', stderr, re.MULTILINE):
-            buildsuccess = False
+            clobbersuccess = False
 
         logs = stdout.split('\n')
         for logline in logs:
-            logfilenamematch = re.search('log: (.*\.log)', logline)
-            if logfilenamematch:
-                logfilename = logfilenamematch.group(1)
-                # only delete the log file if successful.
-                if buildsuccess:
-                    os.unlink(logfilename)
+            logpathmatch = re.search('log: (.*\.log)', logline)
+            if logpathmatch:
+                clobberlogpath = logpathmatch.group(1)
 
-        if buildsuccess:
-            self.testdb.logMessage('success clobbering %s %s %s' % (product, branch, buildtype))
+        if clobbersuccess:
+            self.document["state"] = 'success clobbering %s %s %s' % (product, branch, buildtype)
         else:
-            self.testdb.logMessage('failure clobbering %s %s %s' % (product, branch, buildtype))
+            self.document["state"] = 'failure clobbering %s %s %s' % (product, branch, buildtype)
 
-        return buildsuccess
+        self.testdb.logMessage(self.document["state"])
+
+        self.document["datetime"]               = sisyphus.utils.getTimestamp()
+        self.document[branch]["clobbersuccess"] = clobbersuccess
+        self.updateWorker(self.document)
+
+        if clobberlogpath and update_build:
+            build_doc = self.buildsdb.saveFileAttachment(build_doc, "clobber.log", clobberlogpath, "text/plain")
+            os.unlink(clobberlogpath)
+
+        return build_doc
+
+    def packageProduct(self, build_doc):
+        packagesuccess = True
+
+        product = build_doc["product"]
+        branch  = build_doc["branch"]
+        buildtype = build_doc["buildtype"]
+
+        self.document["state"] = 'begin packaging %s %s %s' % (product, branch, buildtype)
+
+        self.testdb.logMessage(self.document["state"])
+
+        self.document["datetime"] = sisyphus.utils.getTimestamp()
+        self.updateWorker(self.document)
+
+        # remove any stale package files
+        executablepath = self.document[branch]["executablepath"]
+        productfiles = glob.glob(os.path.join(executablepath, product + '-*'))
+        for productfile in productfiles:
+            os.unlink(productfile)
+
+        # SYM_STORE_SOURCE_DIRS= required due to bug 534992
+        proc = subprocess.Popen(
+            [
+                sisyphus_dir + "/bin/set-build-env.sh",
+                "-p", product,
+                "-b", branch,
+                "-T", buildtype,
+                "-c", "make -C firefox-%s package package-tests buildsymbols SYM_STORE_SOURCE_DIRS=" % (buildtype)
+                ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+
+        packagelog = proc.communicate()[0]
+
+        if proc.returncode == 0:
+            # too verbose and not useful if succeeded.
+            packagelog = 'success'
+        else:
+            packagesuccess = False
+
+        if packagesuccess:
+            self.document["state"] = 'success packaging %s %s %s' % (product, branch, buildtype)
+        else:
+            self.document["state"] = 'failure packaging %s %s %s' % (product, branch, buildtype)
+
+        self.testdb.logMessage(self.document["state"])
+
+        self.document["datetime"] = sisyphus.utils.getTimestamp()
+        self.document[branch]["packagesuccess"] = packagesuccess
+        self.updateWorker(self.document)
+
+        if not self.document[branch]["packagesuccess"]:
+            build_doc = self.buildsdb.saveAttachment(build_doc, "package.log", packagelog, "text/plain")
+
+        return build_doc
+
+    def uploadProduct(self, build_doc):
+
+        product   = build_doc["product"]
+        branch    = build_doc["branch"]
+        buildtype = build_doc["buildtype"]
+
+        uploadsuccess = True
+
+        self.document["state"] = 'begin uploading %s %s %s' % (product, branch, buildtype)
+
+        self.testdb.logMessage(self.document["state"])
+
+        self.document["datetime"] = sisyphus.utils.getTimestamp()
+        self.document[branch]["uploadsuccess"] = uploadsuccess
+        self.updateWorker(self.document)
+
+        executablepath = self.document[branch]["executablepath"]
+
+        if not os.path.exists(executablepath):
+            uploadsuccess = False
+            self.testdb.logMessage('executablepath %s does not exist' % executablepath)
+
+        if not os.path.isdir(executablepath):
+            uploadsuccess = False
+            self.testdb.logMessage('executablepath %s is not a directory' % executablepath)
+
+        productfiles = glob.glob(os.path.join(executablepath, product + '-*'))
+        if len(productfiles) == 0:
+            uploadsuccess = False
+            self.testdb.logMessage('executablepath %s does not contain product files %s-*' % (executablepath, product))
+
+        build_doc["buildavailable"] = False
+
+        build_doc["builddate"] = self.document[branch]["builddate"]
+        build_doc["changeset"] = self.document[branch]["changeset"]
+        build_doc["worker_id"] = self.document["_id"]
+
+        for productfile in productfiles:
+            productfilename = os.path.basename(productfile)
+            content_type    = 'application/octet-stream'
+
+            if re.search('\.txt$', productfilename):
+                content_type = 'text/plain'
+                productfilename = "%s-%s.txt" % (product, branch)
+            elif re.search('\.langpack\.xpi$', productfilename):
+                content_type = 'application/x-xpinstall'
+                productfilename = "%s-%s.langpack.xpi" % (product, branch)
+            elif re.search('\.crashreporter-symbols\.zip$', productfilename):
+                content_type = 'application/x-zip-compressed'
+                productfilename = "%s-%s.crashreporter-symbols.zip" % (product, branch)
+            elif re.search('\.tests.zip$', productfilename):
+                content_type = 'application/x-zip-compressed'
+                productfilename = "%s-%s.tests.zip" % (product, branch)
+            elif re.search('\.tests.tar.bz2$', productfilename):
+                content_type = 'application/octet-stream'
+                productfilename = "%s-%s.tests.tar.bz2" % (product, branch)
+            elif re.search('\.zip$', productfilename):
+                content_type = 'application/x-zip-compressed'
+                productfilename = "%s-%s.zip" % (product, branch)
+            elif re.search('\.tar.bz2$', productfilename):
+                content_type = 'application/octet-stream'
+                productfilename = "%s-%s.tar.bz2" % (product, branch)
+            elif re.search('\.dmg$', productfilename):
+                content_type = 'application/octet-stream'
+                productfilename = "%s-%s.dmg" % (product, branch)
+
+            try:
+                build_doc = self.buildsdb.saveFileAttachment(build_doc, productfilename, productfile, content_type)
+            except KeyboardInterrupt:
+                raise
+            except SystemExit:
+                raise
+            except:
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+                self.testdb.logMessage('uploadProduct: %s' % errorMessage)
+                uploadsuccess = False
+
+        if uploadsuccess:
+            build_doc["buildavailable"] = True
+            build_doc["state"] = "complete"
+            self.document["state"] = 'success uploading %s %s %s' % (product, branch, buildtype)
+        else:
+            self.document["state"] = 'failure uploading %s %s %s' % (product, branch, buildtype)
+
+        self.testdb.logMessage(self.document["state"])
+
+        self.document["datetime"] = sisyphus.utils.getTimestamp()
+        self.document[branch]["uploadsuccess"] = uploadsuccess
+        self.updateWorker(self.document)
+
+        return build_doc
+
+    def publishNewBuild(self, build_doc):
+
+        product   = build_doc["product"]
+        branch    = build_doc["branch"]
+        buildtype = build_doc["buildtype"]
+
+        try:
+            build_doc["datetime"] = sisyphus.utils.getTimestamp()
+            build_doc["state"] = "building"
+            self.buildsdb.updateDocument(build_doc)
+        except:
+            # If a DocumentConflict occurred, someone else has starting working on the build first.
+            # Mark this build locally as not a success, but don't mark it as an error in the builds db.
+            exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+            if exceptionType == KeyboardInterrupt or exceptionType == SystemExit:
+                raise
+            errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+            self.logMessage('doWork: updating build document %s %s %s: %s' %
+                                   (product, branch, buildtype, errorMessage))
+            if not re.search('DocumentConflict', str(exceptionValue)):
+                raise
+            self.document[branch]["buildsuccess"] = False
+            return build_doc
+
+        # kill any test processes still running.
+        self.killTest()
+        try:
+            build_doc = self.buildProduct(build_doc)
+            if not self.document[branch]["buildsuccess"]:
+                # don't wait if a build failure occurs
+                build_doc["state"] = "error"
+                build_doc = self.clobberProduct(build_doc)
+            else:
+                build_doc = self.packageProduct(build_doc)
+                if self.document[branch]["packagesuccess"]:
+                    build_doc = self.uploadProduct(build_doc)
+
+            build_doc["datetime"] = sisyphus.utils.getTimestamp()
+            self.buildsdb.updateDocument(build_doc)
+        except:
+            build_doc["datetime"] = sisyphus.utils.getTimestamp()
+            build_doc["state"] = "error"
+            self.buildsdb.updateDocument(build_doc)
+
+            exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+            if exceptionType == KeyboardInterrupt or exceptionType == SystemExit:
+                raise
+
+            # assume someone else got it first and try the next branch.
+            errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+            self.logMessage('doWork: finishing build document %s %s %s: %s' %
+                                   (product, branch, buildtype, errorMessage))
+
+        return build_doc
 
     def update_bug_histories(self):
 
@@ -1321,7 +1772,7 @@ class Worker():
 
         self.testdb.logMessage("updating bug histories")
 
-        self.document["state"]    = "beginning updating bug histories"
+        self.document["state"]    = "begin updating bug histories"
         self.document["datetime"] = sisyphus.utils.getTimestamp()
         self.updateWorker(self.document)
 

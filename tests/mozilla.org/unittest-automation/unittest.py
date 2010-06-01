@@ -53,18 +53,6 @@ sys.path.append(os.path.join(sisyphus_dir,'bin'))
 
 import sisyphus.couchdb
 
-def ordered_ffversion(versionstring):
-     versionstring = re.sub('[a-z].*$', '', versionstring)
-     version = ''
-     versionparts = re.split('[.]*', versionstring)
-     for i in range(0,len(versionparts)):
-         try:
-             version += ( '00' +  versionparts[i] )[-2:]
-         except:
-             break # ignore and terminate
-
-     return version
-
 def main():
 
     usage = '''usage: %prog [options]
@@ -72,7 +60,7 @@ def main():
 Initialize unittest database.
 
 Example:
-%prog -d http://couchserver/unittest [-t 'branch1:test1,test2+branch2:test1,test2,test3' | -j tests.json]
+%prog -d http://couchserver [-t 'branch1:test1,test2+branch2:test1,test2,test3' | -j tests.json]
 
 Initializes the couchdb database for the unittest framework.
 
@@ -113,19 +101,19 @@ specified, the default is equivalent to a tests.json file containing:
 }
 '''
     parser = OptionParser(usage=usage)
-    parser.add_option('-d', '--database', action='store', type='string',
-                      dest='databaseuri',
-                      default='http://127.0.0.1:5984/unittest',
-                      help='uri to unittest couchdb database. ' +
-                      'Defaults to http://127.0.0.1:5984/unittest')
+    parser.add_option('--couch', action='store', type='string',
+                      dest='couchserveruri',
+                      default='http://127.0.0.1:5984',
+                      help='uri to couchdb server. ' +
+                      'Defaults to http://127.0.0.1:5984')
 
-    parser.add_option('-t', '--tests', action='store', type='string',
+    parser.add_option('--tests', action='store', type='string',
                       dest='tests_dest',
                       default=None,
                       help='+ delimited string of branch-test assignments. ' +
                       'Defaults to None.')
 
-    parser.add_option('-j', '--json', action='store', type='string',
+    parser.add_option('--json', action='store', type='string',
                       dest='json_dest',
                       default=None,
                       help='file containing branch-test assignments in json format. ' +
@@ -133,11 +121,7 @@ specified, the default is equivalent to a tests.json file containing:
 
     (options, args) = parser.parse_args()
 
-    urimatch = re.search('(https?:)(.*)', options.databaseuri)
-    if not urimatch:
-        raise Exception('Bad database uri')
-
-    unittestdb     = sisyphus.couchdb.Database(options.databaseuri)
+    unittestdb     = sisyphus.couchdb.Database(options.databaseuri + '/unittest')
     unittestdb.sync_design_doc(os.path.join(os.path.dirname(sys.argv[0]), '_design'))
 
     tests_doc = {"_id" : "tests", "type" : "tests", "branches" : {}}

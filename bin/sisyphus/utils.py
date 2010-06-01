@@ -41,6 +41,9 @@ import datetime
 import re
 import signal
 import os
+import subprocess
+import urlparse
+import urllib
 
 def makeUnicodeString(s):
     # http://farmdev.com/talks/unicode/
@@ -127,3 +130,44 @@ def timedReadLine(filehandle, timeout = 300):
     signal.alarm(0)
 
     return line
+
+def encodeUrl(url):
+    # encode the url
+    url            = makeUnicodeString(url)
+    urlParseObject = urlparse.urlparse(url)
+    urlPieces      = [urllib.quote(urlpiece, "/=:") for urlpiece in urlParseObject]
+    url            = urlparse.urlunparse(urlPieces)
+
+    return url
+
+def downloadFile(url, destination, credentials = None, timeout = None):
+    """
+    Download the file at url to destination using curl. Return true if
+    successful, false otherwise.
+
+     curl options
+     -f output non-zero exit code when fail to download.
+     -S show error if failure
+     -s silent mode
+     -L follow 3XX redirections
+     -m timeout
+     --create-dirs create path if needed
+
+    """
+
+    if url is None or destination is None:
+        raise Exception('downloadFileArguments')
+
+    cmd = ['curl', '-LsSf', '--create-dirs', '-o', destination]
+
+    if timeout is not None:
+        cmd.extend(['-m', timeout])
+    if credentials is not None:
+        cmd.extend(['-u', credentials])
+
+    cmd.append(encodeUrl(url))
+
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    stdout = proc.communicate()[0]
+
+    return proc.returncode == 0

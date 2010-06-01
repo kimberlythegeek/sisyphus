@@ -252,16 +252,11 @@ if [[ -z "$LIBRARYSH" ]]; then
                 get_executable_name="$get_executable_product${EXE_EXT}"
                 case "$OSID" in
                     darwin)
-                        get_executable_filter="Contents/MacOS/$get_executable_product"
-                        # bug 513747
-                        if [[ "$get_executable_product" == "firefox" && \
-                               "$TEST_KERNEL" == "10.2.0" && \
-                               "$get_executable_branch" != "1.9.3" ]]; then
-                            get_executable_name="$get_executable_name-bin"
-                        fi
+                        get_executable_filter="dist/Firefox.*\.app/Contents/MacOS/$get_executable_product"
+                        get_executable_name="$get_executable_name-bin"
                         ;;
                     *)
-                        get_executable_filter="$get_executable_product"
+                        get_executable_filter="dist/bin/$get_executable_product"
                         ;;
                 esac
                 if find "$get_executable_directory" -perm +111 -type f \

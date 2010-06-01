@@ -72,8 +72,8 @@ stackwalkPath = os.environ.get('MINIDUMP_STACKWALK', "/usr/local/bin/minidump_st
 
 class CrashTestWorker(sisyphus.worker.Worker):
 
-    def __init__(self, startdir, programPath, testdb, historydb, worker_comment, branches, debug):
-        sisyphus.worker.Worker.__init__(self, startdir, programPath, testdb, historydb, worker_comment, branches, debug)
+    def __init__(self, startdir, programPath, couchserveruri, worker_comment, debug):
+        sisyphus.worker.Worker.__init__(self, startdir, programPath, couchserveruri, 'crashtest', worker_comment, debug)
         self.signature_doc = None
         self.document['signature_id'] = None
         self.updateWorker(self.document)
@@ -155,11 +155,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     self.updateWorker(self.document)
                 except:
                     pass
-            sys.stdout.flush()
-            newargv = sys.argv
-            newargv.insert(0, sys.executable)
-            os.chdir(self.startdir)
-            os.execvp(sys.executable, newargv)
+            self.reloadProgram()
 
     def amIOk(self):
         """
@@ -297,11 +293,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
         # kill any test processes still running.
         self.killTest()
 
-        # encode the url
-        url            = sisyphus.utils.makeUnicodeString(url)
-        urlParseObject = urlparse.urlparse(url)
-        urlPieces      = [urllib.quote(urlpiece, "/=:") for urlpiece in urlParseObject]
-        url            = urlparse.urlunparse(urlPieces)
+        url = sisyphus.utils.encodeUrl(url)
 
         timestamp = sisyphus.utils.getTimestamp()
 
@@ -452,7 +444,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
         self.debugMessage("stackwalkPath: %s, symbolsPath: %s, exists: %s" % (stackwalkPath, symbolsPath, os.path.exists(symbolsPath)))
 
         if stackwalkPath and os.path.exists(stackwalkPath) and os.path.exists(symbolsPath):
-            dumpFiles = glob.glob(os.path.join('/tmp/' + profilename + '/minidumps', '*.dmp'))
+            dumpFiles = glob.glob(os.path.join('/tmp', profilename, 'minidumps', '*.dmp'))
             self.debugMessage("dumpFiles: %s" % (dumpFiles))
             if len(dumpFiles) > 0:
                 self.logMessage("runTest: %s: %d dumpfiles found in /tmp/%s" % (url, len(dumpFiles), profilename))
@@ -523,7 +515,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
             try:
                 worker_rows = self.getAllWorkers()
-                build_data  = getBuildData(self.testdb)
+                branches_doc  = self.buildsdb.getDocument('branches')
 
                 for worker_doc in worker_rows:
                     # Skip other workers who match us exactly but do reissue a
@@ -535,7 +527,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
                         worker_doc['os_version'] == self.document['os_version']):
                         continue
 
-                    for major_version in build_data:
+                    for major_version in branches_doc["major_versions"]:
 
                         new_signature_doc = dict(self.signature_doc)
                         del new_signature_doc['_id']
@@ -556,7 +548,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
-                self.testdb.logMessage('runTest: unable to duplicate signature %s for reproduction: %s' % (self.signature_doc, errorMessage))
+                self.logMessage('runTest: unable to duplicate signature %s for reproduction: %s' % (self.signature_doc, errorMessage))
 
         # process any remaining assertion or valgrind messages.
         self.process_assertions(result_doc["_id"], product, branch, buildtype, timestamp, assertion_list, page, "crashtest", extra_test_args)
@@ -910,8 +902,11 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
     def doWork(self):
 
-        waittime = 0
+        product   = "firefox"
+        buildtype = "debug"
+        waittime  = 0
 
+        build_checkup_interval = datetime.timedelta(hours=3)
         checkup_interval = datetime.timedelta(minutes=5)
         last_checkup_time = datetime.datetime.now() - 2*checkup_interval
 
@@ -929,7 +924,11 @@ class CrashTestWorker(sisyphus.worker.Worker):
             time.sleep(waittime)
             waittime = 0
 
-            if not self.signature_doc:
+            if self.signature_doc:
+                build_doc    = self.BuildDocument(product, branch, buildtype,
+                                                  self.document["os_name"], self.document["cpu_name"])
+                build_needed = self.NewBuildNeeded(build_doc, build_checkup_interval)
+            else:
                 # check and clean up lock file if necessary.
                 lock_pending_jobs = self.testdb.getDocument('lock_pending_jobs')
                 if lock_pending_jobs and lock_pending_jobs['owner'] == self.document['_id']:
@@ -943,20 +942,18 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
                     url_index     = 0
                     major_version = self.signature_doc["major_version"]
-                    build_data    = getBuildData(self.testdb)
-                    branch_data   = build_data[major_version]
-                    if not branch_data:
-                        raise Exception("unsupported version: %s" %(major_version))
+                    branches_doc  = self.buildsdb.getDocument("branches")
+                    branch        = branches_doc["version_to_branch"][major_version]
 
-                    branch    = branch_data["branch"]
-                    buildtype = "debug"
+                    build_doc    = self.BuildDocument(product, branch, buildtype,
+                                                      self.document["os_name"], self.document["cpu_name"])
+                    build_needed = self.NewBuildNeeded(build_doc, build_checkup_interval)
 
                 else:
                     url_index     = -1
                     major_version = None
                     branch_data   = None
                     branch        = None
-                    buildtype     = None
                     waittime      = 1
 
                     if self.document["state"] != "idle":
@@ -968,27 +965,54 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     self.document["state"]    = "idle"
                     self.document["datetime"] = sisyphus.utils.getTimestamp()
                     self.updateWorker(self.document)
+                    continue
 
-            elif (not self.document[branch]["builddate"] or
-                  sisyphus.utils.convertTimestamp(self.document[branch]["builddate"]).day != datetime.date.today().day):
+            if (options.build and
+                (build_needed or not self.document[branch]["builddate"] or
+                 sisyphus.utils.convertTimestamp(self.document[branch]["builddate"]).day != datetime.date.today().day)):
+
+                # The build stored in the builds database is stale and
+                # needs to be rebuilt, or we are a builder and do not
+                # have a local build. Build it ourselves and upload
+                # it.
 
                 self.update_bug_histories()
 
-                # kill any test processes still running.
-                self.killTest()
-                buildstatus =  self.buildProduct("firefox", branch, buildtype)
-
-                if not buildstatus["success"]:
+                build_doc = self.publishNewBuild(build_doc)
+                if build_doc["state"] == "error":
                     # wait for five minutes if a build failure occurs
                     waittime = 300
                     # release the signature
                     self.signature_doc["worker"]  = None
                     self.testdb.updateDocument(self.signature_doc, True)
                     self.signature_doc = None
-                    self.clobberProduct("firefox", branch, buildtype)
 
-            elif (self.document[branch]["builddate"] and url_index < len(self.signature_doc["urls"])):
+            elif (not options.build and build_doc["buildavailable"] and
+                  (not self.document[branch]["buildsuccess"] or
+                   build_doc["builddate"] > self.document[branch]["builddate"])):
 
+                # We are not a builder, and a build is available to
+                # download and either we do not have a build or the
+                # available build is newer. Download and install the
+                # newer build.
+
+                if not self.DownloadAndInstallBuild(build_doc):
+                    # We failed to install the new build.
+                    # Release the signature and increment the skip value for this view
+                    # so that we don't retrieve this signature when
+                    # we next query the pending jobs.
+                    self.logMessage('doWork: failed downloading new %s %s %s build' %
+                                    (product, branch, buildtype))
+                    self.viewdata['skip'] += 1
+                    self.signature_doc["worker"] = None
+                    self.testdb.updateDocument(self.signature_doc, True)
+                    self.signature_doc = None
+
+            elif (self.document[branch]["buildsuccess"] and url_index < len(self.signature_doc["urls"])):
+
+                # Either the build in the builds database and our local build are both current
+                # or both are stale. Continue to test with a stale build until a fresh one becomes
+                # available.
                 url = self.signature_doc["urls"][url_index]
 
                 if not self.checkIfUrlAlreadyTested(self.signature_doc, url_index):
@@ -1000,7 +1024,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
                         # XXX: extra_test_args should be something to pass parameters to the
                         # test process.
                         extra_test_args = None
-                        self.runTest("firefox", branch, buildtype, url, url_index, extra_test_args)
+                        self.runTest(product, branch, buildtype, url, url_index, extra_test_args)
                         # if the signature was null, process all urls.
                         #if result["reproduced"] and self.signature_doc["signature"] != "\\N":
                         #    url_index = len(self.signature_doc["urls"])
@@ -1016,7 +1040,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
                                         (exceptionValue, self.signature_doc["_id"], url, errorMessage))
                 url_index += 1
 
-            elif (url_index >= len(self.signature_doc["urls"])):
+            elif (self.document[branch]["buildsuccess"] and url_index >= len(self.signature_doc["urls"])):
 
                 if not self.isBetterWorkerAvailable(self.signature_doc):
                     self.debugMessage('doWork: no better worker available, deleting signature %s' % self.signature_doc['_id'])
@@ -1036,47 +1060,8 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 self.document["datetime"]     = sisyphus.utils.getTimestamp()
                 self.updateWorker(self.document)
             else:
-                self.debugMessage('doWork: ?')
-
-
-def getBuildData(crashtestdb, worker=None):
-    for attempt in crashtestdb.max_db_attempts:
-        try:
-            supported_versions_rows = crashtestdb.db.views.default.supported_versions()
-            break
-        except KeyboardInterrupt:
-            raise
-        except SystemExit:
-            raise
-        except:
-            exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-            errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
-
-            if not re.search('/(couchquery|httplib2)/', errorMessage):
-                raise
-
-            # reconnect to the database in case it has dropped
-            crashtestdb.connectToDatabase(None)
-            crashtestdb.logMessage('getBuildData: attempt: %d, exception: %s' % (attempt, errorMessage))
-            if worker:
-                worker.amIOk()
-
-        if attempt == crashtestdb.max_db_attempts[-1]:
-            raise Exception("getBuildData: aborting after %d attempts" % (crashtestdb.max_db_attempts[-1] + 1))
-        time.sleep(60)
-
-    if len(supported_versions_rows) > 1:
-        raise Exception("getBuildData: crashtest database has more than one supported_versions document")
-
-    if len(supported_versions_rows) == 0:
-        raise Exception("getBuildData: crashtest database must have one supported_versions document")
-
-    build_data = supported_versions_rows[0]["supported_versions"]
-
-    if attempt > 0:
-        crashtestdb.logMessage('getBuildData: attempt: %d, success' % (attempt))
-
-    return build_data
+                self.logMessage('doWork: no %s %s %s builds are available' % (product, branch, buildtype))
+                time.sleep(300)
 
 def main():
 
@@ -1087,47 +1072,41 @@ def main():
     usage = '''usage: %prog [options]
 
 Example:
-%prog -d http://couchserver/crashtest
+%prog --couch http://couchserver
+
 '''
     parser = OptionParser(usage=usage)
-    parser.add_option('-d', '--database', action='store', type='string',
-                      dest='databaseuri',
-                      default='http://127.0.0.1:5984/crashtest',
-                      help='uri to crashtest couchdb database')
-    parser.add_option('-c', '--comment', action='store', type='string',
+
+    parser.add_option('--couch', action='store', type='string',
+                      dest='couchserveruri',
+                      help='uri to couchdb server')
+
+    parser.add_option('--comment', action='store', type='string',
                       dest='worker_comment',
                       default='',
                       help='optional text to describe worker configuration')
-    parser.add_option('--nodebug', action='store_false', 
+
+    parser.add_option('--build', action='store_true',
+                      default=False, help='Perform own builds')
+
+    parser.add_option('--nodebug', action='store_false',
                       dest='debug',
                       default=False,
                       help='default - no debug messages')
-    parser.add_option('--debug', action='store_true', 
+
+    parser.add_option('--debug', action='store_true',
                       dest='debug',
                       help='turn on debug messages')
+
     (options, args) = parser.parse_args()
 
-    crashtestdb = sisyphus.couchdb.Database(options.databaseuri)
-
-    urimatch = re.search('(https?:)(.*)', options.databaseuri)
-    if not urimatch:
-        raise Exception('Bad database uri')
-
-    hosturipath    = re.sub(urimatch.group(1), '', options.databaseuri)
-    hosturiparts   = urllib.splithost(hosturipath)
-
-    historydburi = urimatch.group(1) + '//' + hosturiparts[0] + '/history'
-
-    crashtestdb = sisyphus.couchdb.Database(options.databaseuri)
-    historydb   = sisyphus.couchdb.Database(historydburi)
+    if options.couchserveruri is None:
+         parser.print_help()
+         exit(1)
 
     exception_counter = 0
 
-    build_data = getBuildData(crashtestdb)
-
-    branches   = [build_data[major_version]['branch'] for major_version in build_data]
-
-    this_worker     = CrashTestWorker(startdir, programPath, crashtestdb, historydb, options.worker_comment, branches, options.debug)
+    this_worker     = CrashTestWorker(startdir, programPath, options.couchserveruri, options.worker_comment, options.debug)
 
     programModTime = os.stat(programPath)[stat.ST_MTIME]
 

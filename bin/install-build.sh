@@ -102,7 +102,17 @@ if [[ $OSID == "nt" ]]; then
             $filename /S /D=`cygpath -a -w "$executablepath"`
         fi
     elif echo  $filetype | grep -iq 'zip archive'; then
-        unzip -o -d "$executablepath" "$filename"
+        tmpdir=`mktemp  -d /tmp/firefoxzip.XXXX` || exit 1
+        # paranoia
+        if [[ -z "$tmpdir" ]]; then
+            exit 1
+        fi
+        mkdir -p "$executablepath"
+        unzip -o -d "$tmpdir" "$filename"
+        mv $tmpdir/firefox/* "$executablepath/"
+        rm -fR "$tmpdir/firefox"
+        rmdir "$tmpdir"
+
         find $executablepath -name '*.exe' | xargs chmod u+x
         find $executablepath -name '*.dll' | xargs chmod u+x
     else
@@ -114,9 +124,9 @@ else
     case "$OSID" in
         linux)
             if echo $filetype | grep -iq 'bzip2'; then
-                tar -jxvf $filename -C "$executablepath"
+                tar --strip-components 1 -jxvf $filename -C "$executablepath"
             elif echo $filetype | grep -iq 'gzip'; then
-                tar -zxvf $filename -C "$executablepath"
+                tar --strip-components 1 -zxvf $filename -C "$executablepath"
             else
                 error "unknown file type $filetype" $LINENO
             fi
@@ -146,16 +156,13 @@ else
 
     executabledir=`dirname $executable`
 
-    # patch to use exec to prevent forked processes
     cd "$executabledir"
     if [ -e "$product" ]; then
         echo "$SCRIPT: patching $product"
-        cp $TEST_DIR/bin/$product.diff .
-        patch -N -p0 < $product.diff
+        sed -i.bak 's|^\"$dist_bin/run-mozilla.sh|exec $dist_bin/run-mozilla.sh|' $product
     fi
     if [ -e run-mozilla.sh ]; then
         echo "$SCRIPT: patching run-mozilla.sh"
-        cp $TEST_DIR/bin/run-mozilla.diff .
-        patch -N -p0 < run-mozilla.diff
+        tab=`echo -e '\t'` && sed "s|^\([$tab ]*\)\"\$prog|\1exec \"\$prog|" run-mozilla.sh
     fi
 fi

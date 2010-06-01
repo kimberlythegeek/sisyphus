@@ -72,6 +72,9 @@ if os.path.exists(stackwalkPath):
 
 class UnitTestWorker(sisyphus.worker.Worker):
 
+    def __init__(self, startdir, programPath, couchserveruri, worker_comment, debug):
+        sisyphus.worker.Worker.__init__(self, startdir, programPath, couchserveruri, 'unittest', worker_comment, debug)
+
     def checkForUpdate(self, job_doc):
         if os.stat(self.programPath)[stat.ST_MTIME] != self.programModTime:
             message = 'checkForUpdate: Program change detected. Reloading from disk. %s %s' % (sys.executable, sys.argv)
@@ -85,11 +88,7 @@ class UnitTestWorker(sisyphus.worker.Worker):
             if job_doc is not None:
                 # reinsert the job
                 self.testdb.createDocument(job_doc)
-            sys.stdout.flush()
-            newargv = sys.argv
-            newargv.insert(0, sys.executable)
-            os.chdir(self.startdir)
-            os.execvp(sys.executable, newargv)
+            self.reloadProgram()
 
     def runTest(self, product, branch, buildtype, test, extra_test_args):
 
@@ -329,9 +328,12 @@ class UnitTestWorker(sisyphus.worker.Worker):
 
     def doWork(self):
 
-        waittime = 0
-        job_doc = None
+        product   = "firefox"
+        buildtype = "debug"
+        waittime  = 0
+        job_doc   = None
 
+        build_checkup_interval = datetime.timedelta(hours=3)
         checkup_interval = datetime.timedelta(minutes=5)
         last_checkup_time = datetime.datetime.now() - 2*checkup_interval
 
@@ -348,50 +350,79 @@ class UnitTestWorker(sisyphus.worker.Worker):
             time.sleep(waittime)
             waittime = 0
 
-            if not job_doc:
+            if job_doc:
+                build_doc    = self.BuildDocument(product, branch, buildtype,
+                                                  self.document["os_name"], self.document["cpu_name"])
+                build_needed = self.NewBuildNeeded(build_doc, build_checkup_interval)
+            else:
                 job_doc = self.getJob()
                 if job_doc:
                     branch    = job_doc["branch"]
                     test      = job_doc["test"]
                     extra_test_args = job_doc["extra_test_args"]
-                    buildtype = "debug"
+                    build_doc    = self.BuildDocument(product, branch, buildtype,
+                                                      self.document["os_name"], self.document["cpu_name"])
+                    build_needed = self.NewBuildNeeded(build_doc, build_checkup_interval)
+
                     self.logMessage('beginning job firefox %s %s %s' % (branch, buildtype, test))
                 else:
                     branch        = None
                     test          = None
                     extra_test_args = None
-                    buildtype     = None
-                    tests_doc    = getTestData(self.testdb, self)
+                    tests_doc    = self.testdb.getDocument("tests")
                     self.logMessage('creating new jobs.')
                     self.createJobs(tests_doc)
+                    continue
 
-            elif (not self.document[branch]["builddate"] or
-                  sisyphus.utils.convertTimestamp(self.document[branch]["builddate"]).day != datetime.date.today().day):
+            if (options.build and
+                (build_needed or not self.document[branch]["builddate"] or
+                 sisyphus.utils.convertTimestamp(self.document[branch]["builddate"]).day != datetime.date.today().day)):
+
+                # The build stored in the builds database is stale and
+                # needs to be rebuilt, or we are a builder and do not
+                # have a local build. Build it ourselves and upload
+                # it.
 
                 self.update_bug_histories()
 
-                # kill any test processes still running.
-                self.killTest()
-                buildstatus =  self.buildProduct("firefox", branch, buildtype)
-
-                if not buildstatus["success"]:
+                build_doc = self.publishNewBuild(build_doc)
+                if build_doc["state"] == "error":
                     # wait for five minutes if a build failure occurs
                     waittime = 300
                     # reinsert the job
                     self.testdb.createDocument(job_doc)
                     job_doc = None
-                    self.clobberProduct("firefox", branch, buildtype)
+            elif (not options.build and build_doc["buildavailable"] and
+                  (not self.document[branch]["buildsuccess"] or
+                   build_doc["builddate"] > self.document[branch]["builddate"])):
 
-            elif (self.document[branch]["builddate"]):
+                # We are not a builder, and a build is available to
+                # download and either we do not have a build or the
+                # available build is newer. Download and install the
+                # newer build.
 
+                if not self.DownloadAndInstallBuild(build_doc):
+                    # We failed to install the new build.
+                    # reinsert the job
+                    self.logMessage('doWork: failed downloading new %s %s %s build' %
+                                    (product, branch, buildtype))
+                    self.testdb.createDocument(job_doc)
+                    job_doc = None
+
+            elif (self.document[branch]["buildsuccess"]):
+
+                # Either the build in the builds database and our local build are both current
+                # or both are stale. Continue to test with a stale build until a fresh one becomes
+                # available.
                 self.document["state"]        = "testing firefox %s %s %s" % (branch, buildtype, test)
                 self.document["datetime"]     = sisyphus.utils.getTimestamp()
                 self.updateWorker(self.document)
-                self.runTest("firefox", branch, buildtype, test, extra_test_args)
+                self.runTest(product, branch, buildtype, test, extra_test_args)
                 job_doc = None
                 self.logMessage('finishing job firefox %s %s %s' % (branch, buildtype, test))
             else:
-                self.debugMessage('doWork: ?')
+                self.logMessage('doWork: no %s %s %s builds are available' % (product, branch, buildtype))
+                time.sleep(300)
 
 
     def getJobs(self):
@@ -490,40 +521,6 @@ class UnitTestWorker(sisyphus.worker.Worker):
                             }
                         self.testdb.createDocument(job_doc)
 
-def getTestData(testdb, worker=None):
-    for attempt in testdb.max_db_attempts:
-        try:
-            tests_doc = testdb.getDocument("tests")
-            break
-        except KeyboardInterrupt:
-            raise
-        except SystemExit:
-            raise
-        except:
-            exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-            errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
-
-            if not re.search('/(couchquery|httplib2)/', errorMessage):
-                raise
-
-            # reconnect to the database in case it has dropped
-            testdb.connectToDatabase(None)
-            testdb.logMessage('getTestData: attempt: %d, exception: %s' % (attempt, errorMessage))
-            if worker:
-                worker.amIOk()
-
-        if attempt == testdb.max_db_attempts[-1]:
-            raise Exception("getTestData: aborting after %d attempts" % (testdb.max_db_attempts[-1] + 1))
-        time.sleep(60)
-
-    if not tests_doc:
-        raise Exception("getTestData: unittest database must have a tests document")
-
-    if attempt > 0:
-        testdb.logMessage('getTestData: attempt: %d, success' % (attempt))
-
-    return tests_doc
-
 def main():
     global options, this_worker
 
@@ -532,19 +529,21 @@ def main():
     usage = '''usage: %prog [options]
 
 Example:
-%prog -d http://couchserver/unittest
+%prog --couch` http://couchserver
 '''
     parser = OptionParser(usage=usage)
 
-    parser.add_option('-d', '--database', action='store', type='string',
-                      dest='databaseuri',
-                      default='http://127.0.0.1:5984/unittest',
-                      help='uri to unittest couchdb database')
+    parser.add_option('--couch', action='store', type='string',
+                      dest='couchserveruri',
+                      help='uri to couchdb server')
 
-    parser.add_option('-c', '--comment', action='store', type='string',
+    parser.add_option('--comment', action='store', type='string',
                       dest='worker_comment',
                       default='',
                       help='optional text to describe worker configuration')
+
+    parser.add_option('--build', action='store_true',
+                      default=False, help='Perform own builds')
 
     parser.add_option('--debugger', action='store', type='string',
                       dest='debugger',
@@ -584,30 +583,20 @@ Example:
     parser.add_option('--debug', action='store_true', 
                       dest='debug',
                       help='turn on debug messages')
+
     (options, args) = parser.parse_args()
 
     if options.debugger_args and not options.debugger:
-         print "--debugger-args requires --debugger."
-         raise Exception("Usage")
+         parser.print_help()
+         exit(1)
 
-    urimatch = re.search('(https?:)(.*)', options.databaseuri)
-    if not urimatch:
-        raise Exception('Bad database uri')
-
-    hosturipath    = re.sub(urimatch.group(1), '', options.databaseuri)
-    hosturiparts   = urllib.splithost(hosturipath)
-
-    historydburi = urimatch.group(1) + '//' + hosturiparts[0] + '/history'
-
-    unittestdb   = sisyphus.couchdb.Database(options.databaseuri)
-    historydb    = sisyphus.couchdb.Database(historydburi)
+    if options.couchserveruri is None:
+         parser.print_help()
+         exit(1)
 
     exception_counter = 0
 
-    tests_doc       = getTestData(unittestdb)
-    branches        = [branch for branch in tests_doc['branches']]
-
-    this_worker     = UnitTestWorker(startdir, programPath, unittestdb, historydb, options.worker_comment, branches, options.debug)
+    this_worker     = UnitTestWorker(startdir, programPath, options.couchserveruri, options.worker_comment, options.debug)
 
     programModTime = os.stat(programPath)[stat.ST_MTIME]
 
