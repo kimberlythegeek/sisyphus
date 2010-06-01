@@ -1412,30 +1412,27 @@ class Worker():
 
         proc = subprocess.Popen(
             [
-                sisyphus_dir + "/bin/builder.sh",
-                "-p", product,
-                "-b", branch,
-                "-T", buildtype,
-                "-B", buildsteps
+                "rm",
+                "-fR",
+                "/work/mozilla/builds/%s/mozilla/%s-%s" % (branch, product, buildtype)
                 ],
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.STDOUT)
 
-        stdout, stderr = proc.communicate()
+        stdout = proc.communicate()[0]
 
-        if re.search('^FATAL ERROR', stderr, re.MULTILINE):
+        if proc.returncode != 0:
             clobbersuccess = False
-
-        logs = stdout.split('\n')
-        for logline in logs:
-            logpathmatch = re.search('log: (.*\.log)', logline)
-            if logpathmatch:
-                clobberlogpath = logpathmatch.group(1)
 
         if clobbersuccess:
             self.document["state"] = 'success clobbering %s %s %s' % (product, branch, buildtype)
+            try:
+                del self.document[branch]["clobberlog"]
+            except:
+                pass
         else:
             self.document["state"] = 'failure clobbering %s %s %s' % (product, branch, buildtype)
+            self.document[branch]["clobberlog"] = stdout
 
         self.testdb.logMessage(self.document["state"])
 

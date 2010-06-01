@@ -119,7 +119,7 @@ while ! $TEST_DIR/bin/timed_run.py ${TEST_STARTUP_TIMEOUT} "-" \
         $EXECUTABLE_DRIVER \
         $executable -CreateProfile "$profilename $directoryospath"; do
     let tries=tries+1
-    if [ "$tries" -gt $TEST_STARTUP_TRIES ]; then
+    if [[ "$tries" -gt $TEST_STARTUP_TRIES ]]; then
         error "Failed to create profile $directory Exiting..." $LINENO
     fi
     sleep 30
