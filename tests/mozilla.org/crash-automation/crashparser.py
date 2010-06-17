@@ -164,13 +164,10 @@ def create_signature_doc(crashlogdate, crash_doc):
     signature_doc['type']           = 'signature'
     signature_doc['date']           = crashlogdate
     signature_doc['signature']      = crash_doc['signature']
-    # signature_doc['address']      = crash_doc['address']
-    signature_doc['versionhash']    = {crash_doc['version'] : 1}
     signature_doc['major_version']  = major_version
     signature_doc['major_versionhash'] = {major_version: {minor_version: 1}}
     signature_doc['os_name']        = crash_doc['os_name']
     signature_doc['os_version']     = '.'.join(crash_doc['os_version'].split('.')[0:2])
-    signature_doc['os_versionhash'] = {crash_doc['os_version']: 1}
     signature_doc['cpu_name']       = crash_doc['cpu_name']
     # each crash report with the same signature is guaranteed to contain the
     # same list of bugs.
@@ -222,15 +219,6 @@ def process_crashdata(db, crashlogdate, crash_docs, ffversionshash, supported_ve
                 curr_signature_doc['urlhash'][crash_doc['url']] = 0
             curr_signature_doc['urlhash'][crash_doc['url']] += 1
 
-            if not crash_doc['os_version'] in curr_signature_doc['os_versionhash']:
-                curr_signature_doc['os_versionhash'][crash_doc['os_version']] = 0
-            curr_signature_doc['os_versionhash'][crash_doc['os_version']] += 1
-
-            version = crash_doc['version']
-            if not version in curr_signature_doc['versionhash']:
-                curr_signature_doc['versionhash'][version] = 0
-            curr_signature_doc['versionhash'][version] += 1
-
             minor_version = crash_doc['minor_version']
             major_version = crash_doc['major_version']
             if not major_version in curr_signature_doc['major_versionhash']:
@@ -243,7 +231,8 @@ def process_crashdata(db, crashlogdate, crash_docs, ffversionshash, supported_ve
             skipsignature = finalize_curr_signature_doc(curr_signature_doc, ffversionshash, supported_versions)
 
             if not skipsignature:
-                curr_signature_doc.pop('urlhash')
+                del curr_signature_doc['urlhash']
+                del curr_signature_doc['major_versionhash']
                 doc_buffer.append(curr_signature_doc)
                 if len(doc_buffer) == 5:  # make configurable
                     info = db.create(doc_buffer)
@@ -354,10 +343,17 @@ Example:
                       dest='couchserveruri',
                       default='http://127.0.0.1:5984',
                       help='uri to couchdb server')
+
+    parser.add_option('--database', action='store', type='string',
+                      dest='databasename',
+                      help='name of database, defaults to sisyphus.',
+                      default='sisyphus')
+
     parser.add_option('-s', '--skipurls', action='store', type='string',
                       dest='skipurlsfile',
                       default=None,
                       help='file containing url patterns to skip when uploading.')
+
     (options, args) = parser.parse_args()
 
     if len(args) != 1:
@@ -366,14 +362,12 @@ Example:
     crashlogfile = args[0]
     crashlogdate = os.path.basename(crashlogfile)[0:8]
 
-    crashtestdb = couchquery.Database(options.couchserveruri + '/crashtest')
-    buildsdb    = couchquery.Database(options.couchserveruri + '/builds')
+    testdb = couchquery.Database(options.couchserveruri + '/' + options.databasename)
 
     try:
         # attempt to create the database
-        couchquery.createdb(crashtestdb)
-        couchquery.deletedb(crashtestdb)
-        raise Exception('The crashtest database does not exist. It must be created via crashtest.py')
+        couchquery.createdb(testdb)
+        raise Exception('The database %s does not exist. It must be created via crashtest.py' % options.databasename)
 
     except Exception, ex:
         # assume error is due to already existing db
@@ -385,7 +379,7 @@ Example:
             skipurl = skipurl.rstrip('\n')
             skipurls.append(skipurl)
 
-    branches_doc = buildsdb.get('branches')
+    branches_doc = testdb.get('branches')
 
     if branches_doc is None:
         raise Exception("crashtest requires the branches document in the builds database.")
@@ -401,7 +395,7 @@ Example:
     load_crashdata(crashlogfile, crash_docs, ffversionshash, supported_versions_hash)
 
     print '__main__: crashlogdate: %s, total docs: %d, supported_versions: %s, ffversionshash: %s' % (crashlogdate, len(crash_docs), supported_versions, ffversionshash)
-    process_crashdata(crashtestdb, crashlogdate, crash_docs, ffversionshash, supported_versions_hash, supported_versions)
+    process_crashdata(testdb, crashlogdate, crash_docs, ffversionshash, supported_versions_hash, supported_versions)
 
 if __name__ == '__main__':
     main()

@@ -1,0 +1,56 @@
+<div class="detail">
+<table>
+
+<tr>
+<td>Valgrind</td>
+<td>
+<p>
+<%= segmented_search %>
+</p>
+</td>
+</tr>
+
+<tr>
+<td>
+Valgrind stack
+</td>
+<td><pre><%= valgrinddata %></pre></td>
+</tr>
+
+<tr>
+<td>
+Date
+</td>
+<td>
+<%= datetime %>
+</td>
+</tr>
+
+<tr>
+<td>
+Result
+</td>
+<td>
+<a href='../../_list/results/results_by_result_id?include_docs=true&startkey=["<%= result_id %>"]&endkey=["<%= result_id %>\\u9999"]'><%= result_id %></a>
+</td>
+</tr>
+
+<tr>
+<td>
+url
+</td>
+<td>
+<a href="<%= location_id %>"><%= location_id %></a>
+</td>
+</tr>
+
+<tr>
+<td>&nbsp;</td>
+<td>
+<a href='../../_list/result_locations/results_by_location?include_docs=true&startkey=["<%= escaped_location %>"]&endkey=["<%= escaped_location %>\\u9999"]'>Search by Location</a>
+</td>
+</tr>
+
+</table>
+
+</div>

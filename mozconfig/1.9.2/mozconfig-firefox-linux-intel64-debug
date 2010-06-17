@@ -26,8 +26,6 @@ ac_add_options --enable-official-branding
 
 CC=gcc44
 CXX=g++44
-export ac_cv_have_visibility_class_bug=yes
-export ac_cv_visibility_pragma=no
 
 export CFLAGS="-gdwarf-2"
 export CXXFLAGS="-gdwarf-2"

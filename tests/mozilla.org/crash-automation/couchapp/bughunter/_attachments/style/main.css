@@ -1,0 +1,7 @@
+/* add styles here */
+h1 { width: 50%; margin-left: auto; margin-right: auto; }
+#menu {float:right}
+#menu > a { background-color: gray; color: white;}
+#homemenu { width: 50%; margin-left: auto; margin-right: auto; }
+.detail { padding: 1em; border: 1px solid black; }
+#pagenav {float:right}

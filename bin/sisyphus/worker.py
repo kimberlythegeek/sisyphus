@@ -54,7 +54,8 @@ import sisyphus.couchdb
 import sisyphus.bugzilla
 
 class Worker():
-    def __init__(self, startdir, programPath, couchserveruri, testdbname, worker_comment, debug = False):
+    def __init__(self, worker_type, startdir, programPath, couchserveruri, testdbname, worker_comment, debug = False):
+        self.worker_type    = worker_type
         self.startdir       = startdir
         self.programPath    = programPath
         self.programModTime = os.stat(programPath)[stat.ST_MTIME]
@@ -64,17 +65,10 @@ class Worker():
         if not urimatch:
             raise Exception('Bad database uri')
 
-        testdburi      = couchserveruri + '/' + testdbname
-        historydburi   = couchserveruri + '/history'
-        buildsdburi    = couchserveruri + '/builds'
-
-        self.testdb          = sisyphus.couchdb.Database(testdburi)
-        self.historydb       = sisyphus.couchdb.Database(historydburi)
-        self.buildsdb        = sisyphus.couchdb.Database(buildsdburi)
+        self.testdburi       = couchserveruri + '/' + testdbname
+        self.testdb          = sisyphus.couchdb.Database(self.testdburi)
         self.debug           = debug
         self.testdb.debug    = debug
-        self.historydb.debug = debug
-        self.buildsdb.debug  = debug
 
         uname      = os.uname()
         os_name    = uname[0]
@@ -111,19 +105,21 @@ class Worker():
             cpu_name = 'ppc'
 
         worker_doc = self.testdb.getDocument(host_name)
-        branches_doc = self.buildsdb.getDocument('branches')
+        branches_doc = self.testdb.getDocument('branches')
 
         branches = branches_doc['branches']
 
         if not worker_doc:
-            self.document = {"_id"          : host_name,
-                               "type"         : "worker",
-                               "os_name"      : os_name,
-                               "os_version"   : os_version,
-                               "cpu_name"     : cpu_name,
-                               "comment"      : worker_comment,
-                               "datetime"     : sisyphus.utils.getTimestamp(),
-                               "state"        : "new"}
+            self.document = {
+                "_id"          : host_name,
+                "type"         : "worker_" + worker_type,
+                "os_name"      : os_name,
+                "os_version"   : os_version,
+                "cpu_name"     : cpu_name,
+                "comment"      : worker_comment,
+                "datetime"     : sisyphus.utils.getTimestamp(),
+                "state"        : "new"
+                }
 
 
             # add build information to the worker document.
@@ -144,7 +140,7 @@ class Worker():
             self.document = worker_doc
 
             self.document["_id"]          = host_name
-            self.document["type"]         = "worker"
+            self.document["type"]         = "worker_" + worker_type
             self.document["os_name"]      = os_name
             self.document["os_version"]   = os_version
             self.document["cpu_name"]     = cpu_name
@@ -236,25 +232,48 @@ class Worker():
 
         return bug_list
 
-    def update_bug_list_assertions(self, product, branch, buildtype, os_name, os_version, cpu_name, timestamp, assertionmessage, assertionfile):
+    def clean_url_list(self, url_list):
+        exclude_urls_set = sets.Set(['startup', 'shutdown', 'automationutils.processLeakLog()', 'a blank page'])
+        url_set = sets.Set(url_list)
+        url_set.difference_update(exclude_urls_set)
+        return list(url_set)
+
+    def update_bug_list_assertions(self, product, branch, buildtype, os_name, os_version, cpu_name, timestamp, assertionmessage, assertionfile, assertionurl_list):
         """
-        check for cached bug data in similar assertions in the
-        last day of unittests or the assertion history.
+        This method can be called either when a new assertion is being
+        processed or when updating the bug_list in the history
+        database.
+
+        If it is called for a new assertion, timestamp is the datetime
+        field from the result_assertion document and will be used to
+        update the firstdatetime and lastdatetime fields in the
+        history assertion document and may be used when creating a new
+        history assertion document.
+
+        However, if it is called to update the bug history, then the
+        history assertion document is guaranteed to already exist and the
+        timestamp will None and will not be used to update the
+        firstdatetime or lastdatetime in the history assertion document.
+
         """
 
-        self.debugMessage('update_bug_list_assertions: start: %s %s' % (assertionmessage, assertionfile))
+        self.debugMessage('update_bug_list_assertions: start: %s %s %s' % (assertionmessage, assertionfile, assertionurl_list))
 
         bug_list           = None
         now                = datetime.datetime.now()
 
-        history_assertions = self.getRows(self.historydb.db.views.default.assertions,
-                                          startkey=[assertionmessage, assertionfile, product, branch, buildtype, os_name, os_version, cpu_name],
-                                          endkey=[assertionmessage, assertionfile, product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"],
+        history_assertions = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+                                          startkey=["history_assertion", assertionmessage, assertionfile,
+                                                    product, branch, buildtype, os_name, os_version, cpu_name],
+                                          endkey=["history_assertion", assertionmessage, assertionfile,
+                                                  product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"],
                                           include_docs=True)
 
         if len(history_assertions) > 0:
 
             history_assertion  = history_assertions[0]
+            if timestamp is None:
+                timestamp          = history_assertion["firstdatetime"]
             if "bug_list" not in history_assertion:
                 history_assertion["bug_list"] = None
             bug_list           = history_assertion["bug_list"]
@@ -274,7 +293,7 @@ class Worker():
                     try:
                         # We can have update conflicts if the update bug history is currently running
                         # on another worker. Just ignore them but pass through any other exceptions.
-                        self.historydb.deleteDocument(history_assertions[iassertion])
+                        self.testdb.deleteDocument(history_assertions[iassertion])
                     except KeyboardInterrupt:
                         raise
                     except SystemExit:
@@ -292,7 +311,7 @@ class Worker():
             # there is no historical assertion with an exact match
             # we need to create a new one.
             history_assertion = {
-                "type"            : "assertion",
+                "type"            : "history_assertion",
                 "product"         : product,
                 "branch"          : branch,
                 "buildtype"       : buildtype,
@@ -304,6 +323,7 @@ class Worker():
                 "assertion"       : assertionmessage,
                 "assertionfile"   : assertionfile,
                 "updatetime"      : timestamp,
+                "location_id_list" : [],
                 "bug_list"        : None,
                 "suppress"        : False
                 }
@@ -313,9 +333,9 @@ class Worker():
             # since the bug list does not depend on the full key
             # try to get a matching assertion using just the assertionmessage.
 
-            history_assertions = self.getRows(self.historydb.db.views.default.assertions,
-                                              startkey=[assertionmessage],
-                                              endkey=[assertionmessage + "\u9999"],
+            history_assertions = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+                                              startkey=["history_assertion", assertionmessage],
+                                              endkey=["history_assertion", assertionmessage + "\u9999"],
                                               include_docs=True)
 
             if len(history_assertions) > 0:
@@ -329,13 +349,21 @@ class Worker():
                     bug_list = cache["bug_list"]
 
             try:
-                self.historydb.createDocument(history_assertion)
+                self.testdb.createDocument(history_assertion)
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
                 if not re.search('updateDocumentConflict', str(exceptionValue)):
                     raise
+
+        assertionurl_list = self.clean_url_list(assertionurl_list)
+        assertionurl_set = sets.Set(assertionurl_list)
+        location_id_set  = sets.Set(history_assertion["location_id_list"])
+
+        if not assertionurl_set.issubset(location_id_set):
+            # assertionurl_list contains new urls
+            history_stale = True
 
         if history_stale and assertionmessage:
 
@@ -346,6 +374,14 @@ class Worker():
                 bug_age = None # need to do a full bugzilla search the first time.
                 bug_list = {'open' : [], 'closed' : []}
 
+            if len(assertionurl_list) > 0:
+                assertionurls = ' '.join(assertionurl_list)
+                self.debugMessage('update_bug_list_assertions: begin searchBugzillaUrls: %s %s' % (assertionurls, bug_age))
+                resp, content = sisyphus.bugzilla.searchBugzillaUrls(assertionurls, 'contains_any', None, bug_age)
+                self.debugMessage('update_bug_list_assertions: end   searchBugzillaUrls: %s %s' % (assertionurls, bug_age))
+                if 'bugs' in content:
+                    bug_list = self.extractBugzillaBugList(bug_list, content)
+
             self.debugMessage('update_bug_list_assertions: begin searchBugzillaText: %s %s' % (assertionmessage, bug_age))
             resp, content = sisyphus.bugzilla.searchBugzillaText(assertionmessage, 'contains', None, bug_age)
             self.debugMessage('update_bug_list_assertions: end   searchBugzillaText: %s %s' % (assertionmessage, bug_age))
@@ -353,12 +389,24 @@ class Worker():
             if 'bugs' in content:
                 bug_list = self.extractBugzillaBugList(bug_list, content)
 
-        if history_stale:
-            history_assertion["bug_list"]     = bug_list
+        # Check if the firstdatetime-lastdatetime range should be updated
+        # and force an update if necessary.
+        if not history_assertion["firstdatetime"] or timestamp < history_assertion["firstdatetime"]:
+            history_assertion["firstdatetime"] = timestamp
+            history_stale = True
+        if not history_assertion["lastdatetime"] or timestamp > history_assertion["lastdatetime"]:
             history_assertion["lastdatetime"] = timestamp
-            history_assertion["updatetime"]   = timestamp
+            history_stale = True
+
+        if history_stale:
+            history_assertion["location_id_list"].extend(assertionurl_list)
+            # uniqify the location id list.
+            history_assertion["location_id_list"] = list(sets.Set(history_assertion["location_id_list"]))
+            history_assertion["location_id_list"].sort()
+            history_assertion["bug_list"]     = bug_list
+            history_assertion["updatetime"]   = sisyphus.utils.getTimestamp()
             try:
-                self.historydb.updateDocument(history_assertion, True)
+                self.testdb.updateDocument(history_assertion, True)
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
@@ -404,7 +452,7 @@ class Worker():
 
                 self.update_bug_list_assertions(product, branch, buildtype,
                                                 os_name, os_version, cpu_name,
-                                                timestamp, assertionmessage, assertionfile)
+                                                timestamp, assertionmessage, assertionfile, [location_id])
 
                 result_assertion_doc = {
                     "type"            : "result_assertion",
@@ -500,25 +548,42 @@ class Worker():
 
         return valgrind_list
 
-    def update_bug_list_valgrinds(self, product, branch, buildtype, os_name, os_version, cpu_name, timestamp, valgrindmessage, valgrindsignature):
+    def update_bug_list_valgrinds(self, product, branch, buildtype, os_name, os_version, cpu_name, timestamp, valgrindmessage, valgrindsignature, valgrindurl_list):
         """
-        check for cached bug data in similar valgrinds in the
-        last day of unittests or the valgrind history.
+        This method can be called either when a new valgrind is being
+        processed or when updating the bug_list in the history
+        database.
+
+        If it is called for a new valgrind, timestamp is the datetime
+        field from the result_valgrind document and will be used to
+        update the firstdatetime and lastdatetime fields in the
+        history valgrind document and may be used when creating a new
+        history valgrind document.
+
+        However, if it is called to update the bug history, then the
+        history valgrind document is guaranteed to already exist and the
+        timestamp will None and will not be used to update the
+        firstdatetime or lastdatetime in the history valgrind document.
+
         """
 
-        self.debugMessage('update_bug_list_valgrinds: start: %s %s' % (valgrindmessage, valgrindsignature))
+        self.debugMessage('update_bug_list_valgrinds: start: %s %s %s' % (valgrindmessage, valgrindsignature, valgrindurl_list))
 
         bug_list           = None
         now                = datetime.datetime.now()
 
-        history_valgrinds = self.getRows(self.historydb.db.views.default.valgrind,
-                                         startkey=[valgrindmessage, valgrindsignature, product, branch, buildtype, os_name, os_version, cpu_name],
-                                         endkey=[valgrindmessage, valgrindsignature, product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"],
+        history_valgrinds = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+                                         startkey=["history_valgrind", valgrindmessage, valgrindsignature,
+                                                   product, branch, buildtype, os_name, os_version, cpu_name],
+                                         endkey=["history_valgrind", valgrindmessage, valgrindsignature,
+                                                 product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"],
                                          include_docs=True)
 
         if len(history_valgrinds) > 0:
 
             history_valgrind   = history_valgrinds[0]
+            if timestamp is None:
+                timestamp          = history_valgrind["firstdatetime"]
             if "bug_list" not in history_valgrind:
                 history_valgrind["bug_list"] = None
             bug_list           = history_valgrind["bug_list"]
@@ -538,7 +603,7 @@ class Worker():
                     try:
                         # We can have update conflicts if the update bug history is currently running
                         # on another worker. Just ignore them but pass through any other exceptions.
-                        self.historydb.deleteDocument(history_valgrinds[ivalgrind])
+                        self.testdb.deleteDocument(history_valgrinds[ivalgrind])
                     except KeyboardInterrupt:
                         raise
                     except SystemExit:
@@ -556,7 +621,7 @@ class Worker():
             # there is no historical valgrind with an exact match
             # we need to create a new one.
             history_valgrind = {
-                "type"            : "valgrind",
+                "type"            : "history_valgrind",
                 "product"         : product,
                 "branch"          : branch,
                 "buildtype"       : buildtype,
@@ -567,6 +632,7 @@ class Worker():
                 "lastdatetime"    : timestamp,
                 "valgrind"        : valgrindmessage,
                 "valgrindsignature" : valgrindsignature,
+                "location_id_list" : [],
                 "updatetime"      : timestamp,
                 "bug_list"        : None,
                 "suppress"        : False
@@ -578,9 +644,9 @@ class Worker():
             # try to get a matching valgrind using just the valgrindmessage
             # and valgrindsignature.
 
-            history_valgrinds = self.getRows(self.historydb.db.views.default.valgrind,
-                                             startkey=[valgrindmessage, valgrindsignature],
-                                             endkey=[valgrindmessage, valgrindsignature + "\u9999"],
+            history_valgrinds = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+                                             startkey=["history_valgrind", valgrindmessage, valgrindsignature],
+                                             endkey=["history_valgrind", valgrindmessage, valgrindsignature + "\u9999"],
                                              include_docs=True)
 
             if len(history_valgrinds) > 0:
@@ -594,13 +660,21 @@ class Worker():
                     bug_list = cache["bug_list"]
 
             try:
-                self.historydb.createDocument(history_valgrind)
+                self.testdb.createDocument(history_valgrind)
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
 
                 if not re.search('updateDocumentConflict', str(exceptionValue)):
                     raise
+
+        valgrindurl_list = self.clean_url_list(valgrindurl_list)
+        valgrindurl_set = sets.Set(valgrindurl_list)
+        location_id_set  = sets.Set(history_valgrind["location_id_list"])
+
+        if not valgrindurl_set.issubset(location_id_set):
+            # valgrindurl_list contains new urls
+            history_stale = True
 
         if history_stale and valgrindsignature:
 
@@ -611,6 +685,14 @@ class Worker():
                 bug_age = None # need to do a full bugzilla search the first time.
                 bug_list = {'open' : [], 'closed' : []}
 
+            if len(valgrindurl_list) > 0:
+                valgrindurls = ' '.join(valgrindurl_list)
+                self.debugMessage('update_bug_list_valgrinds: begin searchBugzillaUrls: %s %s' % (valgrindurls, bug_age))
+                resp, content = sisyphus.bugzilla.searchBugzillaUrls(valgrindurls, 'contains_any', None, bug_age)
+                self.debugMessage('update_bug_list_valgrinds: end   searchBugzillaUrls: %s %s' % (valgrindurls, bug_age))
+                if 'bugs' in content:
+                    bug_list = self.extractBugzillaBugList(bug_list, content)
+
             self.debugMessage('update_bug_list_valgrinds: begin searchBugzillaText: %s %s' % (valgrindsignature, bug_age))
             resp, content = sisyphus.bugzilla.searchBugzillaText(valgrindsignature, 'contains_all', None, bug_age)
             self.debugMessage('update_bug_list_valgrinds: end   searchBugzillaText: %s %s' % (valgrindsignature, bug_age))
@@ -618,12 +700,22 @@ class Worker():
             if 'bugs' in content:
                 bug_list = self.extractBugzillaBugList(bug_list, content)
 
-        if history_stale:
-            history_valgrind["bug_list"]     = bug_list
+        # Check if the firstdatetime-lastdatetime range should be updated
+        # and force an update if necessary.
+        if not history_valgrind["firstdatetime"] or timestamp < history_valgrind["firstdatetime"]:
+            history_valgrind["firstdatetime"] = timestamp
+        if not history_valgrind["lastdatetime"] or timestamp > history_valgrind["lastdatetime"]:
             history_valgrind["lastdatetime"] = timestamp
-            history_valgrind["updatetime"]   = timestamp
+
+        if history_stale:
+            history_valgrind["location_id_list"].extend(valgrindurl_list)
+            # uniqify the location id list.
+            history_valgrind["location_id_list"] = list(sets.Set(history_valgrind["location_id_list"]))
+            history_valgrind["location_id_list"].sort()
+            history_valgrind["bug_list"]     = bug_list
+            history_valgrind["updatetime"]   = sisyphus.utils.getTimestamp()
             try:
-                self.historydb.updateDocument(history_valgrind, True)
+                self.testdb.updateDocument(history_valgrind, True)
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
@@ -658,6 +750,10 @@ class Worker():
             valgrindmessage   = valgrind["message"]
             valgrindsignature = valgrind["signature"]
             valgrinddata      = valgrind["data"]
+
+            if valgrindsignature.find('HEAP SUMMARY') == 0:
+                continue
+
             currkey = valgrindmessage + ":" + valgrindsignature
 
             if result_valgrind_doc and lastkey and lastkey != currkey:
@@ -670,7 +766,7 @@ class Worker():
 
                 self.update_bug_list_valgrinds(product, branch, buildtype,
                                                os_name, os_version, cpu_name,
-                                               timestamp, valgrindmessage, valgrindsignature)
+                                               timestamp, valgrindmessage, valgrindsignature, [location_id])
 
                 result_valgrind_doc = {
                     "type"            : "result_valgrind",
@@ -816,8 +912,22 @@ class Worker():
 
     def update_bug_list_crashreports(self, product, branch, buildtype, os_name, os_version, cpu_name, timestamp, crashmessage, crashsignature, crashurl_list):
         """
-        check for cached bug data in similar crashreports in the
-        last day of crashreports or the crashreport history.
+
+        This method can be called either when a new crash is being
+        processed or when updating the bug_list in the history
+        database.
+
+        If it is called for a new crash, timestamp is the datetime
+        field from the result_crash document and will be used to
+        update the firstdatetime and lastdatetime fields in the
+        history crash document and may be used when creating a new
+        history crash document.
+
+        However, if it is called to update the bug history, then the
+        history crash document is guaranteed to already exist and the
+        timestamp will None and will not be used to update the
+        firstdatetime or lastdatetime in the history crash document.
+
         """
 
         self.debugMessage('update_bug_list_crashreports: start: %s %s %s' % (crashmessage, crashsignature, crashurl_list))
@@ -825,14 +935,18 @@ class Worker():
         bug_list           = None
         now                = datetime.datetime.now()
 
-        history_crashes = self.getRows(self.historydb.db.views.default.crashes,
-                                       startkey=[crashmessage, crashsignature, product, branch, buildtype, os_name, os_version, cpu_name],
-                                       endkey=[crashmessage, crashsignature, product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"],
+        history_crashes = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+                                       startkey=["history_crash", crashmessage, crashsignature,
+                                                 product, branch, buildtype, os_name, os_version, cpu_name],
+                                       endkey=["history_crash", crashmessage, crashsignature,
+                                               product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"],
                                        include_docs=True)
 
         if len(history_crashes) > 0:
 
             history_crash      = history_crashes[0]
+            if timestamp is None:
+                timestamp          = history_crash["firstdatetime"]
             if "bug_list" not in history_crash:
                 history_crash["bug_list"] = None
             bug_list           = history_crash["bug_list"]
@@ -852,7 +966,7 @@ class Worker():
                     try:
                         # We can have update conflicts if the update bug history is currently running
                         # on another worker. Just ignore them but pass through any other exceptions.
-                        self.historydb.deleteDocument(history_crashes[icrash])
+                        self.testdb.deleteDocument(history_crashes[icrash])
                     except KeyboardInterrupt:
                         raise
                     except SystemExit:
@@ -870,7 +984,7 @@ class Worker():
             # there is no historical crash with an exact match
             # we need to create a new one.
             history_crash = {
-                "type"            : "crash",
+                "type"            : "history_crash",
                 "product"         : product,
                 "branch"          : branch,
                 "buildtype"       : buildtype,
@@ -893,9 +1007,9 @@ class Worker():
             # try to get a matching crash using just the crashmessage
             # and crashsignature.
 
-            history_crashes = self.getRows(self.historydb.db.views.default.crashes,
-                                           startkey=[crashmessage, crashsignature],
-                                           endkey=[crashmessage, crashsignature + "\u9999"],
+            history_crashes = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+                                           startkey=["history_crash", crashmessage, crashsignature],
+                                           endkey=["history_crash", crashmessage, crashsignature + "\u9999"],
                                            include_docs=True)
 
             if len(history_crashes) > 0:
@@ -909,7 +1023,7 @@ class Worker():
                     bug_list = cache["bug_list"]
 
             try:
-                self.historydb.createDocument(history_crash)
+                self.testdb.createDocument(history_crash)
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
@@ -921,17 +1035,18 @@ class Worker():
             bug_age = None # need to do a full bugzilla search the first time.
             bug_list = {'open' : [], 'closed' : []}
 
+        crashurl_list = self.clean_url_list(crashurl_list)
+        crashurl_set = sets.Set(crashurl_list)
+        location_id_set  = sets.Set(history_crash["location_id_list"])
+
+        if not crashurl_set.issubset(location_id_set):
+            # crashurl_list contains new urls
+            history_stale = True
+
         if history_stale:
 
             # We do not have a bug_list yet, or the crash was last updated over a day ago.
             # Look up any bugs that match this crash
-
-            # remove special 'head' url.
-            while len(crashurl_list) > 0:
-                try:
-                    crashurl_list.remove('head')
-                except ValueError:
-                    break
 
             if len(crashurl_list) > 0:
                 crashurls = ' '.join(crashurl_list)
@@ -952,16 +1067,24 @@ class Worker():
                 if 'bugs' in content:
                     bug_list = self.extractBugzillaBugList(bug_list, content)
 
+        # Check if the firstdatetime-lastdatetime range should be updated
+        # and force an update if necessary.
+        if not history_crash["firstdatetime"] or timestamp < history_crash["firstdatetime"]:
+            history_crash["firstdatetime"] = timestamp
+            history_stale = True
+        if not history_crash["lastdatetime"] or timestamp > history_crash["lastdatetime"]:
+            history_crash["lastdatetime"] = timestamp
+            history_stale = True
+
         if history_stale:
             history_crash["location_id_list"].extend(crashurl_list)
             # uniqify the location id list.
             history_crash["location_id_list"] = list(sets.Set(history_crash["location_id_list"]))
             history_crash["location_id_list"].sort()
             history_crash["bug_list"]     = bug_list
-            history_crash["lastdatetime"] = timestamp
-            history_crash["updatetime"]   = timestamp
+            history_crash["updatetime"]   = sisyphus.utils.getTimestamp()
             try:
-                self.historydb.updateDocument(history_crash, True)
+                self.testdb.updateDocument(history_crash, True)
             except:
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
@@ -971,7 +1094,9 @@ class Worker():
 
         self.debugMessage('update_bug_list_crashreports: end %s' % bug_list)
 
-    def process_crashreport(self, result_id, product, branch, buildtype, timestamp, crash_data, location_id, test, extra_test_args):
+    def process_crashreport(self, result_id, product, branch, buildtype, timestamp, crash_report, location_id, test, extra_test_args, dumpextra):
+
+        crash_data = self.parse_crashreport(crash_report)
 
         os_name              = self.document["os_name"]
         os_version           = self.document["os_version"]
@@ -981,7 +1106,7 @@ class Worker():
         result_crash_doc     = None
 
 
-        crashmessage      = crash_data["message"]
+        crashmessage   = crash_data["message"]
         crashsignature = crash_data["signature"]
         currkey = crashmessage + ":" + crashsignature
 
@@ -1007,9 +1132,16 @@ class Worker():
             "location_id"     : location_id,
             "updatetime"      : timestamp,
             "bug"             : "",
-            "comment"         : ""
+            "comment"         : "",
+            "extra"           : {}
             }
+        for extraproperty in dumpextra:
+            if extraproperty != 'ServerURL':
+                result_crash_doc["extra"][extraproperty] = dumpextra[extraproperty]
         self.testdb.createDocument(result_crash_doc)
+
+        result_crash_doc = self.testdb.saveAttachment(result_crash_doc, 'crashreport', crash_report, 'text/plain', True, True)
+
 
     def updateWorker(self, worker_doc):
         owned = (worker_doc["_id"] == self.document["_id"])
@@ -1079,7 +1211,9 @@ class Worker():
     def getAllWorkers(self, key=None):
         for attempt in self.testdb.max_db_attempts:
             try:
-                worker_rows = self.testdb.db.views.default.workers()
+                startkey = ['worker_%s' % self.worker_type]
+                endkey   = ['worker_%s\u9999' % self.worker_type]
+                worker_rows = self.testdb.db.views.default.workers(startkey=startkey, endkey=endkey)
                 break
             except KeyboardInterrupt:
                 raise
@@ -1136,7 +1270,7 @@ class Worker():
 
         build_id = "%s_%s_%s_%s_%s" % (product, branch, buildtype,
                                        self.document["os_name"].replace(' ', '_'), self.document["cpu_name"])
-        build_doc = self.buildsdb.getDocument(build_id)
+        build_doc = self.testdb.getDocument(build_id)
 
         if build_doc is None:
             build_doc = {
@@ -1155,7 +1289,7 @@ class Worker():
                 "datetime"  : sisyphus.utils.getTimestamp()
                 }
             try:
-                self.buildsdb.createDocument(build_doc)
+                self.testdb.createDocument(build_doc)
             except:
                 # assume someone else got it first and try the next branch.
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
@@ -1165,7 +1299,7 @@ class Worker():
                 if not re.search('DocumentConflict', str(exceptionValue)):
                     raise
                 # Someone beat us to creating the new document. Just return their copy.
-                build_doc = self.buildsdb.getDocument(build_id)
+                build_doc = self.testdb.getDocument(build_id)
 
         return build_doc
 
@@ -1217,7 +1351,7 @@ class Worker():
         else:
             raise Exception('DownloadAndInstallBuild: unsupported operating system: %s' % os_name)
 
-        build_doc_uri = self.buildsdb.dburi + '/' + build_doc['_id']
+        build_doc_uri = self.testdb.dburi + '/' + build_doc['_id']
         producturi = build_doc_uri + '/' + productfilename
         symbolsuri = build_doc_uri + '/' + symbolsfilename
 
@@ -1379,11 +1513,11 @@ class Worker():
         self.updateWorker(self.document)
 
         if checkoutlogpath:
-            build_doc = self.buildsdb.saveFileAttachment(build_doc, "checkout.log", checkoutlogpath, "text/plain")
+            build_doc = self.testdb.saveFileAttachment(build_doc, "checkout.log", checkoutlogpath, "text/plain")
             os.unlink(checkoutlogpath)
 
         if buildlogpath:
-            build_doc = self.buildsdb.saveFileAttachment(build_doc, "build.log", buildlogpath, "text/plain")
+            build_doc = self.testdb.saveFileAttachment(build_doc, "build.log", buildlogpath, "text/plain")
             os.unlink(buildlogpath)
 
         return build_doc
@@ -1441,7 +1575,7 @@ class Worker():
         self.updateWorker(self.document)
 
         if clobberlogpath and update_build:
-            build_doc = self.buildsdb.saveFileAttachment(build_doc, "clobber.log", clobberlogpath, "text/plain")
+            build_doc = self.testdb.saveFileAttachment(build_doc, "clobber.log", clobberlogpath, "text/plain")
             os.unlink(clobberlogpath)
 
         return build_doc
@@ -1498,7 +1632,7 @@ class Worker():
         self.updateWorker(self.document)
 
         if not self.document[branch]["packagesuccess"]:
-            build_doc = self.buildsdb.saveAttachment(build_doc, "package.log", packagelog, "text/plain")
+            build_doc = self.testdb.saveAttachment(build_doc, "package.log", packagelog, "text/plain")
 
         return build_doc
 
@@ -1569,7 +1703,7 @@ class Worker():
                 productfilename = "%s-%s.dmg" % (product, branch)
 
             try:
-                build_doc = self.buildsdb.saveFileAttachment(build_doc, productfilename, productfile, content_type)
+                build_doc = self.testdb.saveFileAttachment(build_doc, productfilename, productfile, content_type)
             except KeyboardInterrupt:
                 raise
             except SystemExit:
@@ -1604,7 +1738,7 @@ class Worker():
         try:
             build_doc["datetime"] = sisyphus.utils.getTimestamp()
             build_doc["state"] = "building"
-            self.buildsdb.updateDocument(build_doc)
+            self.testdb.updateDocument(build_doc)
         except:
             # If a DocumentConflict occurred, someone else has starting working on the build first.
             # Mark this build locally as not a success, but don't mark it as an error in the builds db.
@@ -1633,11 +1767,11 @@ class Worker():
                     build_doc = self.uploadProduct(build_doc)
 
             build_doc["datetime"] = sisyphus.utils.getTimestamp()
-            self.buildsdb.updateDocument(build_doc)
+            self.testdb.updateDocument(build_doc)
         except:
             build_doc["datetime"] = sisyphus.utils.getTimestamp()
             build_doc["state"] = "error"
-            self.buildsdb.updateDocument(build_doc)
+            self.testdb.updateDocument(build_doc)
 
             exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
             if exceptionType == KeyboardInterrupt or exceptionType == SystemExit:
@@ -1655,15 +1789,14 @@ class Worker():
         if not self.lock_history_update():
             return
 
-        timestamp   = sisyphus.utils.getTimestamp()
-        now         = sisyphus.utils.convertTimestamp(timestamp)
-        yesterday   = now - datetime.timedelta(days=1)
-
         checkup_interval = datetime.timedelta(minutes=5)
         last_checkup_time = datetime.datetime.now() - 2*checkup_interval
 
         try:
-            crash_rows = self.getRows(self.historydb.db.views.default.crashes, include_docs=True)
+            crash_rows = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+                                      startkey=["history_crash"],
+                                      endkey=["history_crash\u9999"],
+                                      include_docs=True)
 
             for crash_doc in crash_rows:
                 if datetime.datetime.now() - last_checkup_time > checkup_interval:
@@ -1672,7 +1805,7 @@ class Worker():
                     last_checkup_time = datetime.datetime.now()
 
                 self.update_bug_list_crashreports(crash_doc["product"], crash_doc["branch"], crash_doc["buildtype"],
-                                                  crash_doc["os_name"], crash_doc["os_version"], crash_doc["cpu_name"], timestamp,
+                                                  crash_doc["os_name"], crash_doc["os_version"], crash_doc["cpu_name"], None,
                                                   crash_doc["crash"], crash_doc["crashsignature"], crash_doc["location_id_list"])
         except KeyboardInterrupt:
             raise
@@ -1686,7 +1819,10 @@ class Worker():
                                 (exceptionValue, errorMessage))
 
         try:
-            valgrind_rows = self.getRows(self.historydb.db.views.default.valgrind, include_docs=True)
+            valgrind_rows = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+                                         startkey=["history_valgrind"],
+                                         endkey=["history_valgrind\u9999"],
+                                         include_docs=True)
 
             for valgrind_doc in valgrind_rows:
                 if datetime.datetime.now() - last_checkup_time > checkup_interval:
@@ -1695,8 +1831,8 @@ class Worker():
                     last_checkup_time = datetime.datetime.now()
 
                 self.update_bug_list_valgrinds(valgrind_doc["product"], valgrind_doc["branch"], valgrind_doc["buildtype"],
-                                               valgrind_doc["os_name"], valgrind_doc["os_version"], valgrind_doc["cpu_name"], timestamp,
-                                               valgrind_doc["valgrind"], valgrind_doc["valgrindsignature"])
+                                               valgrind_doc["os_name"], valgrind_doc["os_version"], valgrind_doc["cpu_name"], None,
+                                               valgrind_doc["valgrind"], valgrind_doc["valgrindsignature"], valgrind_doc["location_id_list"])
         except KeyboardInterrupt:
             raise
         except:
@@ -1707,7 +1843,10 @@ class Worker():
                             (exceptionValue, errorMessage))
 
         try:
-            assertion_rows = self.getRows(self.historydb.db.views.default.assertions, include_docs=True)
+            assertion_rows = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+                                          startkey=["history_assertion"],
+                                          endkey=["history_assertion\u9999"],
+                                          include_docs=True)
 
             for assertion_doc in assertion_rows:
                 if datetime.datetime.now() - last_checkup_time > checkup_interval:
@@ -1716,8 +1855,8 @@ class Worker():
                     last_checkup_time = datetime.datetime.now()
 
                 self.update_bug_list_assertions(assertion_doc["product"], assertion_doc["branch"], assertion_doc["buildtype"],
-                                                assertion_doc["os_name"], assertion_doc["os_version"], assertion_doc["cpu_name"], timestamp,
-                                                assertion_doc["assertion"], assertion_doc["assertionfile"])
+                                                assertion_doc["os_name"], assertion_doc["os_version"], assertion_doc["cpu_name"], None,
+                                                assertion_doc["assertion"], assertion_doc["assertionfile"], assertion_doc["location_id_list"])
         except KeyboardInterrupt:
             raise
         except:
@@ -1735,30 +1874,28 @@ class Worker():
         now       = sisyphus.utils.convertTimestamp(timestamp)
         yesterday = now - datetime.timedelta(days=1)
 
-        historydburi = self.historydb.db.__dict__['uri']
-
         try:
-            update_doc = self.historydb.getDocument('update')
+            update_doc = self.testdb.getDocument('update')
 
             if not update_doc:
                 # first time bug history updated.
-                update_doc = { "_id" : "update", historydburi : { "datetime" : timestamp, "worker_id" : self.document["_id"] }}
-                self.historydb.createDocument(update_doc)
+                update_doc = { "_id" : "update", self.testdb.dburi : { "datetime" : timestamp, "worker_id" : self.document["_id"] }}
+                self.testdb.createDocument(update_doc)
 
-            elif historydburi not in update_doc:
+            elif self.testdb.dburi not in update_doc:
                 # first time bug history updated for this db.
-                update_doc[historydburi] = { "datetime" : timestamp, "worker_id" : self.document["_id"]}
+                update_doc[self.testdb.dburi] = { "datetime" : timestamp, "worker_id" : self.document["_id"]}
 
-            elif sisyphus.utils.convertTimestamp(update_doc[historydburi]["datetime"]) > yesterday:
+            elif sisyphus.utils.convertTimestamp(update_doc[self.testdb.dburi]["datetime"]) > yesterday:
                 # either someone else is updating history or it is current and doesn't need updating
                 return False
 
             # any worker_id information is stale and can be ignored.
-            update_doc[historydburi]["worker_id"] = self.document["_id"]
-            update_doc[historydburi]["datetime"]  = timestamp
-            self.historydb.updateDocument(update_doc)
-            update_doc = self.historydb.getDocument("update")
-            if update_doc[historydburi]["worker_id"] != self.document["_id"]:
+            update_doc[self.testdb.dburi]["worker_id"] = self.document["_id"]
+            update_doc[self.testdb.dburi]["datetime"]  = timestamp
+            self.testdb.updateDocument(update_doc)
+            update_doc = self.testdb.getDocument("update")
+            if update_doc[self.testdb.dburi]["worker_id"] != self.document["_id"]:
                 # race condition. someone beat us to it.
                 return False
 
@@ -1777,11 +1914,9 @@ class Worker():
 
     def unlock_history_update(self):
 
-        historydburi = self.historydb.db.__dict__['uri']
+        update_doc = self.testdb.getDocument('update')
 
-        update_doc = self.historydb.getDocument('update')
-
-        if not update_doc or historydburi not in update_doc or update_doc[historydburi]["worker_id"] != self.document["_id"]:
+        if not update_doc or self.testdb.dburi not in update_doc or update_doc[self.testdb.dburi]["worker_id"] != self.document["_id"]:
             raise Exception('HistoryUpdateLockConflict')
 
         self.testdb.logMessage("finished updating bug histories")
@@ -1790,9 +1925,9 @@ class Worker():
         self.document["datetime"] = sisyphus.utils.getTimestamp()
         self.updateWorker(self.document)
 
-        update_doc[historydburi]["worker_id"] = None
-        update_doc[historydburi]["datetime"]  = sisyphus.utils.getTimestamp()
-        self.historydb.updateDocument(update_doc, True)
+        update_doc[self.testdb.dburi]["worker_id"] = None
+        update_doc[self.testdb.dburi]["datetime"]  = sisyphus.utils.getTimestamp()
+        self.testdb.updateDocument(update_doc, True)
 
     def killTest(self):
         # XXX: os.kill fails to kill the entire test process and children when

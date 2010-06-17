@@ -36,38 +36,37 @@
  * ***** END LICENSE BLOCK ***** */
 
 /**
- * loadScript 
+ * loadScript
  *
  * Synchronously loads a script specified by the url aScriptUrl
- * and evaluates it in the scope of the object aScope. If aScope
- * is not specified, the global object is used.
+ * and evaluates it in the scope of the window object.
  *
- * loadScript will be aborted if the script has not loaded in 
+ * loadScript will be aborted if the script has not loaded in
  * loadScript.timeout milliseconds. Note that the script is loaded
  * synchronously and will block the browser until it completes or
  * times out.
  *
- * The script url, source and XMLHttpRequest object for the last 
+ * The script url, source and XMLHttpRequest object for the last
  * invocation are available in :
- * loadScript.scripturl 
+ * loadScript.scripturl
  * loadScript.source
  * loadScript.xmlhttp
  */
 
-function loadScript(aScriptUrl, aScope)
+function loadScript(aScriptUrl)
 {
-    dlog('loadScript: aScriptUrl:  ' + aScriptUrl + ', aScope: ' + aScope);
+    dlog('loadScript: aScriptUrl:  ' + aScriptUrl);
 
-    loadScriptXHR(aScriptUrl, aScope);
+    loadScriptXHR(aScriptUrl);
 }
 
-function loadScriptXHR(aScriptUrl, aScope)
+function loadScriptXHR(aScriptUrl)
 {
-    dlog('loadScriptXHR: aScriptUrl:  ' + aScriptUrl + ', aScope: ' + aScope);
+    dlog('loadScriptXHR: aScriptUrl:  ' + aScriptUrl);
 
     loadScriptXHR.scripturl = aScriptUrl;
     loadScriptXHR.source    = '';
-    
+
     loadScriptXHR.xmlhttp = new XMLHttpRequest();
     loadScriptXHR.xmlhttp.overrideMimeType('text/plain');
     loadScriptXHR.xmlhttp.open('GET', aScriptUrl, false);
@@ -81,36 +80,38 @@ function loadScriptXHR(aScriptUrl, aScope)
         loadScriptXHR.watcherid = null;
         loadScriptXHR.source = loadScriptXHR.xmlhttp.responseText;
 
-        if (typeof aScope == 'undefined')
+        try
         {
             dlog('loadScriptXHR: eval(...): aScope undefined. this: ' + this + ', window: ' + window);
             window.eval(loadScriptXHR.source);
+            return;
         }
-        else
+        catch(ex)
         {
-            if ('location' in aScope && 'href' in aScope.location)
+            dlog('loadScriptXHR(' + loadScriptXHR.scripturl + ') failed to eval script ' +
+                  ex + ' ' +
+                  loadScriptXHR.xmlhttp.statusText);
+        }
+
+        if ('location' in window && 'href' in window.location)
+        {
+            // if the scope object is a window or document with a location
+            // object, evaluate the script in the context of the scope
+            // by injecting a javascript: url to overcome cross domain
+            // eval alias issues.
+            try
             {
-                // if the scope object is a window or document with a location
-                // object, evaluate the script in the context of the scope
-                // by injecting a javascript: url to overcome cross domain
-                // eval alias issues.
                 dlog('loadScriptXHR: using javascript:');
-                aScope.location.href = 'javascript:' + encodeURIComponent(loadScriptXHR.source);
+                window.location.href = 'javascript:' + encodeURIComponent(loadScriptXHR.source) + ';void(0);';
+                return;
             }
-            else
+            catch(ex)
             {
-                dlog('loadScriptXHR: using script element in window');
-                var script = aScope.__parent__.document.createElement('script'); 
-                script.setAttribute('type', 'text/javascript');
-                aScope.__parent__.document.documentElement.appendChild(script);
-                script.appendTextNode(loadScriptXHR.source);
+                cdump('loadScriptXHR(' + loadScriptXHR.scripturl + ') failed to inject script ' +
+                      ex + ' ' +
+                      loadScriptXHR.xmlhttp.statusText);
             }
         }
-    }
-    else
-    {
-        throw('loadScriptXHR(' + loadScriptXHR.scripturl + ') failed to load  ' + 
-              loadScriptXHR.xmlhttp.statusText);
     }
 }
 
@@ -119,9 +120,9 @@ function watchLoadScriptXHR()
     try
     {
         loadScriptXHR.xmlhttp.abort();
-        cdump('loadScriptXHR(' + loadScriptXHR.scripturl + 
-              '): Timed out (' + 
-              (loadScriptXHR.timeout/1000) + 
+        cdump('loadScriptXHR(' + loadScriptXHR.scripturl +
+              '): Timed out (' +
+              (loadScriptXHR.timeout/1000) +
               ' seconds)');
     }
     catch(ex)
@@ -131,6 +132,3 @@ function watchLoadScriptXHR()
 }
 
 loadScriptXHR.timeout = 120000;
-
-
-

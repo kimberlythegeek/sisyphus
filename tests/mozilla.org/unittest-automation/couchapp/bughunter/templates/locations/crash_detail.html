@@ -1,0 +1,69 @@
+<div class="detail">
+<table>
+
+<tr>
+<td>Crash</td>
+<td>
+<p>
+<%= segmented_search %>
+</p>
+</td>
+</tr>
+
+<tr>
+<td>
+Test
+</td>
+<td>
+<%= test %>
+</td>
+</tr>
+
+<tr>
+<td>
+Test Arguments
+</td>
+<td>
+<%= extra_test_args %>
+</td>
+</tr>
+
+<tr>
+<td>
+Date
+</td>
+<td>
+<%= datetime %>
+</td>
+</tr>
+
+<tr>
+<td>
+Result
+</td>
+<td>
+<a href='/unittest/_design/bughunter/_list/results/by_id?include_docs=true&startkey=["<%= result_id %>"]&endkey=["<%= result_id %>\\u9999"]'><%= result_id %></a>
+</td>
+</tr>
+
+<tr>
+<td>
+Location
+</td>
+<td>
+<a href="<%= location_id %>"><%= location_id %></a>
+</td>
+</tr>
+
+<tr>
+<td>
+extra
+</td>
+<td>
+<%= extra %>
+</td>
+</tr>
+
+</table>
+
+</div>

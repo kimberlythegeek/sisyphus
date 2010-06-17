@@ -107,6 +107,11 @@ specified, the default is equivalent to a tests.json file containing:
                       help='uri to couchdb server. ' +
                       'Defaults to http://127.0.0.1:5984')
 
+    parser.add_option('--database', action='store', type='string',
+                      dest='databasename',
+                      help='name of database, defaults to sisyphus.',
+                      default='sisyphus')
+
     parser.add_option('--tests', action='store', type='string',
                       dest='tests_dest',
                       default=None,
@@ -121,7 +126,7 @@ specified, the default is equivalent to a tests.json file containing:
 
     (options, args) = parser.parse_args()
 
-    unittestdb     = sisyphus.couchdb.Database(options.databaseuri + '/unittest')
+    unittestdb     = sisyphus.couchdb.Database(options.couchserveruri + '/' + options.databasename)
     unittestdb.sync_design_doc(os.path.join(os.path.dirname(sys.argv[0]), '_design'))
 
     tests_doc = {"_id" : "tests", "type" : "tests", "branches" : {}}
@@ -158,7 +163,7 @@ specified, the default is equivalent to a tests.json file containing:
     # one with the same _id. In general we will retrieve this by _id otherwise.
     # using a fixed _id allows us to replicate databases and not generate more
     # than one branches document.
-    tests_rows = unittestdb.db.views.default.tests()
+    tests_rows = unittestdb.db.views.unittest.tests()
 
     if len(tests_rows) > 1:
         raise Exception("unittest database has more than one tests document")

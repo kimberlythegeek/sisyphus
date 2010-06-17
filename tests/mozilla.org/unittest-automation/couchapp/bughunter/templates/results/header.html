@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <title>Unit Test Results - Bug Hunter</title>
+    <link rel="stylesheet" href="../../style/main.css" type="text/css"/>
+  </head>
+  <body>
+
+  <div id="menu">
+  <a title="Go to the Crash Test database" href="/crashtest/_design/bughunter/index.html">Crash Test</a>
+  <a title="Go to the Unit Test database" href="/unittest/_design/bughunter/index.html">Unit Test</a>
+  <a title="Go to the History database" href="/history/_design/bughunter/index.html">History</a>
+  </div>
+
+<h1>Unit Test Results</h1>
+
+<table>
+
+<tr>
+<td>
+Result id:
+</td>
+<td>
+<%= result_id %>
+</td>
+</tr>
+
+<tr>
+<td>
+Test
+</td>
+<td>
+<%= test %>
+</td>
+</tr>
+
+<tr>
+<td>
+Test Arguments
+</td>
+<td>
+<%= extra_test_args %>
+</td>
+</tr>
+
+<tr>
+<td>
+Product
+</td>
+<td>
+<%= product %>
+</td>
+</tr>
+
+<tr>
+<td>
+Branch
+</td>
+<td>
+<%= branch %>
+</td>
+</tr>
+
+<tr>
+<td>
+Build type
+</td>
+<td>
+<%= buildtype %>
+</td>
+</tr>
+
+<tr>
+<td>
+Operating System
+</td>
+<td>
+<%= os_name %> <%= os_version %>
+</td>
+</tr>
+
+<tr>
+<td>
+Processor
+</td>
+<td>
+<%= cpu_name %>
+</td>
+</tr>
+
+<tr>
+<td>
+Datetime
+</td>
+<td>
+<%= datetime %>
+</td>
+</tr>
+
+<tr>
+<td>
+Changeset
+</td>
+<td>
+<%= changeset %>
+</td>
+</tr>
+
+<tr>
+<td>
+Exit Status
+</td>
+<td>
+<%= exitstatus %>
+</td>
+</tr>
+
+<tr>
+<td>
+Return Code
+</td>
+<td>
+<%= returncode %>
+</td>
+</tr>
+
+<tr>
+<td>
+Attachments
+</td>
+</tr>
+
+<tr>
+<td>
+<%= attachments %>
+</td>
+</tr>
+
+</table>

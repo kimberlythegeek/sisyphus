@@ -55,14 +55,21 @@ Example:
 %prog --couch http://couchserver
 '''
     parser = OptionParser(usage=usage)
+
     parser.add_option('--couch', action='store', type='string',
                       dest='couchserveruri',
                       default='http://127.0.0.1:5984',
                       help='uri to couchdb server. ' +
                       'Defaults to http://127.0.0.1:5984')
+
+    parser.add_option('--database', action='store', type='string',
+                      dest='databasename',
+                      help='name of database, defaults to sisyphus.',
+                      default='sisyphus')
+
     (options, args) = parser.parse_args()
 
-    crashtestdb = sisyphus.couchdb.Database(options.couchserveruri + '/crashtest')
+    crashtestdb = sisyphus.couchdb.Database(options.couchserveruri + '/' + options.databasename)
 
     crashtestdb.sync_design_doc(os.path.join(os.path.dirname(sys.argv[0]), '_design'))
 

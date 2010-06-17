@@ -5,8 +5,8 @@
   div with id="version" to output the version string.
 */
 
-var _version = '0.0.2.23';
-var _date = 'Oct 18, 2009'
+var _version = '0.0.2.24';
+var _date = 'May 29, 2010'
 
   function sayVersion()
 {

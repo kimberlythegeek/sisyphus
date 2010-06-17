@@ -438,7 +438,7 @@ for step in step1; do # dummy loop for handling exits
     fi
 
     if [[ -n "$TEST_MOZILLA_HG" ]]; then
-        export TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-tip}
+        export TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}
     fi
 
     # js shell builds

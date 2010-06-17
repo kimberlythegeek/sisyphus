@@ -66,7 +66,7 @@ def main():
 Initialize builds database at the specified couchdb server.
 
 Example:
-%prog -couch http://couchserver --versions 3.5:1.9.1,3.6:1.9.2,3.7:1.9.3
+%prog --couch http://couchserver --versions 3.5:1.9.1,3.6:1.9.2,3.7:1.9.3
 
 
 '''
@@ -74,6 +74,10 @@ Example:
     parser.add_option('--couch', action='store', type='string',
                       dest='couchserveruri',
                       help='uri to couchdb server.')
+    parser.add_option('--database', action='store', type='string',
+                      dest='databasename',
+                      help='name of database, defaults to sisyphus.',
+                      default='sisyphus')
     parser.add_option('--versions', action='store', type='string',
                       dest='supported_versions',
                       default='3.5:1.9.1,3.6:1.9.2,3.7:1.9.3',
@@ -85,9 +89,9 @@ Example:
          parser.print_help()
          exit(1)
 
-    buildsdb = sisyphus.couchdb.Database(options.couchserveruri + '/builds')
+    sisyphusdb = sisyphus.couchdb.Database(options.couchserveruri + '/' + options.databasename)
 
-    buildsdb.sync_design_doc(os.path.join(os.path.dirname(sys.argv[0]), '_design'))
+    sisyphusdb.sync_design_doc(os.path.join(os.path.dirname(sys.argv[0]), '_design'))
 
     branches_doc = {"_id" : "branches", "type" : "branches", "branches": [], "major_versions" : [], "version_to_branch": {}}
     versionsbranches    = options.supported_versions.split(',')
@@ -97,20 +101,20 @@ Example:
          branches_doc["major_versions"].append(ordered_ffversion(version))
          branches_doc["version_to_branch"][ordered_ffversion(version)] = branch
 
-    branches_rows = buildsdb.db.views.default.branches()
+    branches_rows = sisyphusdb.getRows(sisyphusdb.db.views.builds.branches)
 
     if len(branches_rows) > 1:
         raise Exception("builds database has more than one branches document")
 
     if len(branches_rows) == 0:
-        docinfo = buildsdb.db.create(branches_doc)
-        doc = buildsdb.db.get("branches")
+        docinfo = sisyphusdb.createDocument(branches_doc)
+        doc = sisyphusdb.getDocument("branches")
     else:
         doc = branches_rows[0]
         doc.branches = branches_doc["branches"]
         doc.version_to_branch = branches_doc["version_to_branch"]
 
-    buildsdb.db.update(doc)
+    sisyphusdb.updateDocument(doc)
 
 if __name__ == '__main__':
     main()

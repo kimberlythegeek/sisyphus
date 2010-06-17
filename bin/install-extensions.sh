@@ -124,8 +124,9 @@ for extensionloc in $extensiondir/all/*.xpi $extensiondir/$OSID/*.xpi; do
     fi
     echo installing $extensionloc
 
-    # unzip the extension if it does not already exist.
-    if [[ ! -e $extensioninstalldir ]]; then
+    # unzip the extension if it does not already exist
+    # or if it is newer than the already unpacked version.
+    if [[ ! -e $extensioninstalldir || $extensionloc -nt $extensioninstalldir ]]; then
         create-directory.sh -n -d $extensioninstalldir
         unzip -d $extensioninstalldir $extensionloc
     fi

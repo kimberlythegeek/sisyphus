@@ -1,0 +1,63 @@
+<div class="detail">
+<table>
+
+<tr>
+<td>Crash</td>
+<td>
+<p>
+<%= segmented_search %>
+</p>
+</td>
+</tr>
+
+<tr>
+<td>
+Date
+</td>
+<td>
+<%= datetime %>
+</td>
+</tr>
+
+<tr>
+<td>
+Result
+</td>
+<td>
+<a href='../../_list/results/results_by_result_id?include_docs=true&startkey=["<%= result_id %>"]&endkey=["<%= result_id %>\\u9999"]'><%= result_id %></a>
+</td>
+</tr>
+
+<tr>
+<td>
+Location
+</td>
+<td>
+<a href="<%= location_id %>"><%= location_id %></a>
+</td>
+</tr>
+
+<tr>
+<td>
+extra
+</td>
+<td>
+<%= extra %>
+</td>
+</tr>
+
+<tr>
+<td>
+Attachments
+</td>
+</tr>
+
+<tr>
+<td>
+<%= attachments %>
+</td>
+</tr>
+
+</table>
+
+</div>

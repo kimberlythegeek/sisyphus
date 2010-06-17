@@ -67,8 +67,8 @@ os.chdir(sisyphus_dir)
 
 class BuildWorker(sisyphus.worker.Worker):
 
-    def __init__(self, startdir, programPath, couchserveruri, worker_comment, debug):
-        sisyphus.worker.Worker.__init__(self, startdir, programPath, couchserveruri, 'builds', worker_comment, debug)
+    def __init__(self, startdir, programPath, couchserveruri, couchdbname, worker_comment, debug):
+        sisyphus.worker.Worker.__init__(self, "builder", startdir, programPath, couchserveruri, couchdbname, worker_comment, debug)
 
     def doWork(self):
 
@@ -96,7 +96,7 @@ class BuildWorker(sisyphus.worker.Worker):
             time.sleep(waittime)
             waittime = 3600
 
-            branches_doc = self.buildsdb.getDocument('branches')
+            branches_doc = self.testdb.getDocument('branches')
 
             branches = branches_doc['branches']
 
@@ -111,7 +111,7 @@ class BuildWorker(sisyphus.worker.Worker):
                     build_doc = self.publishNewBuild(build_doc)
                     if build_doc["state"] == "error":
                         # A build error occurred. Do not wait before attempting new builds
-                        wait = 0
+                        waittime = 0
 
             if datetime.datetime.now() - daily_last_checkup_time > daily_checkup_interval:
                 self.update_bug_histories()
@@ -132,6 +132,10 @@ Example:
     parser.add_option('--couch', action='store', type='string',
                       dest='couchserveruri',
                       help='uri to couchdb server')
+    parser.add_option('--database', action='store', type='string',
+                      dest='databasename',
+                      help='name of database, defaults to sisyphus.',
+                      default='sisyphus')
     parser.add_option('--comment', action='store', type='string',
                       dest='worker_comment',
                       default='',
@@ -151,12 +155,15 @@ Example:
 
     exception_counter = 0
 
-    this_worker     = BuildWorker(startdir, programPath, options.couchserveruri, options.worker_comment, options.debug)
+    this_worker = BuildWorker(startdir, programPath,
+                              options.couchserveruri, options.databasename,
+                              options.worker_comment, options.debug)
 
     programModTime = os.stat(programPath)[stat.ST_MTIME]
 
     this_worker.logMessage('starting worker %s %s %s with program dated %s' %
-                          (this_worker.document['os_name'], this_worker.document['os_version'], this_worker.document['cpu_name'],
+                          (this_worker.document['os_name'], this_worker.document['os_version'],
+                           this_worker.document['cpu_name'],
                            time.ctime(programModTime)))
     while True:
         try:
@@ -166,8 +173,6 @@ Example:
         except SystemExit:
             raise
         except:
-
-            this_worker.signature_doc = None
 
             exception_counter += 1
             if exception_counter > 100:
@@ -215,7 +220,7 @@ if __name__ == "__main__":
         exit(2)
 
     if restart:
-        this_worker.logMessage('Program restarting', False)
+        this_worker.logMessage('Program restarting', True)
         this_worker.reloadProgram()
     else:
         this_worker.logMessage('Program terminating', False)

@@ -72,8 +72,8 @@ if os.path.exists(stackwalkPath):
 
 class UnitTestWorker(sisyphus.worker.Worker):
 
-    def __init__(self, startdir, programPath, couchserveruri, worker_comment, debug):
-        sisyphus.worker.Worker.__init__(self, startdir, programPath, couchserveruri, 'unittest', worker_comment, debug)
+    def __init__(self, startdir, programPath, couchserveruri, couchdbname, worker_comment, debug):
+        sisyphus.worker.Worker.__init__(self, "unittest", startdir, programPath, couchserveruri, couchdbname, worker_comment, debug)
 
     def checkForUpdate(self, job_doc):
         if os.stat(self.programPath)[stat.ST_MTIME] != self.programModTime:
@@ -98,7 +98,7 @@ class UnitTestWorker(sisyphus.worker.Worker):
         timestamp = sisyphus.utils.getTimestamp()
 
         result_doc = {
-            "type"            : "result",
+            "type"            : "result_header_unittest",
             "product"         : product,
             "branch"          : branch,
             "buildtype"       : buildtype,
@@ -111,8 +111,7 @@ class UnitTestWorker(sisyphus.worker.Worker):
             "changeset"       : self.document[branch]["changeset"],
             "datetime"        : timestamp,
             "exitstatus"      : "",
-            "returncode"      : 0,
-            "ASSERTIONS"      : {},
+            "returncode"      : None,
             }
 
         self.testdb.createDocument(result_doc)
@@ -133,10 +132,39 @@ class UnitTestWorker(sisyphus.worker.Worker):
         reProfileName    = re.compile(r'environment: profilename=(.*)')
         reAssertionFail  = re.compile(r'Assertion fail.*')
         reASSERTION      = re.compile(r'.*ASSERTION: (.*), file (.*), line [0-9]+.*')
-        reXpctest        = re.compile(r'^(TEST-.*) \| ([^\|]*) \|')
-        reReftest        = re.compile(r'^REFTEST (TEST-.*) \| ([^\|]*) \|')
-        reMochitest      = re.compile(r'^[0-9]+ INFO (TEST-.*) \| ([^\|]*) \|')
         reValgrindLeader = re.compile(r'==[0-9]+==')
+        # reftest
+        # REFTEST INFO | Loading testid
+        #       action: process previously collected messages
+        #               for previous testid, set current testid.
+        # REFTEST TEST-PASS | testid | message
+        # REFTEST TEST-KNOWN-FAIL | testid | message
+        #       action: If all results selected, output unittest result.
+        # REFTEST TEST-UNEXPECTED-FAIL | testid | message
+        #       action: Output unittest result.
+        reReftestStart   = re.compile(r'^REFTEST INFO \| Loading ([^\|]*)')
+        reReftestResult  = re.compile(r'^REFTEST TEST-(.*) \|')
+        # mochitest
+        # 9999 INFO Running testid...
+        #       action: process previously collected messages
+        #               for previous testid, set current testid.
+        # 9999 INFO TEST-PASS | testid | message
+        # 9999 INFO TEST-KNOWN-FAIL | testid | message
+        #       action: If all results selected, output unittest result.
+        # 9999 ERROR TEST-UNEXPECTED-FAIL | testid | message
+        #       action: Output unittest result.
+        reMochitestStart = re.compile(r'^[0-9]+ INFO Running (.*)\.\.\.')
+        reMochitestResult = re.compile(r'^[0-9]+ (INFO|ERROR) TEST-(.*) \|')
+        # xpctest
+        # TEST_PASS | testid | message
+        # TEST-KNOWN-FAIL | testid | message # this may not be valid.
+        #       action: process previously collected messages 
+        #               for this testid.
+        # TEST-UNEXPECTED-FAIL | testid | message
+        #               includes overall test run message not related to xpctests.
+        #       action: process previously collected messages
+        #               for this testid.
+        reXpctestResult  = re.compile(r'^TEST-(.*) \| ([^\|]*) \|')
 
         # buffers to hold assertions and valgrind messages until
         # a test result is seen in the output.
@@ -156,7 +184,8 @@ class UnitTestWorker(sisyphus.worker.Worker):
         unittest_starttime = datetime.datetime.now()
         unittest_endtime   = unittest_starttime + unittest_timeout
 
-        last_unittest_id   = None
+        current_unittest_id   = 'startup'
+        current_unittest_type = 'unknown'
 
         # XXX: using set-build-env.sh is a kludge needed on windows which
         # allows us to use cygwin to setup the msys mozilla-build
@@ -211,56 +240,76 @@ class UnitTestWorker(sisyphus.worker.Worker):
                     if match:
                         profilename = match.group(1)
 
-                match = reReftest.match(line)
-                if not match:
-                    match = reMochitest.match(line)
-                if not match:
-                    match = reXpctest.match(line)
+                process_messages = False
+
+                match = reReftestStart.match(line)
                 if match:
-                    unittest_id = match.group(2)
-                    if options.all_test_results or re.search('UNEXPECTED', match.group(1)):
-                        # by default, only output unittest results if they are
-                        # unexpected
-                        result_unittest_doc = {
-                            "type"            : "result_unittest",
-                            "product"         : product,
-                            "branch"          : branch,
-                            "buildtype"       : buildtype,
-                            "test"            : test,
-                            "extra_test_args" : extra_test_args,
-                            "os_name"         : self.document["os_name"],
-                            "os_version"      : self.document["os_version"],
-                            "cpu_name"        : self.document["cpu_name"],
-                            "worker_id"       : self.document["_id"],
-                            "datetime"        : timestamp,
-                            "unittest_id"     : unittest_id,
-                            "unittest_result" : match.group(1),
-                            }
-                        self.testdb.createDocument(result_unittest_doc)
+                    process_messages = True
+                    next_unittest_id = match.group(1)
+                else:
+                    match = reMochitestStart.match(line)
+                    if match:
+                        process_messages = True
+                        next_unittest_id = match.group(1)
+                    else:
+                        match = reXpctestResult.match(line)
+                        if match:
+                            process_messages = True
+                            current_unittest_id = match.group(2)
+                            next_unittest_id = None
 
-                    # dump assertions and valgrind messages whenever we see a
-                    # new unittest_id.
-                    if last_unittest_id != unittest_id:
-                        self.process_assertions(result_doc["_id"], product, branch, buildtype, timestamp, assertion_list, unittest_id, test, extra_test_args)
-                        valgrind_list = self.parse_valgrind(valgrind_text)
-                        self.process_valgrind(result_doc["_id"], product, branch, buildtype, timestamp, valgrind_list, unittest_id, test,  extra_test_args)
+                if process_messages:
+                    self.process_assertions(result_doc["_id"], product, branch, buildtype, timestamp, assertion_list, current_unittest_id, test, extra_test_args)
+                    valgrind_list = self.parse_valgrind(valgrind_text)
+                    self.process_valgrind(result_doc["_id"], product, branch, buildtype, timestamp, valgrind_list, current_unittest_id, test,  extra_test_args)
 
-                        assertion_list   = []
-                        valgrind_text    = ""
-                    last_unittest_id = unittest_id
+                    assertion_list   = []
+                    valgrind_text    = ""
+                    current_unittest_id = next_unittest_id
+
+                unittest_result = 'Unknown'
+                match = reReftestResult.match(line)
+                if match:
+                    unittest_result = match.group(1)
+                else:
+                    match = reMochitestResult.match(line)
+                    if match:
+                        unittest_result = match.group(2)
+                    else:
+                        match = reXpctestResult.match(line)
+                        if match:
+                            unittest_result = match.group(1)
+                            current_unittest_id = match.group(2)
+
+                if (unittest_result != 'Unknown' and
+                    (options.all_test_results or re.search('UNEXPECTED', unittest_result))):
+                    # by default, only output unittest results if they are
+                    # unexpected
+                    result_unittest_doc = {
+                        "type"            : "result_unittest",
+                        "product"         : product,
+                        "branch"          : branch,
+                        "buildtype"       : buildtype,
+                        "test"            : test,
+                        "extra_test_args" : extra_test_args,
+                        "os_name"         : self.document["os_name"],
+                        "os_version"      : self.document["os_version"],
+                        "cpu_name"        : self.document["cpu_name"],
+                        "worker_id"       : self.document["_id"],
+                        "datetime"        : timestamp,
+                        "unittest_id"     : current_unittest_id,
+                        "unittest_result" : unittest_result,
+                        }
+                    self.testdb.createDocument(result_unittest_doc)
 
                 match = reASSERTION.match(line)
                 if match:
                     # record the assertion for later output when we know the test
                     assertion_list.append({
                             "message" : match.group(1),
-                            "file"    : match.group(2),
+                            "file"    : re.sub('^([a-zA-Z]:/|/[a-zA-Z]/)', '/', re.sub(r'\\', '/', match.group(2))),
                             "datetime" : timestamp,
                             })
-                    # count the ASSERTIONS
-                    if not match.group(1) in result_doc["ASSERTIONS"]:
-                        result_doc["ASSERTIONS"][match.group(1)] = 0
-                    result_doc["ASSERTIONS"][match.group(1)] += 1
 
                 match = reValgrindLeader.match(line)
                 if match:
@@ -322,9 +371,9 @@ class UnitTestWorker(sisyphus.worker.Worker):
         self.testdb.updateDocument(result_doc)
 
         # process any valgrind messages not associated with a test.
-        self.process_assertions(result_doc["_id"], product, branch, buildtype, timestamp, assertion_list, "tail", test, extra_test_args)
+        self.process_assertions(result_doc["_id"], product, branch, buildtype, timestamp, assertion_list, "shutdown", test, extra_test_args)
         valgrind_list = self.parse_valgrind(valgrind_text)
-        self.process_valgrind(result_doc["_id"], product, branch, buildtype, timestamp, valgrind_list, "tail", test, extra_test_args)
+        self.process_valgrind(result_doc["_id"], product, branch, buildtype, timestamp, valgrind_list, "shutdown", test, extra_test_args)
 
     def doWork(self):
 
@@ -342,7 +391,6 @@ class UnitTestWorker(sisyphus.worker.Worker):
             if datetime.datetime.now() - last_checkup_time > checkup_interval:
                 self.checkForUpdate(job_doc)
                 self.testdb.checkDatabase()
-                self.historydb.checkDatabase()
                 self.killZombies()
                 last_checkup_time = datetime.datetime.now()
 
@@ -435,7 +483,7 @@ class UnitTestWorker(sisyphus.worker.Worker):
         startkey = [self.document["os_name"], self.document["cpu_name"], self.document["os_version"]]
         endkey   = [self.document["os_name"], self.document["cpu_name"], self.document["os_version"] + '\u9999']
 
-        job_rows = self.getRows(self.testdb.db.views.default.jobs, startkey=startkey, endkey=endkey)
+        job_rows = self.getRows(self.testdb.db.views.unittest.jobs, startkey=startkey, endkey=endkey)
 
         return job_rows
 
@@ -497,7 +545,7 @@ class UnitTestWorker(sisyphus.worker.Worker):
                 # special case chunking mochitest-plain
                 if test != "mochitest-plain":
                     job_doc = {
-                        "type"       : "job",
+                        "type"       : "job_unittest",
                         "os_name"    : os_name,
                         "os_version" : os_version,
                         "cpu_name"   : cpu_name,
@@ -511,7 +559,7 @@ class UnitTestWorker(sisyphus.worker.Worker):
                     for chunk in range(total_chunks):
                         chunk_options = '%s --total-chunks=%d --this-chunk=%d' % (extra_test_args, total_chunks, chunk+1)
                         job_doc = {
-                            "type"       : "job",
+                            "type"       : "job_unittest",
                             "os_name"    : os_name,
                             "os_version" : os_version,
                             "cpu_name"   : cpu_name,
@@ -536,6 +584,11 @@ Example:
     parser.add_option('--couch', action='store', type='string',
                       dest='couchserveruri',
                       help='uri to couchdb server')
+
+    parser.add_option('--database', action='store', type='string',
+                      dest='databasename',
+                      help='name of database, defaults to sisyphus.',
+                      default='sisyphus')
 
     parser.add_option('--comment', action='store', type='string',
                       dest='worker_comment',
@@ -596,7 +649,7 @@ Example:
 
     exception_counter = 0
 
-    this_worker     = UnitTestWorker(startdir, programPath, options.couchserveruri, options.worker_comment, options.debug)
+    this_worker     = UnitTestWorker(startdir, programPath, options.couchserveruri, options.databasename, options.worker_comment, options.debug)
 
     programModTime = os.stat(programPath)[stat.ST_MTIME]
 
@@ -661,7 +714,7 @@ if __name__ == "__main__":
         exit(2)
 
     if restart:
-        this_worker.logMessage('Program restarting', False)
+        this_worker.logMessage('Program restarting', True)
         this_worker.reloadProgram()
     else:
         this_worker.logMessage('Program terminating', False)

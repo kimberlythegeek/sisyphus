@@ -1,0 +1,52 @@
+<div class="detail">
+<table>
+
+<tr>
+<td>Valgrind</td>
+<td>
+<p>
+<%= segmented_search %>
+</p>
+</td>
+</tr>
+
+<tr>
+<td>
+Date range
+</td>
+<td>
+<%= firstdatetime %> to <%= lastdatetime %>
+</td>
+</tr>
+
+<tr>
+<td>
+urls
+</td>
+<td>
+<%= location_id_links %>
+</td>
+</tr>
+
+<tr>
+<td>
+Open bugs
+</td>
+<td>
+<a href='https://bugzilla.mozilla.org/buglist.cgi?bugidtype=include&query_format=advanced&bug_id=<%= open_bugs %>'><%= open_bugs %></a>
+</td>
+</tr>
+
+<tr>
+<td>
+Closed bugs
+</td>
+<td>
+<a href='https://bugzilla.mozilla.org/buglist.cgi?bugidtype=include&query_format=advanced&bug_id=<%= closed_bugs %>'>
+<%= closed_bugs %>
+</td>
+</tr>
+
+</table>
+
+</div>

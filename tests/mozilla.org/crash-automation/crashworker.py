@@ -72,8 +72,8 @@ stackwalkPath = os.environ.get('MINIDUMP_STACKWALK', "/usr/local/bin/minidump_st
 
 class CrashTestWorker(sisyphus.worker.Worker):
 
-    def __init__(self, startdir, programPath, couchserveruri, worker_comment, debug):
-        sisyphus.worker.Worker.__init__(self, startdir, programPath, couchserveruri, 'crashtest', worker_comment, debug)
+    def __init__(self, startdir, programPath, couchserveruri, couchdbname, worker_comment, debug):
+        sisyphus.worker.Worker.__init__(self, "crashtest", startdir, programPath, couchserveruri, couchdbname, worker_comment, debug)
         self.signature_doc = None
         self.document['signature_id'] = None
         self.updateWorker(self.document)
@@ -299,7 +299,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
         result_doc = {
             "_id"               : "%s_result_%05d_%s" % (self.signature_doc["_id"], url_index, self.document['_id']),
-            "type"              : "result",
+            "type"              : "result_header_crashtest",
             "product"           : product,
             "branch"            : branch,
             "buildtype"         : buildtype,
@@ -313,18 +313,15 @@ class CrashTestWorker(sisyphus.worker.Worker):
             "major_version"     : self.signature_doc["major_version"],
             "signature"         : self.signature_doc["signature"],
             "bug_list"          : self.signature_doc["bug_list"],
-            "os_versionhash"    : self.signature_doc["os_versionhash"],
-            "versionhash"       : self.signature_doc["versionhash"],
-            "major_versionhash" : self.signature_doc["major_versionhash"],
-            "ASSERTIONS"        : {},
             "reproduced"        : False,
             "test"              : "crashtest",
             "extra_test_args"   : None,
+            "steps"             : [] # steps Spider took on the page. 
             }
 
         self.testdb.createDocument(result_doc)
 
-        page               = "head"
+        page               = "startup"
         executablepath     = ""
         profilename        = ""
         reExecutablePath   = re.compile(r'environment: TEST_EXECUTABLEPATH=(.*)')
@@ -332,7 +329,8 @@ class CrashTestWorker(sisyphus.worker.Worker):
         reAssertionFail    = re.compile(r'Assertion fail.*')
         reASSERTION        = re.compile(r'.*ASSERTION: (.*), file (.*), line [0-9]+.*')
         reValgrindLeader   = re.compile(r'==[0-9]+==')
-        reSpiderBegin      = re.compile(r'Spider: Begin loading (.*)')
+        reSpiderBegin      = re.compile(r'^Spider: Begin loading (.*)')
+        reSpider           = re.compile(r'^Spider:')
         reUrlExitStatus    = re.compile(r'(http.*): EXIT STATUS: (.*) [(].*[)].*')
         reExploitableClass = re.compile(r'^Exploitability Classification: (.*)')
         reExploitableTitle = re.compile(r'^Recommended Bug Title: (.*)')
@@ -384,6 +382,11 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 if match:
                     profilename = match.group(1)
 
+            # record the steps Spider took
+            match = reSpider.match(line)
+            if match:
+                result_doc['steps'].append(line.strip())
+
             # dump assertions and valgrind messages whenever we see a
             # new page being loaded.
             match = reSpiderBegin.match(line)
@@ -413,13 +416,9 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 # record the assertion for later output when we know the test
                 assertion_list.append({
                         "message" : match.group(1),
-                        "file"    : match.group(2),
+                        "file"    : re.sub('^([a-zA-Z]:/|/[a-zA-Z]/)', '/', re.sub(r'\\', '/', match.group(2))),
                         "datetime" : timestamp,
                         })
-                # count the ASSERTIONS
-                if not match.group(1) in result_doc["ASSERTIONS"]:
-                    result_doc["ASSERTIONS"][match.group(1)] = 0
-                result_doc["ASSERTIONS"][match.group(1)] += 1
 
             match = reValgrindLeader.match(line)
             if match:
@@ -449,8 +448,33 @@ class CrashTestWorker(sisyphus.worker.Worker):
             if len(dumpFiles) > 0:
                 self.logMessage("runTest: %s: %d dumpfiles found in /tmp/%s" % (url, len(dumpFiles), profilename))
 
+            icrashreport = 0
+
             for dumpFile in dumpFiles:
+                icrashreport += 1
                 self.logMessage("runTest: processing dump: %s" % (dumpFile))
+                # collect information from the dump's extra file first
+                # since it contains information about hangs, plugins, etc.
+                data = ''
+                extraFile = dumpFile.replace('.dmp', '.extra')
+                try:
+                    extraFileHandle = open(extraFile, 'r')
+                    extradict = {}
+                    for extraline in extraFileHandle:
+                        data += extraline
+                        extrasplit = extraline.rstrip().split('=', 1)
+                        extradict[extrasplit[0]] = extrasplit[1]
+                except:
+                    exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                    errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+                    self.logMessage('runTest: exception processing extra: %s, %s' % (exceptionValue, errorMessage))
+
+                finally:
+                    try:
+                        extraFileHandle.close()
+                    except:
+                        pass
+
                 # use timed_run.py to run stackwalker since it can hang on
                 # win2k3 at least...
                 self.debugMessage("/usr/bin/python " + sisyphus_dir + "/bin/timed_run.py")
@@ -471,7 +495,18 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     self.debugMessage("stackwalking: stdout: %s" % (stdout))
                     self.debugMessage("stackwalking: stderr: %s" % (stderr))
 
-                    result_doc = self.testdb.saveAttachment(result_doc, 'crashreport', stdout, 'text/plain', True, True)
+                    # if the extra data fingers the plugin file but it doesn't
+                    # specify the plugin version, grep it from the crash report
+                    if ('PluginFilename' in extradict and
+                        'PluginVersion' in extradict and
+                        extradict['PluginFilename'] and
+                        not extradict['PluginVersion']):
+                        rePluginVersion = re.compile(r'0x[0-9a-z]+ \- 0x[0-9a-z]+  %s  (.*)' % extradict['PluginFilename'])
+
+                        match = re.search(rePluginVersion, stdout)
+                        if match:
+                            extradict['PluginVersion'] =  match.group(1)
+
                 except:
                     exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
                     errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
@@ -479,28 +514,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
                 result_doc["reproduced"] = True
 
-                crash_data = self.parse_crashreport(stdout)
-                self.process_crashreport(result_doc["_id"], product, branch, buildtype, timestamp, crash_data, page, "crashtest", extra_test_args)
-
-                data = ''
-                extraFile = dumpFile.replace('.dmp', '.extra')
-                try:
-                    extraFileHandle = open(extraFile, 'r')
-                    for extraline in extraFileHandle:
-                        data += extraline
-                    result_doc = self.testdb.saveAttachment(result_doc, 'extra', data, 'text/plain', True, True)
-                except:
-                    exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-                    errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
-                    self.logMessage('runTest: exception processing extra: %s, %s' % (exceptionValue, errorMessage))
-
-                finally:
-                    try:
-                        extraFileHandle.close()
-                    except:
-                        pass
-                # Ignore multiple dumps
-                break
+                self.process_crashreport(result_doc["_id"], product, branch, buildtype, timestamp, stdout, page, "crashtest", extra_test_args, extradict)
 
         self.testdb.updateDocument(result_doc)
 
@@ -515,7 +529,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
             try:
                 worker_rows = self.getAllWorkers()
-                branches_doc  = self.buildsdb.getDocument('branches')
+                branches_doc  = self.testdb.getDocument('branches')
 
                 for worker_doc in worker_rows:
                     # Skip other workers who match us exactly but do reissue a
@@ -557,14 +571,14 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
     def getMatchingWorkerIds(self, startkey=None, endkey=None):
 
-        matching_worker_rows = self.getRows(self.testdb.db.views.default.matching_workers, startkey=startkey, endkey=endkey)
+        matching_worker_rows = self.getRows(self.testdb.db.views.crashtest.matching_workers, startkey=startkey, endkey=endkey)
         return matching_worker_rows
 
     def checkIfUrlAlreadyTested(self, signature_doc, url_index):
 
-        startkey = "%s_result_%05d_%s" % (signature_doc["_id"], url_index, self.document['_id'])
-        endkey   = "%s_result_%05d\u9999" % (signature_doc["_id"], url_index);
-        result_rows = self.getRows(self.testdb.db.views.default.results_all, startkey=startkey, endkey=endkey, include_docs=True)
+        startkey = ["result_header_crashtest", "%s_result_%05d_%s" % (signature_doc["_id"], url_index, self.document['_id'])]
+        endkey   = ["result_header_crashtest", "%s_result_%05d\u9999" % (signature_doc["_id"], url_index)];
+        result_rows = self.getRows(self.testdb.db.views.bughunter.results_by_type, startkey=startkey, endkey=endkey, include_docs=True)
         self.debugMessage('checkIfUrlAlreadyTested: %s' % (len(result_rows) != 0))
 
         # only count already tested if this worker has tested the url.
@@ -585,7 +599,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
         for attempt in self.testdb.max_db_attempts:
             try:
-                pending_job_rows = self.testdb.db.views.default.pending_jobs(startkey=startkey, endkey=endkey, skip=skip, limit=limit)
+                pending_job_rows = self.testdb.db.views.crashtest.pending_jobs(startkey=startkey, endkey=endkey, skip=skip, limit=limit)
                 self.debugMessage('getPendingJobs: startkey: %s, endkey: %s, matches: %d' % (startkey, endkey, len(pending_job_rows)))
                 break
             except KeyboardInterrupt:
@@ -618,7 +632,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
     def getAllJobs(self):
 
-        job_rows = self.getRows(self.testdb.db.views.default.jobs_by_worker)
+        job_rows = self.getRows(self.testdb.db.views.crashtest.jobs_by_worker)
 
         return job_rows
 
@@ -915,7 +929,6 @@ class CrashTestWorker(sisyphus.worker.Worker):
             if datetime.datetime.now() - last_checkup_time > checkup_interval:
                 self.checkForUpdate()
                 self.testdb.checkDatabase()
-                self.historydb.checkDatabase()
                 self.killZombies()
                 self.freeOrphanJobs()
                 last_checkup_time = datetime.datetime.now()
@@ -942,7 +955,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
                     url_index     = 0
                     major_version = self.signature_doc["major_version"]
-                    branches_doc  = self.buildsdb.getDocument("branches")
+                    branches_doc  = self.testdb.getDocument("branches")
                     branch        = branches_doc["version_to_branch"][major_version]
 
                     build_doc    = self.BuildDocument(product, branch, buildtype,
@@ -1081,6 +1094,11 @@ Example:
                       dest='couchserveruri',
                       help='uri to couchdb server')
 
+    parser.add_option('--database', action='store', type='string',
+                      dest='databasename',
+                      help='name of database, defaults to sisyphus.',
+                      default='sisyphus')
+
     parser.add_option('--comment', action='store', type='string',
                       dest='worker_comment',
                       default='',
@@ -1106,7 +1124,7 @@ Example:
 
     exception_counter = 0
 
-    this_worker     = CrashTestWorker(startdir, programPath, options.couchserveruri, options.worker_comment, options.debug)
+    this_worker     = CrashTestWorker(startdir, programPath, options.couchserveruri, options.databasename, options.worker_comment, options.debug)
 
     programModTime = os.stat(programPath)[stat.ST_MTIME]
 
@@ -1170,7 +1188,7 @@ if __name__ == "__main__":
         exit(2)
 
     if restart:
-        this_worker.logMessage('Program restarting', False)
+        this_worker.logMessage('Program restarting', True)
         this_worker.reloadProgram()
     else:
         this_worker.logMessage('Program terminating', False)
