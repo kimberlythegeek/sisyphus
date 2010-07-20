@@ -480,7 +480,7 @@ class Database():
                 self.logMessage("createLock: aborting after %d attempts" % (attempts[-1]+1))
                 return False
 
-            time.sleep(5)
+            time.sleep(1)
 
         if attempt > 0:
             self.debugMessage('createLock: attempt: %d, success' % (attempt))

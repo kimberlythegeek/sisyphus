@@ -1218,6 +1218,9 @@ class Worker():
 
 
     def getAllWorkers(self, key=None):
+
+        self.debugMessage('getAllWorkers: type: %s' % (self.worker_type))
+
         for attempt in self.testdb.max_db_attempts:
             try:
                 startkey = ['worker_%s' % self.worker_type]
@@ -1247,10 +1250,14 @@ class Worker():
         if attempt > 0:
             self.testdb.logMessage('getAllWorkers: attempt: %d, success' % (attempt))
 
+        self.debugMessage('getAllWorkers: found %d' % (len(worker_rows)))
+
         return worker_rows
 
     def killZombies(self):
         """ zombify any *other* worker who has not updated status in zombie_time hours"""
+
+        self.debugMessage('killZombies(worker.py)')
 
         now          = datetime.datetime.now()
         deadinterval = datetime.timedelta(hours=self.zombie_time)
@@ -1260,12 +1267,15 @@ class Worker():
         for worker_row in worker_rows:
             worker_row_id = worker_row['_id']
 
+            self.debugMessage('killZombies: checking %s' % worker_row_id)
+
             if worker_row_id == self.document['_id']:
                 # don't zombify ourselves
                 continue
 
             if worker_row['state'] == 'disabled' or worker_row['state'] == 'zombie':
                 # don't zombify disabled or zombified workers
+                self.debugMessage('killZombies: %s already %s' % (worker_row_id, worker_row['state']))
                 continue
 
             timestamp = sisyphus.utils.convertTimestamp(worker_row['datetime'])

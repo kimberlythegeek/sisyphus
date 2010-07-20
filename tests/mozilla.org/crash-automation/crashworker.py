@@ -128,12 +128,33 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 viewdata = {
                     'skip'     : 0,
                     'startkey' : list(key),
-                    'endkey'   : list(key)
+                    'endkey'   : list(key),
+                    # when a job is returned, the current_startkey and current_startkey_docid
+                    # are set to the values determined by the job and skip is set to 1 so that
+                    # the next query will return the next job. This will prevent the server from
+                    # continually reading and skipping over the initial pending jobs. The
+                    # current values will be reset whenever the skip value is reset to 0.
+                    'current_startkey' : None,
+                    'current_startkey_docid' : '',
+                    # pendingcount tracks the number of job rows retrieved from the most recent request.
+                    # processedcount tracks the number of jobs which have already been processed by
+                    # this or an equivalent worker. When all jobs for all views for all priorities
+                    # for this class of worker have been processed, the worker will go idle for an
+                    # extended period so that it does not continually pull job queues which it has
+                    # already processed.
+                    'pendingcount' : 0,
+                    'processedcount' : 0,
                     }
                 viewdata['endkey'][len(key)-1] += '\u9999'
                 self.jobviewdata[priority].append(viewdata)
                 del key[len(key)-1]
 
+        # self.workers is a dictionary that contains a cache of worker documents
+        # keyed on the worker's id.
+        # It is used in checkSignatureForWorker to determine if a signature has
+        # already been processed by an equivalent worker.
+
+        self.workers = {self.document['_id']: self.document}
 
     def checkForUpdate(self):
         if os.stat(self.programPath)[stat.ST_MTIME] != self.programModTime:
@@ -200,11 +221,12 @@ class CrashTestWorker(sisyphus.worker.Worker):
                         self.testdb.updateDocument(self.document, True)
                         consistent = False
                     elif worker_id != curr_signature_doc["worker"]:
-                        self.logMessage("amIOk: worker %s's signature %s was stolen by %s" % (worker_id, signature_id, curr_signature_doc["worker"]))
-                        self.document["signature_id"] = None
-                        self.document["state"] = "signature error"
-                        self.testdb.updateDocument(self.document, True)
-                        consistent = False
+                        # do not check signature references here since
+                        # this requires the signature document to be
+                        # updated prior to the worker update. Rely on
+                        # freeOrphanJobs to check worker <-> signature_doc
+                        # referential integrity.
+                        pass
             else:
                 # our revisions differ, so someone else has updated
                 # our worker document in the database. They could have
@@ -257,6 +279,8 @@ class CrashTestWorker(sisyphus.worker.Worker):
     def killZombies(self):
         """ zombify any *other* worker who has not updated status in zombie_time hours"""
 
+        self.debugMessage('killZombies(crashworker.py)')
+
         now          = datetime.datetime.now()
         deadinterval = datetime.timedelta(hours=self.zombie_time)
         worker_rows  = self.getAllWorkers()
@@ -265,12 +289,15 @@ class CrashTestWorker(sisyphus.worker.Worker):
         for worker_row in worker_rows:
             worker_row_id = worker_row['_id']
 
+            self.debugMessage('killZombies: checking %s' % worker_row_id)
+
             if worker_row_id == self.document['_id']:
                 # don't zombify ourselves
                 continue
 
             if worker_row['state'] == 'disabled' or worker_row['state'] == 'zombie':
                 # don't zombify disabled or zombified workers
+                self.debugMessage('killZombies: %s already %s' % (worker_row_id, worker_row['state']))
                 continue
 
             timestamp = sisyphus.utils.convertTimestamp(worker_row['datetime'])
@@ -316,7 +343,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
             "reproduced"        : False,
             "test"              : "crashtest",
             "extra_test_args"   : None,
-            "steps"             : [] # steps Spider took on the page. 
+            "steps"             : [] # steps Spider took on the page.
             }
 
         self.testdb.createDocument(result_doc)
@@ -599,15 +626,18 @@ class CrashTestWorker(sisyphus.worker.Worker):
         self.debugMessage('checkIfUrlAlreadyTested: False')
         return False
 
-    def getPendingJobs(self, startkey=None, endkey=None, skip=None, limit=1000000):
+    def getPendingJobs(self, startkey=None, startkey_docid=None, endkey=None, skip=None, limit=1000000):
 
         if skip is None:
             skip = 0
 
         for attempt in self.testdb.max_db_attempts:
             try:
-                pending_job_rows = self.testdb.db.views.crashtest.pending_jobs(startkey=startkey, endkey=endkey, skip=skip, limit=limit)
-                self.debugMessage('getPendingJobs: startkey: %s, endkey: %s, matches: %d' % (startkey, endkey, len(pending_job_rows)))
+                pending_job_rows = self.testdb.db.views.crashtest.pending_jobs(startkey=startkey,
+                                                                               startkey_docid=startkey_docid,
+                                                                               endkey=endkey,
+                                                                               skip=skip,
+                                                                               limit=limit)
                 break
             except KeyboardInterrupt:
                 raise
@@ -633,7 +663,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
         if attempt > 0:
             self.logMessage('getPendingJobs: attempt: %d, success' % (attempt))
 
-        self.debugMessage('getPendingJobs: startkey=%s, endkey=%s, count: %d' % (startkey, endkey, len(pending_job_rows)))
+        self.debugMessage('getPendingJobs: startkey: %s, startkey_docid: %s, endkey: %s, matches: %d' % (startkey, startkey_docid, endkey, len(pending_job_rows)))
 
         return pending_job_rows
 
@@ -762,9 +792,22 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     self.debugMessage("freeOrphanJobs: ignoring race condition: signature %s's worker changed from %s to %s" %
                                       (signature_id,  worker_id, temp_signature_doc["worker"]))
                 else:
-                    self.debugMessage("freeOrphanJobs: job %s's worker %s is working on %s." % (signature_id, worker_id, worker_doc["signature_id"]))
-                    signature_doc["worker"] = None
-                    self.testdb.updateDocument(signature_doc)
+                    # checkSignatureForWorker suffers from a race condition when updating
+                    # the signature and worker to contain each others ids. If freeOrphan jobs
+                    # runs during the period between the update of the signature and the update
+                    # of the worker, it will erroneously flag the job as orphaned and will
+                    # cause a document update conflict when it removes the worker id from the
+                    # signature. We limit the possibility of losing the race by limiting the
+                    # time resolution of the orphan check.
+                    now = datetime.datetime.now()
+                    worker_timestamp = sisyphus.utils.convertTimestamp(worker_doc['datetime'])
+                    if now - worker_timestamp < datetime.timedelta(seconds=60):
+                        self.debugMessage("freeOrphanJobs: ignoring race condition: job %s's worker %s is working on %s." %
+                                          (signature_id,  worker_id, worker_doc["signature_id"]))
+                    else:
+                        self.debugMessage("freeOrphanJobs: job %s's worker %s is working on %s." % (signature_id, worker_id, worker_doc["signature_id"]))
+                        signature_doc["worker"] = None
+                        self.testdb.updateDocument(signature_doc)
 
     def checkSignatureForWorker(self, pending_job_rows):
         """
@@ -784,64 +827,125 @@ class CrashTestWorker(sisyphus.worker.Worker):
         self.debugMessage("checkSignatureForWorker: checking %d pending jobs" % len(pending_job_rows))
 
         for pending_job in pending_job_rows:
-            try:
-                signature_id  = pending_job["signature_id"]
-                self.debugMessage("checkSignatureForWorker: checking signature %s" % signature_id)
-                signature_doc = self.testdb.getDocument(signature_id)
-                if not signature_doc or signature_doc["worker"]:
-                    self.debugMessage("checkSignatureForWorker: race condition: someone else got the signature document %s" % signature_id)
-                    continue
-            except:
-                raise
 
-            self.debugMessage("checkSignatureForWorker: check if we have processed signature %s" % signature_id)
+            signature_id  = pending_job["signature_id"]
+            self.debugMessage("checkSignatureForWorker: checking signature %s" % signature_id)
+            signature_doc = self.testdb.getDocument(signature_id)
 
-            if self.document["_id"] in signature_doc["processed_by"]:
+            if signature_doc:
+                # keep track of the current signature so we won't try it again.
+                self.viewdata['current_startkey'] = [signature_doc['priority'],
+                                                     signature_doc['os_name'],
+                                                     signature_doc['cpu_name'],
+                                                     signature_doc['os_version'],
+                                                     -len(signature_doc['urls'])]
+                self.viewdata['current_startkey_docid'] = signature_doc['_id']
+                self.viewdata['skip'] = 1
 
-                self.debugMessage("checkSignatureForWorker: we already processed signature %s" % signature_id)
-
-                # We have already processed this signature document. Increment the skip value
-                # so we don't keep processing it.
-                self.viewdata['skip'] += 1
-
-                # Depending on the population of workers, we were not
-                # the best at the time we originally processed the
-                # signature, but if we are the best now, we can go
-                # ahead and delete it and try for the next job
-                if not self.isBetterWorkerAvailable(signature_doc):
-                    self.debugMessage("checkSignatureForWorker: there is not a better worker available, deleting signature %s" % signature_id)
-                    self.testdb.deleteDocument(signature_doc)
-                    self.viewdata['skip'] -= 1
-                    if self.viewdata['skip'] < 0:
-                        self.viewdata['skip'] = 0
+            if not signature_doc or signature_doc["worker"]:
+                self.debugMessage("checkSignatureForWorker: race condition: someone else got the signature document %s" % signature_id)
                 continue
 
-            self.debugMessage("checkSignatureForWorker: returning signature %s" % signature_doc["_id"])
+            # Check if the signature has already been processed by ourselves or another worker
+            # with the same operating system, operating system version and cpu type.
+            processed_by_equivalent_worker = False
+            for other_worker_id in signature_doc["processed_by"]:
+
+                if other_worker_id in self.workers:
+                    other_worker = self.workers[other_worker_id]
+                else:
+                    other_worker = self.testdb.getDocument(other_worker_id)
+                    if other_worker:
+                        self.workers[other_worker['_id']] = other_worker
+
+                if (other_worker and
+                    self.document['os_name']    == other_worker['os_name'] and
+                    self.document['os_version'] == other_worker['os_version'] and
+                    self.document['cpu_name']   == other_worker['cpu_name']):
+                    processed_by_equivalent_worker = True
+                    self.debugMessage("checkSignatureForWorker: %s already processed signature %s" % (other_worker_id, signature_id))
+                    break
+
+            if processed_by_equivalent_worker:
+
+                # Depending on the population of workers, the worker
+                # was not the best at the time it was originally
+                # processed the signature, but if we are the best now,
+                # we can go ahead and delete it and try for the next
+                # job
+
+                self.viewdata['processedcount'] += 1
+
+                if not self.isBetterWorkerAvailable(signature_doc):
+                    self.debugMessage("checkSignatureForWorker: there is not a better worker available, deleting signature %s" % signature_id)
+                    try:
+                        self.testdb.deleteDocument(signature_doc)
+                    except KeyboardInterrupt:
+                        raise
+                    except SystemExit:
+                        raise
+                    except:
+                        # ignore conflicts.
+                        exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+
+                        errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+                        self.logMessage("checkSignatureForWorker: %s, signature: %s, exception: %s" %
+                                        (exceptionValue, signature_doc["_id"], errorMessage))
+                continue
 
             # update the signature and this worker
             # signature_doc["worker"] <-> self.document["_id"].
 
-            self.debugMessage("checkSignatureForWorker: update signature %s's worker" % signature_id)
-            signature_doc["worker"] = self.document["_id"]
-            self.testdb.updateDocument(signature_doc)
-
-            self.debugMessage("checkSignatureForWorker: update worker %s's signature" % self.document["_id"])
             try:
-                self.document["signature_id"] = signature_id
-                self.updateWorker(self.document)
-            except:
-                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
-                self.logMessage("checkSignatureForWorker: exception %s updating worker: %s" % (exceptionValue, errorMessage))
-                # update signature to remove the worker. allow any exception to be raised to the caller.
+                try:
+                    # update worker first to get datetime timestamp for use
+                    # in checking race conditions with freeOrphanJobs
+                    self.debugMessage("checkSignatureForWorker: update worker %s's signature" % self.document["_id"])
+                    self.document["signature_id"] = signature_id
+                    self.updateWorker(self.document)
+                except KeyboardInterrupt:
+                    raise
+                except SystemExit:
+                    raise
+                except:
+                    # exception updating worker
+                    exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                    errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+                    self.logMessage("checkSignatureForWorker: exception %s updating worker: %s" %
+                                    (exceptionValue, errorMessage))
+
+                self.debugMessage("checkSignatureForWorker: update signature %s's worker" % signature_id)
                 signature_doc["worker"] = self.document["_id"]
                 self.testdb.updateDocument(signature_doc)
-                raise
 
-            return signature_doc
+            except KeyboardInterrupt:
+                raise
+            except SystemExit:
+                raise
+            except:
+                # exception updating signature_doc
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+                self.logMessage("checkSignatureForWorker: exception %s updating signature: %s, %s" %
+                                (exceptionValue, signature_doc["_id"], errorMessage))
+                signature_doc = None
+
+                # update worker to remove signature
+                try:
+                    self.document["signature_id"] = None
+                    self.updateWorker(self.document)
+                except:
+                    # exception updating worker
+                    exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                    errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+                    self.logMessage("checkSignatureForWorker: exception %s updating worker: %s, %s" %
+                                    (exceptionValue, self.document["_id"], errorMessage))
+
+            if signature_doc:
+                self.debugMessage("checkSignatureForWorker: returning signature %s" % signature_doc["_id"])
+                return signature_doc
 
         self.debugMessage("checkSignatureForWorker: returning signature None")
-
         return None
 
 
@@ -853,72 +957,96 @@ class CrashTestWorker(sisyphus.worker.Worker):
         most condition until a match is found.
         """
 
-        limit         = 5
+        limit         = 64 # 64 * 32 byte id = 2048 bytes.
         signature_doc = None
 
-        lock_pending_jobs = {'type'  : 'lock',
-                             '_id'   : 'lock_pending_jobs',
-                             'owner' : self.document['_id']}
-
-        if not self.testdb.createLock(lock_pending_jobs):
-            self.debugMessage("getSignatureForWorker: unable to obtain lock_pending_jobs.")
-            return signature_doc
-
-        try:
-
-            resetskip_interval = datetime.timedelta(hours=1)
-            if datetime.datetime.now() - self.jobviewdata_datetime > resetskip_interval:
-                # Periodically reset the viewdata for each queue in
-                # case priorities have changed, new signatures have
-                # been added, or to handle the case where other
-                # workers have deleted our already processed
-                # signatures.
-                self.jobviewdata_datetime = datetime.datetime.now()
-                for prioritydata in self.jobviewdata:
-                    for viewdata in prioritydata:
-                        viewdata['skip'] = 0
-
-            for prioritydata in self.jobviewdata:
-                for self.viewdata in prioritydata:
-
-                    self.debugMessage("getSignatureForWorker: key: %s, skip: %d" % (self.viewdata['startkey'], self.viewdata['skip']))
-
-                    if self.viewdata['skip'] < 0:
-                        continue
-
-                    job_rows = self.getPendingJobs(startkey = self.viewdata['startkey'],
-                                                   endkey   = self.viewdata['endkey'],
-                                                   skip     = self.viewdata['skip'],
-                                                   limit    = limit)
-                    if len(job_rows) == 0:
-                        self.viewdata['skip'] = -1
-                        continue
-
-                    signature_doc    = self.checkSignatureForWorker(job_rows)
-                    if signature_doc:
-                        break
-
-                if signature_doc:
-                    break
-
-        except:
-            self.testdb.deleteLock(lock_pending_jobs)
-            raise
-
-        self.testdb.deleteLock(lock_pending_jobs)
-
-        if signature_doc:
-            pass
-        elif len(job_rows) == 0:
-            self.debugMessage('getSignatureForWorker: skipped past the end of the pending jobs.')
-            self.viewdata = None
+        resetskip_interval = datetime.timedelta(hours=1)
+        if datetime.datetime.now() - self.jobviewdata_datetime > resetskip_interval:
+            # Periodically reset the viewdata for each queue in
+            # case priorities have changed, new signatures have
+            # been added, or to handle the case where other
+            # workers have deleted our already processed
+            # signatures.
+            self.jobviewdata_datetime = datetime.datetime.now()
             for prioritydata in self.jobviewdata:
                 for viewdata in prioritydata:
+                    viewdata['current_startkey'] = None
+                    viewdata['current_startkey_docid'] = ''
                     viewdata['skip'] = 0
-            time.sleep(300)
+                    viewdata['pendingcount'] = 0
+                    viewdata['processedcount'] = 0
+
+        for prioritydata in self.jobviewdata:
+            # process views for this priority
+
+            self.debugMessage("getSignatureForWorker: prioritydata: %s" % (prioritydata))
+
+            if signature_doc:
+                break
+
+            for self.viewdata in prioritydata:
+
+                if self.viewdata['skip'] < 0:
+                    continue
+
+                while True:
+                    # keep looping until we get a job or run out.
+
+                    self.debugMessage("getSignatureForWorker: self.viewdata['startkey]': %s, self.viewdata['endkey']: %s, self.viewdata['skip']: %d, self.viewdata['current_startkey']: %s, self.viewdata['current_startkey_docid']: %s" % (self.viewdata['startkey'], self.viewdata['endkey'], self.viewdata['skip'], self.viewdata['current_startkey'], self.viewdata['current_startkey_docid']))
+
+                    if self.viewdata['current_startkey']:
+                        startkey = self.viewdata['current_startkey']
+                        startkey_docid = self.viewdata['current_startkey_docid']
+                    else:
+                        startkey = self.viewdata['startkey']
+                        startkey_docid = ''
+
+                    self.debugMessage("getSignatureForWorker: startkey: %s, startkey_docid: %s" % (startkey, startkey_docid))
+
+                    skip = self.viewdata['skip']
+                    endkey = self.viewdata['endkey']
+
+                    job_rows = self.getPendingJobs(startkey = startkey,
+                                                   startkey_docid = startkey_docid,
+                                                   endkey   = endkey,
+                                                   skip     = skip,
+                                                   limit    = limit)
+
+                    if len(job_rows) == 0:
+                        self.viewdata['current_startkey'] = None
+                        self.viewdata['current_startkey_docid'] = ''
+                        self.viewdata['skip'] = -1
+                        self.viewdata['pendingcount'] = 0
+                        self.viewdata['processedcount'] = 0
+                        self.debugMessage("getSignatureForWorker: no jobs for startkey: %s, endkey: %s, skip: %d, current_startkey: %s, current_startkey_docid: %s" % (self.viewdata['startkey'], self.viewdata['endkey'], self.viewdata['skip'], self.viewdata['current_startkey'], self.viewdata['current_startkey_docid']))
+                        break # while True
+
+                    self.viewdata['pendingcount'] = len(job_rows)
+
+                    signature_doc = self.checkSignatureForWorker(job_rows)
+                    if signature_doc:
+                        break # while True
+
+                if signature_doc:
+                    break # for self.viewdata
+
+            if signature_doc:
+                break # for prioritydata
+
+        if not signature_doc:
+            # if there are no more jobs or if all remaining jobs have already been processed
+            # by this worker's class of worker, then go idle for an hour.
+            more_jobs_available = False
+            for prioritydata in self.jobviewdata:
+                for viewdata in prioritydata:
+                    if viewdata['skip'] != -1 and viewdata['pendingcount'] != viewdata['processedcount']:
+                        more_jobs_available = True
+                        break
+            if not more_jobs_available:
+                self.logMessage("getSignatureForWorker: no more jobs, going idle.")
+                time.sleep(3600)
 
         self.debugMessage("getSignatureForWorker: returning signature %s" % signature_doc)
-
         return signature_doc
 
     def doWork(self):
@@ -1018,12 +1146,10 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
                 if not self.DownloadAndInstallBuild(build_doc):
                     # We failed to install the new build.
-                    # Release the signature and increment the skip value for this view
-                    # so that we don't retrieve this signature when
-                    # we next query the pending jobs.
+                    # Release the signature. We have already recorded the skip value for this view
+                    # so that we don't retrieve this signature when we next query the pending jobs.
                     self.logMessage('doWork: failed downloading new %s %s %s build' %
                                     (product, branch, buildtype))
-                    self.viewdata['skip'] += 1
                     self.signature_doc["worker"] = None
                     self.testdb.updateDocument(self.signature_doc, True)
                     self.signature_doc = None
@@ -1070,9 +1196,6 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     self.signature_doc["worker"] = None
                     self.signature_doc["processed_by"][self.document["_id"]] = 1
                     self.testdb.updateDocument(self.signature_doc, True)
-                    # Increment the skip value for this view so that we don't retrieve this signature when
-                    # we next query the pending jobs.
-                    self.viewdata['skip'] += 1
 
                 self.signature_doc            = None
                 self.document["signature_id"] = None
