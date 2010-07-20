@@ -589,8 +589,9 @@ class Database():
                 if not re.search('/(couchquery|httplib2)/', errorMessage):
                     raise
 
-                # recreate the http object.
+                # recreate the http object and database object.
                 self.http    = httplib2.Http()
+                self.db      = couchquery.Database(self.dburi)
 
                 messagequeue.append(errorMessage)
                 print(errorMessage)

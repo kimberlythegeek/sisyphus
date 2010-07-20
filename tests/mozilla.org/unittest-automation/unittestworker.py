@@ -721,7 +721,18 @@ if __name__ == "__main__":
         exit(2)
 
     if restart:
-        this_worker.logMessage('Program restarting', True)
+        # continue trying to log message until it succeeds.
+        while True:
+            try:
+                this_worker.logMessage('Program restarting', True)
+            except KeyboardInterrupt:
+                raise
+            except SystemExit:
+                raise
+            except:
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+                print 'main: exception: %s, %s' % (exceptionValue, errorMessage)
         this_worker.reloadProgram()
     else:
         this_worker.logMessage('Program terminating', False)
