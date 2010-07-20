@@ -6,7 +6,7 @@
 
                 <em:id>{47b978aa-2fbb-4f64-886f-b2845d76c709}</em:id>
                 <em:name>Spider</em:name>
-                <em:version>0.0.2.24</em:version>
+                <em:version>0.0.3.0</em:version>
                 <em:description>A Web Spider for Firefox, and Gecko applications</em:description>
                 <em:creator>Bob Clary</em:creator>
                 <em:homepageURL>http://bclary.com/projects/spider/</em:homepageURL>
@@ -25,7 +25,7 @@
                 <em:targetApplication>
                         <Description>
                                 <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
-                                <em:minVersion>1.0</em:minVersion>
+                                <em:minVersion>3.0</em:minVersion>
                                 <em:maxVersion>4.0.*</em:maxVersion>
                         </Description>
                 </em:targetApplication>
@@ -34,17 +34,8 @@
                 <em:targetApplication>
                         <Description>
                                 <em:id>{3550f703-e582-4d05-9a08-453d09bdfdc6}</em:id>
-                                <em:minVersion>1.0</em:minVersion>
+                                <em:minVersion>3.0</em:minVersion>
                                 <em:maxVersion>3.2.*</em:maxVersion>
-                        </Description>
-                </em:targetApplication>
-
-    <!-- Mozilla Application Suite -->
-                <em:targetApplication>
-                        <Description>
-                                <em:id>{86c18b42-e466-45a9-ae7a-9b95ba6f5640}</em:id>
-                                <em:minVersion>1.7</em:minVersion>
-                                <em:maxVersion>2.0.*</em:maxVersion>
                         </Description>
                 </em:targetApplication>
 
@@ -52,7 +43,7 @@
                 <em:targetApplication>
                         <Description>
                                 <em:id>{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}</em:id>
-                                <em:minVersion>1.0</em:minVersion>
+                                <em:minVersion>2.0</em:minVersion>
                                 <em:maxVersion>2.*</em:maxVersion>
                         </Description>
                 </em:targetApplication>
@@ -61,33 +52,11 @@
                 <em:targetApplication>
                         <Description>
                                 <em:id>{a23983c0-fd0e-11dc-95ff-0800200c9a66}</em:id>
-                                <em:minVersion>0.0</em:minVersion>
+                                <em:minVersion>1.0</em:minVersion>
                                 <em:maxVersion>1.*</em:maxVersion>
                         </Description>
                 </em:targetApplication>
 
-    <!-- Netscape Browser -->
-                <em:targetApplication>
-                        <Description>
-                                <em:id>{3db10fab-e461-4c80-8b97-957ad5f8ea47}</em:id>
-                                <em:minVersion>7.2</em:minVersion>
-                                <em:maxVersion>8.0</em:maxVersion>
-                        </Description>
-                </em:targetApplication>
-
-    <!--
-    This is not needed for Firefox 1.1 and later. Only include this
-    if you want to make your extension compatible with older versions
-    -->
-                <em:file>
-                        <Description about="urn:mozilla:extension:file:spider.jar">
-        <em:package>content/spider/</em:package>
-                                <!-- optional items -->
-        <em:skin>skin/classic/spider/</em:skin>
-        <em:skin>skin/modern/spider/</em:skin>
-        <em:locale>locale/en-US/spider/</em:locale>
-                        </Description>
-                </em:file>
         </Description>
 
 </RDF>

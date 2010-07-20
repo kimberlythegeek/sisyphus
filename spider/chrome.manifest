@@ -2,4 +2,7 @@ content spider jar:chrome/spider.jar!/content/spider/
 locale spider en-US jar:chrome/spider.jar!/locale/en-US/spider/
 skin spider classic/1.0 jar:chrome/spider.jar!/skin/classic/spider/
 skin spider modern/1.0 jar:chrome/spider.jar!/skin/modern/spider/
-
+# https://developer.mozilla.org/en/XPCOM/XPCOM_changes_in_Gecko_1.9.3
+component {38003cf3-3579-4985-b61f-e0ef78dc5bc5} components/spider-cmdline.js
+contract @mozilla.org/commandlinehandler/general-startup;1?type=spider {38003cf3-3579-4985-b61f-e0ef78dc5bc5}
+category command-line-handler SpiderHandler @mozilla.org/commandlinehandler/general-startup;1?type=spider
