@@ -43,11 +43,11 @@ import datetime
 import sys
 import subprocess
 import re
-
 import base64 # for encoding document attachments.
 import urllib
 import glob
 import signal
+import tempfile
 
 startdir       = os.getcwd()
 programPath    = os.path.abspath(os.path.join(os.path.realpath(os.path.dirname(sys.argv[0])), os.path.basename(sys.argv[0])))
@@ -128,11 +128,11 @@ class UnitTestWorker(sisyphus.worker.Worker):
 
         executablepath   = None
         profilename      = ""
-        reExecutablePath = re.compile(r'environment: executablepath=(.*)')
-        reProfileName    = re.compile(r'environment: profilename=(.*)')
-        reAssertionFail  = re.compile(r'Assertion fail.*')
-        reASSERTION      = re.compile(r'.*ASSERTION: (.*), file (.*), line [0-9]+.*')
-        reValgrindLeader = re.compile(r'==[0-9]+==')
+        reExecutablePath = re.compile(r'^environment: executablepath=(.*)')
+        reProfileName    = re.compile(r'^environment: profilename=(.*)')
+        reAssertionFail  = re.compile(r'^Assertion fail.*')
+        reASSERTION      = re.compile(r'^.###\!\!\! ASSERTION: (.*), file (.*), line [0-9]+.*')
+        reValgrindLeader = re.compile(r'^==[0-9]+==')
         # reftest
         # REFTEST INFO | Loading testid
         #       action: process previously collected messages
@@ -195,6 +195,8 @@ class UnitTestWorker(sisyphus.worker.Worker):
         # Popen will not kill the msys processes or firefox processes
         # created during the make.
 
+        logfile = tempfile.NamedTemporaryFile()
+
         proc = subprocess.Popen(
             [
                 "./bin/set-build-env.sh",
@@ -228,7 +230,8 @@ class UnitTestWorker(sisyphus.worker.Worker):
                     raise Exception('UnitTestSizeError')
 
                 size += len(line)
-                data += line
+
+                logfile.write(line.encode('utf-8'))
 
                 if not executablepath:
                     match = reExecutablePath.match(line)
@@ -367,7 +370,11 @@ class UnitTestWorker(sisyphus.worker.Worker):
         if proc.returncode == -2:
             raise KeyboardInterrupt
 
-        result_doc = self.testdb.saveAttachment(result_doc, 'log', data, 'text/plain', True, True)
+        result_doc = self.testdb.saveFileAttachment(result_doc, 'log', logfile.name, 'text/plain', True, True)
+        logfile.close()
+        if os.path.exists(logfile.name):
+            os.unlink(logfile.name)
+
         self.testdb.updateDocument(result_doc)
 
         # process any valgrind messages not associated with a test.

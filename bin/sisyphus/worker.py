@@ -45,6 +45,7 @@ import re
 import platform
 import sets
 import glob
+import signal
 
 sisyphus_dir     = os.environ["TEST_DIR"]
 sys.path.append(os.path.join(sisyphus_dir,'bin'))
@@ -55,6 +56,14 @@ import sisyphus.bugzilla
 
 class Worker():
     def __init__(self, worker_type, startdir, programPath, couchserveruri, testdbname, worker_comment, debug = False):
+
+        def usr1_handler(signum, frame):
+            # catch usr1 signal and terminate.
+            # used when profiling to obtain a clean shutdown.
+            exit(0)
+
+        signal.signal(signal.SIGUSR1, usr1_handler)
+
         self.worker_type    = worker_type
         self.startdir       = startdir
         self.programPath    = programPath

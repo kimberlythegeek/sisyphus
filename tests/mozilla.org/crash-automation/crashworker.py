@@ -324,14 +324,14 @@ class CrashTestWorker(sisyphus.worker.Worker):
         page               = "startup"
         executablepath     = ""
         profilename        = ""
-        reExecutablePath   = re.compile(r'environment: TEST_EXECUTABLEPATH=(.*)')
-        reProfileName      = re.compile(r'environment: TEST_PROFILENAME=(.*)')
-        reAssertionFail    = re.compile(r'Assertion fail.*')
-        reASSERTION        = re.compile(r'.*ASSERTION: (.*), file (.*), line [0-9]+.*')
-        reValgrindLeader   = re.compile(r'==[0-9]+==')
+        reExecutablePath   = re.compile(r'^environment: TEST_EXECUTABLEPATH=(.*)')
+        reProfileName      = re.compile(r'^environment: TEST_PROFILENAME=(.*)')
+        reAssertionFail    = re.compile(r'^Assertion fail.*')
+        reASSERTION        = re.compile(r'^.###\!\!\! ASSERTION: (.*), file (.*), line [0-9]+.*')
+        reValgrindLeader   = re.compile(r'^==[0-9]+==')
         reSpiderBegin      = re.compile(r'^Spider: Begin loading (.*)')
         reSpider           = re.compile(r'^Spider:')
-        reUrlExitStatus    = re.compile(r'(http.*): EXIT STATUS: (.*) [(].*[)].*')
+        reUrlExitStatus    = re.compile(r'^(http.*): EXIT STATUS: (.*) [(].*[)].*')
         reExploitableClass = re.compile(r'^Exploitability Classification: (.*)')
         reExploitableTitle = re.compile(r'^Recommended Bug Title: (.*)')
 
@@ -370,17 +370,17 @@ class CrashTestWorker(sisyphus.worker.Worker):
             # decode to unicode
             line = sisyphus.utils.makeUnicodeString(line)
 
-            data += line
-
             if not executablepath:
                 match = reExecutablePath.match(line)
                 if match:
                     executablepath = match.group(1)
+                    continue
 
             if not profilename:
                 match = reProfileName.match(line)
                 if match:
                     profilename = match.group(1)
+                    continue
 
             # record the steps Spider took
             match = reSpider.match(line)
@@ -398,18 +398,22 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 assertion_list   = []
                 valgrind_text    = ""
                 page = match.group(1).strip()
+                continue
 
             if self.document["os_name"] == "Windows NT":
                 match = reExploitableClass.match(line)
                 if match:
                     result_doc["exploitableclass"] = match.group(1)
+                    continue
                 match = reExploitableTitle.match(line)
                 if match:
                     result_doc["exploitabletitle"] = match.group(1)
+                    continue
 
             match = reAssertionFail.match(line)
             if match:
                 result_doc["assertionfail"] = match.group(0)
+                continue
 
             match = reASSERTION.match(line)
             if match:
@@ -419,10 +423,12 @@ class CrashTestWorker(sisyphus.worker.Worker):
                         "file"    : re.sub('^([a-zA-Z]:/|/[a-zA-Z]/)', '/', re.sub(r'\\', '/', match.group(2))),
                         "datetime" : timestamp,
                         })
+                continue
 
             match = reValgrindLeader.match(line)
             if match:
                 valgrind_text += line
+                continue
 
             match = reUrlExitStatus.match(line)
             if match:
@@ -433,10 +439,11 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     result_doc["reproduced"] = False
 
         logfile.close()
-        if not result_doc["reproduced"]:
-            os.unlink(logfilename)
 
-        result_doc = self.testdb.saveAttachment(result_doc, 'log', data, 'text/plain', True, True)
+        result_doc = self.testdb.saveFileAttachment(result_doc, 'log', logfilename, 'text/plain', True, True)
+
+        if os.path.exists(logfilename):
+            os.unlink(logfilename)
 
         symbolsPath = os.path.join(executablepath, 'crashreporter-symbols')
 
