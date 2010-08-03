@@ -787,6 +787,18 @@ function CPageLoader()
           //        return;
         }
       }
+    if ( 'location' in evt.target) {
+      dlog('CPageLoader.onload: evt.target.location=' + evt.target.location);
+    }
+    if ( 'location' in evt.originalTarget) {
+      dlog('CPageLoader.onload: evt.originalTarget.location=' + evt.originalTarget.location);
+    }
+
+    if ( !('location' in evt.target) || !RegExp(gPageLoader.url.replace(/([\^$\\.*+?()[\]{}|])/g, '\\$1') + '/?$').test(evt.target.location)) {
+      dlog('CPageLoader.onload: expected load event on ' + gPageLoader.url + ', ignoring load event on evt.target.location=' + evt.target.location);
+      return;
+    }
+
       if (gPageLoader.onload)
       {
         gPageLoader.content.
@@ -802,6 +814,8 @@ CPageLoader.prototype.load =
   function CPageLoader_loadPage(/* String */ url, /* String */ referer)
 {
   dlog('CPageLoader_loadPage: url: ' + url + ', referer: ' + referer);
+
+  this.url = url;
 
   if (!referer)
   {
@@ -998,9 +1012,11 @@ observe: function(subject, topic, data)
     throw('gHTTPResponseObserver: privilege failure ' + ex);
   }
 
+  var response = {};
+
   try
   {
-    window.dlog('gHTTPResonseObserver.observe subject: ' + subject +
+    window.dlog('gHTTPResponseObserver.observe subject: ' + subject +
                 ', topic: ' + 'data: ' + data);
 
     var httpChannel = subject.
@@ -1011,7 +1027,6 @@ observe: function(subject, topic, data)
       return;
     }
 
-    var response = {};
     window.gSpider.mCurrentUrl.mResponses.push(response);
 
     try
@@ -1020,7 +1035,7 @@ observe: function(subject, topic, data)
     }
     catch(ex)
     {
-      window.dlog(ex);
+      window.dlog('gHTTPResponseObserver.observe: httpChannel.originalURI: ' + ex);
     }
 
     try
@@ -1029,7 +1044,7 @@ observe: function(subject, topic, data)
     }
     catch(ex)
     {
-      window.dlog(ex);
+      window.dlog('gHTTPResponseObserver.observe: httpChannel.URI: ' + ex);
     }
 
     try
@@ -1038,7 +1053,7 @@ observe: function(subject, topic, data)
     }
     catch(ex)
     {
-      window.dlog(ex);
+      window.dlog('gHTTPResponseObserver.observe: httpChannel.referrer: ' + ex);
     }
 
     try
@@ -1047,7 +1062,7 @@ observe: function(subject, topic, data)
     }
     catch(ex)
     {
-      window.dlog(ex);
+      window.dlog('gHTTPResponseObserver.observe: httpChannel.responseStatus: ' + ex);
     }
 
     try
@@ -1057,7 +1072,7 @@ observe: function(subject, topic, data)
     }
     catch(ex)
     {
-      window.dlog(ex);
+      window.dlog('gHTTPResponseObserver.observe: httpChannel.responseStatusText: ' + ex);
     }
 
     try
@@ -1066,7 +1081,7 @@ observe: function(subject, topic, data)
     }
     catch(ex)
     {
-      window.dlog(ex);
+      window.dlog('gHTTPResponseObserver.observe: httpChannel.requestSucceeded: ' + ex);
     }
 
     try
@@ -1075,13 +1090,48 @@ observe: function(subject, topic, data)
     }
     catch(ex)
     {
-      window.dlog(ex);
+      window.dlog('gHTTPResponseObserver.observe: getResponseHeader("content-type"): ' + ex);
     }
+
+    try
+    {
+      response.name = httpChannel.name;
+    }
+    catch(ex)
+    {
+      window.dlog('gHTTPResponseObserver.observe: httpChannel.name: ' + ex);
+    }
+
+    response.location = '';
+    try {
+      response.location = httpChannel.getResponseHeader('location');
+    }
+    catch(ex) {
+      window.dlog('gHTTPResponseObserver.observe: httpChannel.getResponseHeader("location"): ' + ex);
+    }
+
+    // detect when the url passed to gPageLoader has been redirected
+    // and update gPageLoader.url to match.
+    if (/301|302|307/.test(response.responseStatus) &&
+        RegExp(window.gPageLoader.url.replace(/([\^$\\.*+?()[\]{}|])/g, '\\$1') + '/?$').test(response.URI)) {
+
+      window.dlog('gHTTPResponseObserver.observe redirecting: ' +
+                  'response.URI=' + response.URI + ' to ' +
+                  'response.location=' + response.location);
+      window.gPageLoader.url = response.location;
+    }
+
+
   }
   catch(e)
   {
     //window.dlog(' ' + e);
   }
+
+  if (gDebug) {
+    window.dlog('gHTTPResponseObserver.observe response: ' + response.toSource());
+  }
+
 },
 
 get observerService() {
