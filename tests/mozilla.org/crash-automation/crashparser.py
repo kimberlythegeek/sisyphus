@@ -97,6 +97,10 @@ def create_crash_doc(line, supported_versions_hash):
     if match:
         return None # skip private networks
 
+    if signature.find('hang ') == 0:
+        # ignore hang signatures since their urls are duplicate in the matched crash signature.
+        return None
+
     try:
         urlParseResult = urlparse.urlparse(url)
         if urlParseResult.port:
