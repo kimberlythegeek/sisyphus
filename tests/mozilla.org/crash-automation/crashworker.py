@@ -1117,6 +1117,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
             if (options.build and
                 (build_needed or not self.document[branch]["builddate"] or
+                 not self.document[branch]["buildsuccess"] or
                  sisyphus.utils.convertTimestamp(self.document[branch]["builddate"]).day != datetime.date.today().day)):
 
                 # The build stored in the builds database is stale and
@@ -1130,7 +1131,15 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 if build_doc["state"] == "error":
                     # wait for five minutes if a build failure occurs
                     waittime = 300
-                    # release the signature
+                    # release the signature.
+                    # Note that this signature will be temporarily skipped until the worker's
+                    # viewdata startkey/startkey_docid values are reset. This will allow the
+                    # worker to continue to process signatures for other branches rather than
+                    # blocking on a signature for a branch which can not be built.
+                    self.document["signature_id"] = None
+                    self.document["state"]        = 'build failure'
+                    self.document["datetime"]     = sisyphus.utils.getTimestamp()
+                    self.updateWorker(self.document)
                     self.signature_doc["worker"]  = None
                     self.testdb.updateDocument(self.signature_doc, True)
                     self.signature_doc = None
@@ -1150,6 +1159,9 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     # so that we don't retrieve this signature when we next query the pending jobs.
                     self.logMessage('doWork: failed downloading new %s %s %s build' %
                                     (product, branch, buildtype))
+                    self.document["state"]        = 'download failure'
+                    self.document["datetime"]     = sisyphus.utils.getTimestamp()
+                    self.updateWorker(self.document)
                     self.signature_doc["worker"] = None
                     self.testdb.updateDocument(self.signature_doc, True)
                     self.signature_doc = None
@@ -1188,20 +1200,27 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
             elif (self.document[branch]["buildsuccess"] and url_index >= len(self.signature_doc["urls"])):
 
+                # the update worker code is duplicated in order that the worker update occur immediately
+                # prior to the signature update in order to reduce the chance of race conditions when
+                # checking referential integrity.
                 if not self.isBetterWorkerAvailable(self.signature_doc):
                     self.debugMessage('doWork: no better worker available, deleting signature %s' % self.signature_doc['_id'])
+                    self.document["signature_id"] = None
+                    self.document["state"]        = 'completed signature'
+                    self.document["datetime"]     = sisyphus.utils.getTimestamp()
+                    self.updateWorker(self.document)
                     self.testdb.deleteDocument(self.signature_doc, True)
                 else:
                     self.debugMessage('doWork: better worker available, setting signature %s worker to None' % self.signature_doc['_id'])
+                    self.document["signature_id"] = None
+                    self.document["state"]        = 'completed signature'
+                    self.document["datetime"]     = sisyphus.utils.getTimestamp()
+                    self.updateWorker(self.document)
                     self.signature_doc["worker"] = None
                     self.signature_doc["processed_by"][self.document["_id"]] = 1
                     self.testdb.updateDocument(self.signature_doc, True)
 
                 self.signature_doc            = None
-                self.document["signature_id"] = None
-                self.document["state"]        = 'completed signature'
-                self.document["datetime"]     = sisyphus.utils.getTimestamp()
-                self.updateWorker(self.document)
             else:
                 self.logMessage('doWork: no %s %s %s builds are available' % (product, branch, buildtype))
                 time.sleep(300)

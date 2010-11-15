@@ -1769,6 +1769,7 @@ class Worker():
                                    (product, branch, buildtype, errorMessage))
             if not re.search('DocumentConflict', str(exceptionValue)):
                 raise
+            build_doc["state"] = "error"
             self.document[branch]["buildsuccess"] = False
             return build_doc
 
