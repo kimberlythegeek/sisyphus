@@ -370,7 +370,7 @@ class Worker():
         assertionurl_set = sets.Set(assertionurl_list)
         location_id_set  = sets.Set(history_assertion["location_id_list"])
 
-        if not assertionurl_set.issubset(location_id_set):
+        if len(assertionurl_set) > 0 and not assertionurl_set.issubset(location_id_set):
             # assertionurl_list contains new urls
             history_stale = True
 
@@ -681,7 +681,7 @@ class Worker():
         valgrindurl_set = sets.Set(valgrindurl_list)
         location_id_set  = sets.Set(history_valgrind["location_id_list"])
 
-        if not valgrindurl_set.issubset(location_id_set):
+        if len(valgrindurl_set) > 0 and not valgrindurl_set.issubset(location_id_set):
             # valgrindurl_list contains new urls
             history_stale = True
 
@@ -1048,7 +1048,7 @@ class Worker():
         crashurl_set = sets.Set(crashurl_list)
         location_id_set  = sets.Set(history_crash["location_id_list"])
 
-        if not crashurl_set.issubset(location_id_set):
+        if len(crashurl_set) > 0 and not crashurl_set.issubset(location_id_set):
             # crashurl_list contains new urls
             history_stale = True
 
