@@ -145,7 +145,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     'pendingcount' : 0,
                     'processedcount' : 0,
                     }
-                viewdata['endkey'][len(key)-1] += '\u9999'
+                viewdata['endkey'].append({});
                 self.jobviewdata[priority].append(viewdata)
                 del key[len(key)-1]
 
@@ -615,7 +615,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
     def checkIfUrlAlreadyTested(self, signature_doc, url_index):
 
         startkey = ["result_header_crashtest", "%s_result_%05d_%s" % (signature_doc["_id"], url_index, self.document['_id'])]
-        endkey   = ["result_header_crashtest", "%s_result_%05d\u9999" % (signature_doc["_id"], url_index)];
+        endkey   = ["result_header_crashtest", "%s_result_%05d_%s" % (signature_doc["_id"], url_index, self.document['_id']), {}];
         result_rows = self.getRows(self.testdb.db.views.bughunter.results_by_type, startkey=startkey, endkey=endkey, include_docs=True)
         self.debugMessage('checkIfUrlAlreadyTested: %s' % (len(result_rows) != 0))
 
@@ -684,7 +684,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
         # try for an exact  match on the signature's os_name, os_version, cpu_name
         # exact matches are by definition the best.
         startkey = [signature_doc["os_name"], signature_doc["os_version"], signature_doc["cpu_name"]]
-        endkey   = [signature_doc["os_name"], signature_doc["os_version"], signature_doc["cpu_name"] + "\u9999"]
+        endkey   = [signature_doc["os_name"], signature_doc["os_version"], signature_doc["cpu_name"], {}]
 
         matching_worker_id_rows = self.getMatchingWorkerIds(startkey=startkey, endkey=endkey)
 
@@ -708,7 +708,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
         # try a match on the signature's os_name, os_version
         startkey = [signature_doc["os_name"], signature_doc["os_version"]]
-        endkey   = [signature_doc["os_name"], signature_doc["os_version"] + "\u9999"]
+        endkey   = [signature_doc["os_name"], signature_doc["os_version"], {}]
 
         matching_worker_id_rows = self.getMatchingWorkerIds(startkey=startkey, endkey=endkey)
 
@@ -731,7 +731,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
         # try a match on the signature's os_name
         startkey = [signature_doc["os_name"]]
-        endkey   = [signature_doc["os_name"] + "\u9999"]
+        endkey   = [signature_doc["os_name"], {}]
 
         matching_worker_id_rows = self.getMatchingWorkerIds(startkey=startkey, endkey=endkey)
 

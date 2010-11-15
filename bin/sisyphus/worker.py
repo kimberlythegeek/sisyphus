@@ -279,7 +279,7 @@ class Worker():
                                           startkey=["history_assertion", assertionmessage, assertionfile,
                                                     product, branch, buildtype, os_name, os_version, cpu_name],
                                           endkey=["history_assertion", assertionmessage, assertionfile,
-                                                  product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"],
+                                                  product, branch, buildtype, os_name, os_version, cpu_name, {}],
                                           include_docs=True)
 
         if len(history_assertions) > 0:
@@ -348,7 +348,7 @@ class Worker():
 
             history_assertions = self.getRows(self.testdb.db.views.bughunter.results_by_type,
                                               startkey=["history_assertion", assertionmessage],
-                                              endkey=["history_assertion", assertionmessage + "\u9999"],
+                                              endkey=["history_assertion", assertionmessage, {}],
                                               include_docs=True)
 
             if len(history_assertions) > 0:
@@ -590,7 +590,7 @@ class Worker():
                                          startkey=["history_valgrind", valgrindmessage, valgrindsignature,
                                                    product, branch, buildtype, os_name, os_version, cpu_name],
                                          endkey=["history_valgrind", valgrindmessage, valgrindsignature,
-                                                 product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"],
+                                                 product, branch, buildtype, os_name, os_version, cpu_name, {}],
                                          include_docs=True)
 
         if len(history_valgrinds) > 0:
@@ -660,7 +660,7 @@ class Worker():
 
             history_valgrinds = self.getRows(self.testdb.db.views.bughunter.results_by_type,
                                              startkey=["history_valgrind", valgrindmessage, valgrindsignature],
-                                             endkey=["history_valgrind", valgrindmessage, valgrindsignature + "\u9999"],
+                                             endkey=["history_valgrind", valgrindmessage, valgrindsignature, {}],
                                              include_docs=True)
 
             if len(history_valgrinds) > 0:
@@ -954,7 +954,7 @@ class Worker():
                                        startkey=["history_crash", crashmessage, crashsignature,
                                                  product, branch, buildtype, os_name, os_version, cpu_name],
                                        endkey=["history_crash", crashmessage, crashsignature,
-                                               product, branch, buildtype, os_name, os_version, cpu_name + "\u9999"],
+                                               product, branch, buildtype, os_name, os_version, cpu_name, {}],
                                        include_docs=True)
 
         if len(history_crashes) > 0:
@@ -1024,7 +1024,7 @@ class Worker():
 
             history_crashes = self.getRows(self.testdb.db.views.bughunter.results_by_type,
                                            startkey=["history_crash", crashmessage, crashsignature],
-                                           endkey=["history_crash", crashmessage, crashsignature + "\u9999"],
+                                           endkey=["history_crash", crashmessage, crashsignature, {}],
                                            include_docs=True)
 
             if len(history_crashes) > 0:
@@ -1230,7 +1230,7 @@ class Worker():
         for attempt in self.testdb.max_db_attempts:
             try:
                 startkey = ['worker_%s' % self.worker_type]
-                endkey   = ['worker_%s\u9999' % self.worker_type]
+                endkey   = ['worker_%s' % self.worker_type, {}]
                 worker_rows = self.testdb.db.views.default.workers(startkey=startkey, endkey=endkey)
                 break
             except KeyboardInterrupt:
@@ -1821,7 +1821,7 @@ class Worker():
         try:
             crash_rows = self.getRows(self.testdb.db.views.bughunter.results_by_type,
                                       startkey=["history_crash"],
-                                      endkey=["history_crash\u9999"],
+                                      endkey=["history_crash", {}],
                                       include_docs=True)
 
             for crash_doc in crash_rows:
@@ -1847,7 +1847,7 @@ class Worker():
         try:
             valgrind_rows = self.getRows(self.testdb.db.views.bughunter.results_by_type,
                                          startkey=["history_valgrind"],
-                                         endkey=["history_valgrind\u9999"],
+                                         endkey=["history_valgrind", {}],
                                          include_docs=True)
 
             for valgrind_doc in valgrind_rows:
@@ -1871,7 +1871,7 @@ class Worker():
         try:
             assertion_rows = self.getRows(self.testdb.db.views.bughunter.results_by_type,
                                           startkey=["history_assertion"],
-                                          endkey=["history_assertion\u9999"],
+                                          endkey=["history_assertion", {}],
                                           include_docs=True)
 
             for assertion_doc in assertion_rows:

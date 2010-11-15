@@ -40,6 +40,7 @@ import time
 import sys
 import re
 import subprocess
+import traceback
 
 # http://mikeal.github.com/couchquery/
 import couchquery
@@ -196,9 +197,10 @@ class Database():
 
                 if exceptionType == couchquery.CouchDBException and re.search('Document update conflict', str(exceptionValue)):
                     temp_document = self.getDocument(document["_id"])
+                    call_stack = traceback.format_stack()
+                    self.logMessage('createDocument: attempt: %d, update conflict: call_stack: %s, local: %s, remote: %s, exception: %s' %
+                               (attempt, call_stack, document, temp_document, errorMessage))
                     document["_rev"] = temp_document["_rev"]
-                    self.logMessage('createDocument: attempt: %d, update type: %s, _id: %s, _rev: %s' %
-                               (attempt, document['type'], document["_id"], document["_rev"]))
                     self.updateDocument(document, True)
                     break
 
