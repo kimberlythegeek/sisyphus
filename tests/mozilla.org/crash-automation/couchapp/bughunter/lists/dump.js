@@ -7,7 +7,7 @@ function(head, req) {
 
   // The provides function serves the format the client requests.
   // The first matching format is sent, so reordering functions changes
-  // thier priority. In this case HTML is the preferred format, so it comes first.
+  // their priority. In this case HTML is the preferred format, so it comes first.
   provides("html", function() {
 
              function dumpObject(object) {

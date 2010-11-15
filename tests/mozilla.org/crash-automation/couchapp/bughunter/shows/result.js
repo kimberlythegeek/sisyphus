@@ -1,45 +1,291 @@
 function (doc, req) {
-  // !json templates.crashtest_result
-  // !json templates.unittest_result
   // !code lib/bughunter.js
   // !code vendor/couchapp/path.js
   // !code vendor/couchapp/date.js
-  // !code vendor/couchapp/template.js
+
+  var html = new htmlbuffer();
+
+  html.push('<!DOCTYPE html>');
+  html.push('<html>');
+  html.push('<head>');
+  html.push('<title>Assertion History - Bug Hunter</title>');
+  html.push('<link rel="stylesheet" href="../../style/main.css" type="text/css"/>');
+  html.push('<script src="/_utils/script/json2.js" type="text/javascript"></script>');
+  html.push('<script src="/_utils/script/sha1.js" type="text/javascript"></script>');
+  html.push('<script src="/_utils/script/jquery.js?1.4.2" type="text/javascript"></script>');
+  html.push('<script src="/_utils/script/jquery.couch.js?1.0.0" type="text/javascript"></script>');
+  html.push('<script src="/_utils/script/jquery.dialog.js?1.0.0" type="text/javascript"></script>');
+  html.push('<link href="../../script/jquery-ui/css/jquery-ui-1.8.2.custom.css" rel="stylesheet" type="text/css"/>');
+  html.push('<script src="../../script/jquery-ui/js/jquery-ui-1.8.2.custom.min.js" type="text/javascript"></script>');
+  html.push('<script src="../../script/application.js" type="text/javascript"></script>');
+  html.push('</head>');
+  html.push('<body>');
+  html.push('<div id="wrap">');
 
   if (doc.type == 'result_header_crashtest')
-    return template(templates.crashtest_result, {
-                      result_id : doc._id,
-                      signature : doc.signature,
-                      product   : doc.product,
-                      branch    : doc.branch,
-                      buildtype : doc.buildtype,
-                      os_name   : doc.os_name,
-                      os_version: doc.os_version,
-                      cpu_name  : doc.cpu_name,
-                      datetime  : doc.datetime,
-                      changeset : doc.changeset,
-                      url       : doc.url,
-                      steps     : steps_to_html(doc.steps),
-                      exitstatus: doc.exitstatus,
-                      reproduced: doc.reproduced,
-                      attachments: attachments_to_html(doc)
-                    });
-  if (doc.type == 'result_header_unittest')
-    return template(templates.unittest_result, {
-                      result_id : doc._id,
-                      test      : doc.test,
-                      extra_test_args: doc.extra_test_args,
-                      product   : doc.product,
-                      branch    : doc.branch,
-                      buildtype : doc.buildtype,
-                      os_name   : doc.os_name,
-                      os_version: doc.os_version,
-                      cpu_name  : doc.cpu_name,
-                      datetime  : doc.datetime,
-                      changeset : doc.changeset,
-                      exitstatus : doc.exitstatus,
-                      returncode: doc.returncode,
-                      attachments: attachments_to_html(doc)
-                    });
+    html.push('<h1>Crash Test</h1>');
+  else if (doc.type == 'result_header_unittest')
+    html.push('<h1>Unit Test</h1>');
+
+  html.push('<div id="content">');
+  html.push('<div id="toolbar">');
+  html.push('<span id="filter_display"><span id="filter_text"></span> <button type="button" id="modify_filter">Modify Filter</button></span>');
+  html.push('</div>');
+
+  if (doc.type == 'result_header_crashtest') {
+    html.push('<table>');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Result id:');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc._id);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Socorro Signature:');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.signature);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Product');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.product);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Branch');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.branch);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Build type');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.buildtype);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Operating System');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.os_name + ' ' + doc.os_version);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Processor');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.cpu_name);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Datetime');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.datetime);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Changeset');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.changeset);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Url');
+    html.push('</td>');
+    html.push('<td>');
+    html.push('<a href="' + doc.url + '">' + doc.url + '</a>');
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Steps');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(steps_to_html(doc.steps));
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Exit Status');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.exitstatus);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Reproduced');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.reproduced);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Attachments');
+    html.push('</td>');
+    html.push('</tr>');
+
+    html.push('<tr>');
+    html.push('<td>');
+    html.push(attachments_to_html(doc._id, doc._attachments));
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('</table>');
+  }
+  else if (doc.type == 'result_header_unittest') {
+    html.push('<table>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Result id:');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc._id);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Test');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.test);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Extra Test Arguments');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.extra_test_args);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Product');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.product);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Branch');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.branch);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Build type');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.buildtype);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Operating System');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.os_name + ' ' + doc.os_version);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Processor');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.cpu_name);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Datetime');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.datetime);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Changeset');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.changeset);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Return Code');
+    html.push('</td>');
+    html.push('<td>');
+    html.push(doc.returncode);
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push('Attachments');
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('<tr>');
+    html.push('<td>');
+    html.push(attachments_to_html(doc._id, doc._attachments));
+    html.push('</td>');
+    html.push('</tr>');
+    html.push('');
+    html.push('</table>');
+  }
+  html.push('</div> <!-- content -->');
+  html.push('</div> <!-- wrap -->');
+  html.push('</body>');
+  html.push('</html>');
+  html.send();
+
 }
 

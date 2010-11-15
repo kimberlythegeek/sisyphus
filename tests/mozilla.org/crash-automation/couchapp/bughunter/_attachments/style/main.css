@@ -1,7 +1,63 @@
 /* add styles here */
-h1 { width: 50%; margin-left: auto; margin-right: auto; }
-#menu {float:right}
-#menu > a { background-color: gray; color: white;}
-#homemenu { width: 50%; margin-left: auto; margin-right: auto; }
+h1 { font-size: 1em; margin: 0; text-align: center; }
 .detail { padding: 1em; border: 1px solid black; }
-#pagenav {float:right}
+#content { border-left: 1px solid black; }
+
+/* from couchdb www/style/layout.css */
+
+/*
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+*/
+
+/* Logo & Navigation */
+
+body {
+    background: #fff;
+}
+
+body.fullwidth #sidebar {
+    width: 1em;
+    height: 1em;
+}
+
+body.fullwidth #sidebar #sidebar-content {
+    display: none;
+}
+
+body.fullwidth #wrap { }
+
+#wrap {
+}
+
+#sidebar {
+    float: left;
+    padding-right: 1em;
+}
+
+#sidebar #sidebar-content {
+    display: block;
+}
+
+#sidebar-toggle {
+    pointer: cursor;
+}
+
+#content {
+    overflow-x: auto;
+    padding-left: 1em;
+}
+
+#nav ul { margin: 0; padding: 5px;}
+#nav li { margin: 5px 0 0; padding: 5px 0 0;}
+

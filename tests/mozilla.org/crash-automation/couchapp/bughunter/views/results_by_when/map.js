@@ -5,7 +5,7 @@ function (doc) {
     emit([doc.datetime, doc.type], null);
     break;
   case 'result_assertion':
-    emit([doc.datetime, doc.type, doc.assertion, doc.asssertionfile, doc.product, doc.branch, doc.buildtype, doc.os_name, doc.os_version, doc.cpu_name], null);
+    emit([doc.datetime, doc.type, doc.assertion, doc.assertionfile, doc.product, doc.branch, doc.buildtype, doc.os_name, doc.os_version, doc.cpu_name], null);
     break;
   case 'result_crash':
     emit([doc.datetime, doc.type, doc.crash, doc.crashsignature, doc.product, doc.branch, doc.buildtype, doc.os_name, doc.os_version, doc.cpu_name], null);
