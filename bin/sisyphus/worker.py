@@ -242,7 +242,11 @@ class Worker():
         return bug_list
 
     def clean_url_list(self, url_list):
-        exclude_urls_set = sets.Set(['startup', 'shutdown', 'automationutils.processLeakLog()', 'a blank page'])
+        """
+        This method removes several "bogus" urls from the list which we do not
+        wish to use in bugzilla queries.
+        """
+        exclude_urls_set = sets.Set(['startup', 'shutdown', 'automationutils.processLeakLog()', 'a blank page', ''])
         url_set = sets.Set(url_list)
         url_set.difference_update(exclude_urls_set)
         return list(url_set)
@@ -366,11 +370,12 @@ class Worker():
                 if not re.search('updateDocumentConflict', str(exceptionValue)):
                     raise
 
-        assertionurl_list = self.clean_url_list(assertionurl_list)
-        assertionurl_set = sets.Set(assertionurl_list)
+        clean_assertionurl_list = self.clean_url_list(assertionurl_list)
+        clean_assertionurl_set = sets.Set(clean_assertionurl_list)
         location_id_set  = sets.Set(history_assertion["location_id_list"])
 
-        if len(assertionurl_set) > 0 and not assertionurl_set.issubset(location_id_set):
+        if (len(clean_assertionurl_set) > 0 and
+            not clean_assertionurl_set.issubset(location_id_set)):
             # assertionurl_list contains new urls
             history_stale = True
 
@@ -383,11 +388,11 @@ class Worker():
                 bug_age = None # need to do a full bugzilla search the first time.
                 bug_list = {'open' : [], 'closed' : []}
 
-            if len(assertionurl_list) > 0:
-                assertionurls = ' '.join(assertionurl_list)
-                self.debugMessage('update_bug_list_assertions: begin searchBugzillaUrls: %s %s' % (assertionurls, bug_age))
-                resp, content = sisyphus.bugzilla.searchBugzillaUrls(assertionurls, 'contains_any', None, bug_age)
-                self.debugMessage('update_bug_list_assertions: end   searchBugzillaUrls: %s %s' % (assertionurls, bug_age))
+            if len(clean_assertionurl_list) > 0:
+                clean_assertionurls = ' '.join(clean_assertionurl_list)
+                self.debugMessage('update_bug_list_assertions: begin searchBugzillaUrls: %s %s' % (clean_assertionurls, bug_age))
+                resp, content = sisyphus.bugzilla.searchBugzillaUrls(clean_assertionurls, 'contains_any', None, bug_age)
+                self.debugMessage('update_bug_list_assertions: end   searchBugzillaUrls: %s %s' % (clean_assertionurls, bug_age))
                 if 'bugs' in content:
                     bug_list = self.extractBugzillaBugList(bug_list, content)
 
@@ -677,11 +682,12 @@ class Worker():
                 if not re.search('updateDocumentConflict', str(exceptionValue)):
                     raise
 
-        valgrindurl_list = self.clean_url_list(valgrindurl_list)
-        valgrindurl_set = sets.Set(valgrindurl_list)
+        clean_valgrindurl_list = self.clean_url_list(valgrindurl_list)
+        clean_valgrindurl_set = sets.Set(clean_valgrindurl_list)
         location_id_set  = sets.Set(history_valgrind["location_id_list"])
 
-        if len(valgrindurl_set) > 0 and not valgrindurl_set.issubset(location_id_set):
+        if (len(clean_valgrindurl_set) > 0 and
+            not clean_valgrindurl_set.issubset(location_id_set)):
             # valgrindurl_list contains new urls
             history_stale = True
 
@@ -694,11 +700,11 @@ class Worker():
                 bug_age = None # need to do a full bugzilla search the first time.
                 bug_list = {'open' : [], 'closed' : []}
 
-            if len(valgrindurl_list) > 0:
-                valgrindurls = ' '.join(valgrindurl_list)
-                self.debugMessage('update_bug_list_valgrinds: begin searchBugzillaUrls: %s %s' % (valgrindurls, bug_age))
-                resp, content = sisyphus.bugzilla.searchBugzillaUrls(valgrindurls, 'contains_any', None, bug_age)
-                self.debugMessage('update_bug_list_valgrinds: end   searchBugzillaUrls: %s %s' % (valgrindurls, bug_age))
+            if len(clean_valgrindurl_list) > 0:
+                clean_valgrindurls = ' '.join(clean_valgrindurl_list)
+                self.debugMessage('update_bug_list_valgrinds: begin searchBugzillaUrls: %s %s' % (clean_valgrindurls, bug_age))
+                resp, content = sisyphus.bugzilla.searchBugzillaUrls(clean_valgrindurls, 'contains_any', None, bug_age)
+                self.debugMessage('update_bug_list_valgrinds: end   searchBugzillaUrls: %s %s' % (clean_valgrindurls, bug_age))
                 if 'bugs' in content:
                     bug_list = self.extractBugzillaBugList(bug_list, content)
 
@@ -1044,11 +1050,11 @@ class Worker():
             bug_age = None # need to do a full bugzilla search the first time.
             bug_list = {'open' : [], 'closed' : []}
 
-        crashurl_list = self.clean_url_list(crashurl_list)
-        crashurl_set = sets.Set(crashurl_list)
+        clean_crashurl_list = self.clean_url_list(crashurl_list)
+        clean_crashurl_set = sets.Set(clean_crashurl_list)
         location_id_set  = sets.Set(history_crash["location_id_list"])
 
-        if len(crashurl_set) > 0 and not crashurl_set.issubset(location_id_set):
+        if len(clean_crashurl_set) > 0 and not clean_crashurl_set.issubset(location_id_set):
             # crashurl_list contains new urls
             history_stale = True
 
@@ -1057,11 +1063,11 @@ class Worker():
             # We do not have a bug_list yet, or the crash was last updated over a day ago.
             # Look up any bugs that match this crash
 
-            if len(crashurl_list) > 0:
-                crashurls = ' '.join(crashurl_list)
-                self.debugMessage('update_bug_list_crashreports: begin searchBugzillaUrls: %s %s' % (crashurls, bug_age))
-                resp, content = sisyphus.bugzilla.searchBugzillaUrls(crashurls, 'contains_any', None, bug_age)
-                self.debugMessage('update_bug_list_crashreports: end   searchBugzillaUrls: %s %s' % (crashurls, bug_age))
+            if len(clean_crashurl_list) > 0:
+                clean_crashurls = ' '.join(clean_crashurl_list)
+                self.debugMessage('update_bug_list_crashreports: begin searchBugzillaUrls: %s %s' % (clean_crashurls, bug_age))
+                resp, content = sisyphus.bugzilla.searchBugzillaUrls(clean_crashurls, 'contains_any', None, bug_age)
+                self.debugMessage('update_bug_list_crashreports: end   searchBugzillaUrls: %s %s' % (clean_crashurls, bug_age))
                 if 'bugs' in content:
                     bug_list = self.extractBugzillaBugList(bug_list, content)
 
