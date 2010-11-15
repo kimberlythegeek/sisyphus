@@ -188,6 +188,8 @@
           onclick="init(event, '')">Reset</button>
         <button name="help" type="button" 
           id="help" onclick="openHelp()">Help</button>
+        <button type="button" 
+          onclick="open('about:blank')">Window</button>
       </fieldset>
     </form>
 

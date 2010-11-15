@@ -761,485 +761,575 @@ function saveParms()
 
 function CPageLoader()
 {
+  this.loadPending = false;
   this.content = document.getElementById('contentSpider');
-  this.onload =
-    function(evt) {
-    dlog('CPageLoader.onload: phase ' + evt.eventPhase +
-         ', target ' + evt.target +
-         ', originalTarget ' + evt.originalTarget);
-    if (!document.location.href.match(/spider.html$/))
-      {
-        // prevent duplicate load events in XUL
-        dlog('CPageLoader.onload()');
-        try
-        {
-          if (evt.target.nodeName != '#document' &&
-              evt.target.nodeName != 'xul:browser')
-          {
-            dlog('CPageLoader.onload: ignore non document target ' +
-                 evt.target.nodeName);
-            return;
-          }
-        }
-        catch(ex)
-        {
-          dlog('CpageLoader.onload: ' + ex);
-          //        return;
-        }
+
+  this.handleLoad = function (target) {
+    dlog('CPageLoader.handleLoad target.location ' + target.location);
+
+    gPageLoader.loadPending = false;
+
+    if (target.wrappedJSObject) {
+      target = target.wrappedJSObject;
+    }
+
+    try {
+      /*
+       * remove onbeforeunload to prevent scam artists from locking us to a page.
+       */
+      dlog('CPageLoader.handleLoad: target=' + target);
+      try {
+        dlog('CPageLoader.handleLoad: target.onbeforeunload=' + target.defaultView.onbeforeunload.toSource());
       }
+      catch(ex) {
+      }
+      target.defaultView.onbeforeunload = (function () {});
+    }
+    catch(ex) {
+      dlog('CPageLoader.handleLoad: deleting onbeforeunload: ' + ex);
+    }
+
+    gPageLoader.content.removeEventListener('load', gPageLoader.onload, true);
+    target.removeEventListener('load', gPageLoader.onload, true);
+
+    gHTTPResponseObserver.unregister();
+
+    gSpider.onLoadPage();
+  };
+
+  this.onload = function(evt) {
+    dlog('CPageLoader.onload: loadPending ' + gPageLoader.loadPending +
+         ', phase ' + evt.eventPhase +
+         ', target ' + evt.target +
+         ', currentTarget ' + evt.currentTarget +
+         ', originalTarget ' + evt.originalTarget +
+         ', explicitOriginalTarget ' + evt.explicitOriginalTarget);
+
     if ( 'location' in evt.target) {
       dlog('CPageLoader.onload: evt.target.location=' + evt.target.location);
     }
+
     if ( 'location' in evt.originalTarget) {
       dlog('CPageLoader.onload: evt.originalTarget.location=' + evt.originalTarget.location);
     }
 
-    if ( !('location' in evt.target) || !RegExp(gPageLoader.url.replace(/([\^$\\.*+?()[\]{}|])/g, '\\$1') + '/?$').test(evt.target.location)) {
-      dlog('CPageLoader.onload: expected load event on ' + gPageLoader.url + ', ignoring load event on evt.target.location=' + evt.target.location);
+    if ( 'location' in evt.explicitOriginalTarget) {
+      dlog('CPageLoader.onload: evt.explicitOriginalTarget.location=' + evt.explicitOriginalTarget.location);
+    }
+
+    if ( 'location' in evt.currentTarget) {
+      dlog('CPageLoader.onload: evt.currentTarget.location=' + evt.currentTarget.location);
+    }
+
+    if (!gPageLoader.loadPending) {
+      dlog('CPageLoader.onload: load not pending');
       return;
     }
 
-      if (gPageLoader.onload)
+    if ( !('location' in evt.target) || !RegExp('^' + gPageLoader.url.replace(/([\^\$\\\.\*\+\?\(\)\[\]\{\}|])/g, '\\$1') + '[\?#]?').test(evt.target.location)) {
+      dlog('CPageLoader.onload: expected load event on ' + gPageLoader.url + ', ignoring load event on evt.target.location=' + evt.target.location);
+    }
+    else {
+      dlog('CPageLoader.onload: found load event on ' + gPageLoader.url + ', on evt.target.location=' + evt.target.location);
+      gPageLoader.handleLoad(evt.target);
+    }
+  };
+
+  this.onDOMContentLoaded = function(evt) {
+    dlog('CPageLoader.onDOMContentLoaded: loadPending ' + gPageLoader.loadPending + 
+         ', phase ' + evt.eventPhase +
+         ', target ' + evt.target +
+         ', currentTarget ' + evt.currentTarget +
+         ', originalTarget ' + evt.originalTarget +
+         ', explicitOriginalTarget ' + evt.explicitOriginalTarget);
+
+    if ( 'location' in evt.target) {
+      dlog('CPageLoader.onDOMContentLoaded: evt.target.location=' + evt.target.location);
+    }
+    if ( 'location' in evt.originalTarget) {
+      dlog('CPageLoader.onDOMContentLoaded: evt.originalTarget.location=' + evt.originalTarget.location);
+    }
+    if ( 'location' in evt.explicitOriginalTarget) {
+      dlog('CPageLoader.onDOMContentLoaded: evt.explicitOriginalTarget.location=' + evt.explicitOriginalTarget.location);
+    }
+    if ( 'location' in evt.currentTarget) {
+      dlog('CPageLoader.onDOMContentLoaded: evt.currentTarget.location=' + evt.currentTarget.location);
+    }
+
+    if ( !('location' in evt.target) || !RegExp('^' + gPageLoader.url.replace(/([\^\$\\\.\*\+\?\(\)\[\]\{\}|])/g, '\\$1') + '[\?#]?').test(evt.target.location)) {
+      dlog('CPageLoader.onDOMContentLoaded: expected load event on ' + gPageLoader.url + ', ignoring load event on evt.target.location=' + evt.target.location);
+    }
+    else if ('location' in evt.target) {
+      dlog('CPageLoader.onDOMContentLoaded: found load event on ' + gPageLoader.url + ', on evt.target.location=' + evt.target.location);
+      /*
+       * We have the actual content window now and can attach our load handler
+       * there in case the redirection processing logic in CPageLoader.onload
+       * doesn't catch the load event.
+       */
+      evt.target.defaultView.addEventListener('load', gPageLoader.onload, true);
+      /*
+       * wait 60 seconds after onDOMContentLoaded and handle the load regardless if the load event fires
+       * on the right document or not.
+       * XXX: This may interfere with valgrinding however.
+       */
+      setTimeout(gPageLoader.handleLoad, 60000, evt.target);
+
+      gPageLoader.content.
+        removeEventListener('DOMContentLoaded', gPageLoader.onDOMContentLoaded, true);
+    }
+  };
+}
+
+  CPageLoader.prototype.load =
+    function CPageLoader_loadPage(url, referer)
+    {
+      dlog('CPageLoader_loadPage: url: ' + url + ', referer: ' + referer);
+
+      this.loadPending = true;
+      this.url = url;
+
+      if (!referer)
       {
-        gPageLoader.content.
-          removeEventListener('load', gPageLoader.onload, true);
+        referer = '';
       }
+
+      var nodeName = this.content.nodeName.toLowerCase();
+
+      this.content.addEventListener('load', this.onload, true);
+      this.content.addEventListener('DOMContentLoaded', this.onDOMContentLoaded, true);
+
+      if (nodeName === 'xul:browser')
+      {
+        dlog('CPageLoader_loadPage: using browser loader');
+        // funky interface takes a string for uri, but requires an nsIURI
+        // for referer...
+        var uri = null;
+        try
+        {
+          uri = Components.classes["@mozilla.org/network/io-service;1"].
+            getService(Components.interfaces.nsIIOService).
+            newURI(referer, null, null);
+        }
+        catch(e)
+        {
+          dlog('CPageLoader_loadPage: failed to create uri, using null : ' + e);
+        }
+
+        gHTTPResponseObserver.register();
+        this.content.loadURI(url, uri);
+      }
+      else if (nodeName === 'iframe' || nodeName === 'xul:iframe')
+      {
+        dlog('CPageLoader_loadPage: using iframe loader');
+        gHTTPResponseObserver.register();
+        this.content.setAttribute('src', url);
+      }
+      else
+      {
+        dlog('CPageLoader_loadPage: invalid content ' + nodeName);
+        throw 'CPageLoader_loadPage: invalid content ' + nodeName;
+      }
+    };
+
+  CPageLoader.prototype.cancel =
+    function CPageLoader_cancel()
+    {
+      dlog('CPageLoader_cancel');
+      this.loadPending = false;
+      this.content.removeEventListener('load', this.onload, true);
+      this.content.removeEventListener('DOMContentLoaded', this.onDOMContentLoaded, true);
       gHTTPResponseObserver.unregister();
+    };
 
-      gSpider.onLoadPage();
-      };
-  }
-
-CPageLoader.prototype.load =
-  function CPageLoader_loadPage(/* String */ url, /* String */ referer)
-{
-  dlog('CPageLoader_loadPage: url: ' + url + ', referer: ' + referer);
-
-  this.url = url;
-
-  if (!referer)
-  {
-    referer = '';
-  }
-
-  var nodeName = this.content.nodeName.toLowerCase();
-
-  this.content.addEventListener('load', this.onload, true);
-  if (nodeName === 'xul:browser')
-  {
-    dlog('CPageLoader_loadPage: using browser loader');
-    // funky interface takes a string for uri, but requires an nsIURI
-    // for referer...
-    var uri = null;
-    try
+  CPageLoader.prototype.getDocument =
+    function CPageLoader_getDocument()
     {
-      uri = Components.classes["@mozilla.org/network/io-service;1"].
-        getService(Components.interfaces.nsIIOService).
-        newURI(referer, null, null);
-    }
-    catch(e)
+      var contentDocument = this.content.contentDocument;
+      return contentDocument;
+    };
+
+  CPageLoader.prototype.getWindow =
+    function CPageLoader_getWindow()
     {
-      dlog('CPageLoader_loadPage: failed to create uri, using null : ' + e);
-    }
-
-    gHTTPResponseObserver.register();
-    this.content.loadURI(url, uri);
-  }
-  else if (nodeName === 'iframe' || nodeName === 'xul:iframe')
-  {
-    dlog('CPageLoader_loadPage: using iframe loader');
-    gHTTPResponseObserver.register();
-    this.content.setAttribute('src', url);
-  }
-  else
-  {
-    dlog('CPageLoader_loadPage: invalid content ' + nodeName);
-    throw 'CPageLoader_loadPage: invalid content ' + nodeName;
-  }
-};
-
-
-
-CPageLoader.prototype.cancel =
-  function CPageLoader_cancel()
-{
-  this.content.removeEventListener('load', this.onload, true);
-  gHTTPResponseObserver.unregister();
-};
-
-CPageLoader.prototype.getDocument =
-  function CPageLoader_getDocument()
-{
-  var contentDocument = this.content.contentDocument;
-  return contentDocument;
-};
-
-CPageLoader.prototype.getWindow =
-  function CPageLoader_getWindow()
-{
-  var contentWindow = this.content.contentWindow;
-  return contentWindow;
-};
+      var contentWindow = this.content.contentWindow;
+      return contentWindow;
+    };
 
 /*
   From mozilla/toolkit/content
   These files did not have a license
 */
 
-function canQuitApplication()
-{
-  var os = Components.classes["@mozilla.org/observer-service;1"]
-    .getService(Components.interfaces.nsIObserverService);
-  if (!os)
+  function canQuitApplication()
   {
-    dlog('canQuitApplication: unable to get observer service');
+    var os = Components.classes["@mozilla.org/observer-service;1"]
+      .getService(Components.interfaces.nsIObserverService);
+    if (!os)
+    {
+      dlog('canQuitApplication: unable to get observer service');
+      return true;
+    }
+
+    try
+    {
+      var cancelQuit = Components.classes["@mozilla.org/supports-PRBool;1"]
+        .createInstance(Components.interfaces.nsISupportsPRBool);
+      os.notifyObservers(cancelQuit, "quit-application-requested", null);
+
+      // Something aborted the quit process.
+      if (cancelQuit.data)
+      {
+        dlog('canQuitApplication: something aborted the quit process');
+        return false;
+      }
+    }
+    catch (ex)
+    {
+      dlog('canQuitApplication: ' + ex);
+    }
+    os.notifyObservers(null, "quit-application-granted", null);
     return true;
   }
 
-  try
+  function goQuitApplication()
   {
-    var cancelQuit = Components.classes["@mozilla.org/supports-PRBool;1"]
-      .createInstance(Components.interfaces.nsISupportsPRBool);
-    os.notifyObservers(cancelQuit, "quit-application-requested", null);
+    dlog('goQuitApplication() called');
 
-    // Something aborted the quit process.
-    if (cancelQuit.data)
+    var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
+      'UniversalXPConnect';
+
+    try
     {
-      dlog('canQuitApplication: something aborted the quit process');
+      netscape.security.PrivilegeManager.enablePrivilege(privs);
+    }
+    catch(ex)
+    {
+      throw('goQuitApplication: privilege failure ' + ex);
+    }
+
+    if (!canQuitApplication())
+    {
       return false;
     }
+
+    unregisterConsoleListener();
+    unregisterDialogCloser();
+
+    var kAppStartup = '@mozilla.org/toolkit/app-startup;1';
+    var kAppShell   = '@mozilla.org/appshell/appShellService;1';
+    var   appService;
+    var   forceQuit;
+
+    if (kAppStartup in Components.classes)
+    {
+      appService = Components.classes[kAppStartup].
+        getService(Components.interfaces.nsIAppStartup);
+      forceQuit  = Components.interfaces.nsIAppStartup.eForceQuit;
+
+    }
+    else if (kAppShell in Components.classes)
+    {
+      appService = Components.classes[kAppShell].
+        getService(Components.interfaces.nsIAppShellService);
+      forceQuit = Components.interfaces.nsIAppShellService.eForceQuit;
+    }
+    else
+    {
+      throw 'goQuitApplication: no AppStartup/appShell';
+    }
+
+    var windowManager = Components.
+      classes['@mozilla.org/appshell/window-mediator;1'].getService();
+
+    var windowManagerInterface = windowManager.
+      QueryInterface(Components.interfaces.nsIWindowMediator);
+
+    var enumerator = windowManagerInterface.getEnumerator(null);
+
+    while (enumerator.hasMoreElements())
+    {
+      var domWindow = enumerator.getNext();
+      if (("tryToClose" in domWindow) && !domWindow.tryToClose())
+      {
+        dlog('goQuitApplication: domWindow.tryToClose() is false');
+        return false;
+      }
+      domWindow.close();
+    }
+
+    try
+    {
+      appService.quit(forceQuit);
+    }
+    catch(ex)
+    {
+      throw('goQuitApplication: ' + ex);
+    }
+
+    return true;
   }
-  catch (ex)
+
+/*
+ * Redirections can involve relative paths. To handle these,
+ * rely on the subsequent response for the URI to tell us
+ * what the effective urls will be.
+ */
+  var gHTTPResponseRedirectPending = false;
+
+  var gHTTPResponseObserver = {
+  observe: function(subject, topic, data)
   {
-    dlog('canQuitApplication: ' + ex);
-  }
-  os.notifyObservers(null, "quit-application-granted", null);
-  return true;
-}
 
-function goQuitApplication()
-{
-  dlog('goQuitApplication() called');
-
-  var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
+    var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
     'UniversalXPConnect';
 
-  try
-  {
-    netscape.security.PrivilegeManager.enablePrivilege(privs);
-  }
-  catch(ex)
-  {
-    throw('goQuitApplication: privilege failure ' + ex);
-  }
-
-  if (!canQuitApplication())
-  {
-    return false;
-  }
-
-  unregisterConsoleListener();
-  unregisterDialogCloser();
-
-  var kAppStartup = '@mozilla.org/toolkit/app-startup;1';
-  var kAppShell   = '@mozilla.org/appshell/appShellService;1';
-  var   appService;
-  var   forceQuit;
-
-  if (kAppStartup in Components.classes)
-  {
-    appService = Components.classes[kAppStartup].
-      getService(Components.interfaces.nsIAppStartup);
-    forceQuit  = Components.interfaces.nsIAppStartup.eForceQuit;
-
-  }
-  else if (kAppShell in Components.classes)
-  {
-    appService = Components.classes[kAppShell].
-      getService(Components.interfaces.nsIAppShellService);
-    forceQuit = Components.interfaces.nsIAppShellService.eForceQuit;
-  }
-  else
-  {
-    throw 'goQuitApplication: no AppStartup/appShell';
-  }
-
-  var windowManager = Components.
-    classes['@mozilla.org/appshell/window-mediator;1'].getService();
-
-  var windowManagerInterface = windowManager.
-    QueryInterface(Components.interfaces.nsIWindowMediator);
-
-  var enumerator = windowManagerInterface.getEnumerator(null);
-
-  while (enumerator.hasMoreElements())
-  {
-    var domWindow = enumerator.getNext();
-    if (("tryToClose" in domWindow) && !domWindow.tryToClose())
+    try
     {
-      dlog('goQuitApplication: domWindow.tryToClose() is false');
-      return false;
+      window.netscape.security.PrivilegeManager.enablePrivilege(privs);
     }
-    domWindow.close();
-  }
+    catch(ex)
+    {
+      throw('gHTTPResponseObserver: privilege failure ' + ex);
+    }
 
-  try
+    var response = {};
+
+    try
+    {
+      window.dlog('gHTTPResponseObserver.observe subject: ' + subject +
+                  ', topic: ' + 'data: ' + data);
+
+      var httpChannel = subject.
+        QueryInterface(Components.interfaces.nsIHttpChannel);
+
+      if (!httpChannel || !window.gSpider.mCurrentUrl)
+      {
+        return;
+      }
+
+      window.gSpider.mCurrentUrl.mResponses.push(response);
+
+      try
+      {
+        response.originalURI = httpChannel.originalURI.spec;
+      }
+      catch(ex)
+      {
+        window.dlog('gHTTPResponseObserver.observe: httpChannel.originalURI: ' + ex);
+      }
+
+      try
+      {
+        response.URI = httpChannel.URI.spec;
+      }
+      catch(ex)
+      {
+        window.dlog('gHTTPResponseObserver.observe: httpChannel.URI: ' + ex);
+      }
+
+      try
+      {
+        response.referrer = httpChannel.referrer.spec;
+      }
+      catch(ex)
+      {
+        window.dlog('gHTTPResponseObserver.observe: httpChannel.referrer: ' + ex);
+      }
+
+      try
+      {
+        response.responseStatus = httpChannel.responseStatus;
+      }
+      catch(ex)
+      {
+        window.dlog('gHTTPResponseObserver.observe: httpChannel.responseStatus: ' + ex);
+      }
+
+      try
+      {
+        response.responseStatusText = httpChannel.responseStatusText.
+          toLowerCase();
+      }
+      catch(ex)
+      {
+        window.dlog('gHTTPResponseObserver.observe: httpChannel.responseStatusText: ' + ex);
+      }
+
+      try
+      {
+        response.requestSucceeded = httpChannel.requestSucceeded;
+      }
+      catch(ex)
+      {
+        window.dlog('gHTTPResponseObserver.observe: httpChannel.requestSucceeded: ' + ex);
+      }
+
+      try
+      {
+        response.contentType = httpChannel.getResponseHeader('content-type');
+      }
+      catch(ex)
+      {
+        window.dlog('gHTTPResponseObserver.observe: getResponseHeader("content-type"): ' + ex);
+      }
+
+      try
+      {
+        response.name = httpChannel.name;
+      }
+      catch(ex)
+      {
+        window.dlog('gHTTPResponseObserver.observe: httpChannel.name: ' + ex);
+      }
+
+      response.location = '';
+      try {
+        response.location = httpChannel.getResponseHeader('location');
+      }
+      catch(ex) {
+        window.dlog('gHTTPResponseObserver.observe: httpChannel.getResponseHeader("location"): ' + ex);
+      }
+
+      window.dlog('gHTTPResponseObserver.observe response: ' + response.toSource());
+
+      if (gHTTPResponseRedirectPending && RegExp('^' + gPageLoader.url.replace(/([\^\$\\\.\*\+\?\(\)\[\]\{\}|])/g, '\\$1') + '[\/]?$').test(response.originalURI) &&
+          (response.requestSucceeded || response.responseStatus == "404")) {
+        gHTTPResponseRedirectPending = false;
+//      window.gPageLoader.url = response.location.indexOf('http') == 0 ? response.location : response.URI;
+        window.gPageLoader.url = response.URI;
+        window.dlog('gHTTPResponseObserver.observe complete redirection: ' +
+                    'window.gPageLoader.url=' + window.gPageLoader.url);
+      }
+      else {
+        // detect when the url passed to gPageLoader has been redirected
+        // and update gPageLoader.url to match.
+        if (/301|302|303|307/.test(response.responseStatus) &&
+            RegExp('^' + gPageLoader.url.replace(/([\^\$\\\.\*\+\?\(\)\[\]\{\}|])/g, '\\$1') + '[\/]?$').test(response.URI)) {
+
+          gHTTPResponseRedirectPending = true;
+          // use the response.originalURI to indicate which response is the
+          // result of the redirection.
+          window.gPageLoader.url = response.originalURI;
+          window.dlog('gHTTPResponseObserver.observe start redirection: ' +
+                      'window.gPageLoader.url=' + window.gPageLoader.url);
+        }
+      }
+    }
+    catch(e)
+    {
+      //window.dlog(' ' + e);
+    }
+
+  },
+
+  get observerService() {
+
+    var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
+    'UniversalXPConnect';
+
+    if (!gInChrome && !gCanHaveChromePermissions)
+    {
+      return null;
+    }
+
+    try
+    {
+      netscape.security.PrivilegeManager.enablePrivilege(privs);
+    }
+    catch(ex)
+    {
+      throw('gHTTPResponseObserver: privilege failure ' + ex);
+    }
+
+    try
+    {
+      return Components.classes["@mozilla.org/observer-service;1"]
+      .getService(Components.interfaces.nsIObserverService);
+    }
+    catch(e)
+    {
+      dlog(' ' + e);
+      return null;
+    }
+  },
+
+  register: function()
   {
-    appService.quit(forceQuit);
-  }
-  catch(ex)
-  {
-    throw('goQuitApplication: ' + ex);
-  }
+    var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
+    'UniversalXPConnect';
 
-  return true;
-}
-
-
-var gHTTPResponseObserver = {
-observe: function(subject, topic, data)
-{
-
-  var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
-  'UniversalXPConnect';
-
-  try
-  {
-    window.netscape.security.PrivilegeManager.enablePrivilege(privs);
-  }
-  catch(ex)
-  {
-    throw('gHTTPResponseObserver: privilege failure ' + ex);
-  }
-
-  var response = {};
-
-  try
-  {
-    window.dlog('gHTTPResponseObserver.observe subject: ' + subject +
-                ', topic: ' + 'data: ' + data);
-
-    var httpChannel = subject.
-    QueryInterface(Components.interfaces.nsIHttpChannel);
-
-    if (!httpChannel || !window.gSpider.mCurrentUrl)
+    if (!gInChrome && !gCanHaveChromePermissions)
     {
       return;
     }
 
-    window.gSpider.mCurrentUrl.mResponses.push(response);
-
     try
     {
-      response.originalURI = httpChannel.originalURI.spec;
+      netscape.security.PrivilegeManager.enablePrivilege(privs);
     }
     catch(ex)
     {
-      window.dlog('gHTTPResponseObserver.observe: httpChannel.originalURI: ' + ex);
-    }
-
-    try
-    {
-      response.URI = httpChannel.URI.spec;
-    }
-    catch(ex)
-    {
-      window.dlog('gHTTPResponseObserver.observe: httpChannel.URI: ' + ex);
+      throw('gHTTPResponseObserver: privilege failure ' + ex);
     }
 
     try
     {
-      response.referrer = httpChannel.referrer.spec;
+      this.observerService.addObserver(this, "http-on-examine-response", false);
+      this.observerService.addObserver(this, "http-on-examine-cached-response", false);
     }
-    catch(ex)
+    catch(e)
     {
-      window.dlog('gHTTPResponseObserver.observe: httpChannel.referrer: ' + ex);
+      dlog(' ' + e);
+    }
+  },
+
+  unregister: function()
+  {
+    var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
+    'UniversalXPConnect';
+
+    if (!gInChrome && !gCanHaveChromePermissions)
+    {
+      return;
     }
 
     try
     {
-      response.responseStatus = httpChannel.responseStatus;
+      netscape.security.PrivilegeManager.enablePrivilege(privs);
     }
     catch(ex)
     {
-      window.dlog('gHTTPResponseObserver.observe: httpChannel.responseStatus: ' + ex);
+      throw('gHTTPResponseObserver: privilege failure ' + ex);
     }
 
     try
     {
-      response.responseStatusText = httpChannel.responseStatusText.
-      toLowerCase();
-    }
-    catch(ex)
-    {
-      window.dlog('gHTTPResponseObserver.observe: httpChannel.responseStatusText: ' + ex);
-    }
-
-    try
-    {
-      response.requestSucceeded = httpChannel.requestSucceeded;
-    }
-    catch(ex)
-    {
-      window.dlog('gHTTPResponseObserver.observe: httpChannel.requestSucceeded: ' + ex);
-    }
-
-    try
-    {
-      response.contentType = httpChannel.getResponseHeader('content-type');
-    }
-    catch(ex)
-    {
-      window.dlog('gHTTPResponseObserver.observe: getResponseHeader("content-type"): ' + ex);
-    }
-
-    try
-    {
-      response.name = httpChannel.name;
-    }
-    catch(ex)
-    {
-      window.dlog('gHTTPResponseObserver.observe: httpChannel.name: ' + ex);
-    }
-
-    response.location = '';
-    try {
-      response.location = httpChannel.getResponseHeader('location');
-    }
-    catch(ex) {
-      window.dlog('gHTTPResponseObserver.observe: httpChannel.getResponseHeader("location"): ' + ex);
-    }
-
-    // detect when the url passed to gPageLoader has been redirected
-    // and update gPageLoader.url to match.
-    if (/301|302|307/.test(response.responseStatus) &&
-        RegExp(window.gPageLoader.url.replace(/([\^$\\.*+?()[\]{}|])/g, '\\$1') + '/?$').test(response.URI)) {
-
-      window.dlog('gHTTPResponseObserver.observe redirecting: ' +
-                  'response.URI=' + response.URI + ' to ' +
-                  'response.location=' + response.location);
-      window.gPageLoader.url = response.location;
-    }
-
-
-  }
-  catch(e)
-  {
-    //window.dlog(' ' + e);
-  }
-
-  if (gDebug) {
-    window.dlog('gHTTPResponseObserver.observe response: ' + response.toSource());
-  }
-
-},
-
-get observerService() {
-
-  var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
-  'UniversalXPConnect';
-
-  if (!gInChrome && !gCanHaveChromePermissions)
-  {
-    return null;
-  }
-
-  try
-  {
-    netscape.security.PrivilegeManager.enablePrivilege(privs);
-  }
-  catch(ex)
-  {
-    throw('gHTTPResponseObserver: privilege failure ' + ex);
-  }
-
-  try
-  {
-    return Components.classes["@mozilla.org/observer-service;1"]
-    .getService(Components.interfaces.nsIObserverService);
-  }
-  catch(e)
-  {
-    dlog(' ' + e);
-    return null;
-  }
-},
-
-register: function()
-{
-  var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
-  'UniversalXPConnect';
-
-  if (!gInChrome && !gCanHaveChromePermissions)
-  {
-    return;
-  }
-
-  try
-  {
-    netscape.security.PrivilegeManager.enablePrivilege(privs);
-  }
-  catch(ex)
-  {
-    throw('gHTTPResponseObserver: privilege failure ' + ex);
-  }
-
-  try
-  {
-    this.observerService.addObserver(this, "http-on-examine-response", false);
-  }
-  catch(e)
-  {
-    dlog(' ' + e);
-  }
-},
-
-unregister: function()
-{
-  var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
-  'UniversalXPConnect';
-
-  if (!gInChrome && !gCanHaveChromePermissions)
-  {
-    return;
-  }
-
-  try
-  {
-    netscape.security.PrivilegeManager.enablePrivilege(privs);
-  }
-  catch(ex)
-  {
-    throw('gHTTPResponseObserver: privilege failure ' + ex);
-  }
-
-  try
-  {
-    this.observerService.removeObserver(this, "http-on-examine-response");
-    if(gDebug)
-    {
-      cdump('Spider: Current Url: ' + gSpider.mCurrentUrl.mUrl +
-            ', Referer: ' + gSpider.mCurrentUrl.mReferer +
-            ', Depth: ' + gSpider.mCurrentUrl.mDepth);
-      var responses = gSpider.mCurrentUrl.mResponses;
-      for (var iResponse = 0; iResponse < responses.length; iResponse++)
+      this.observerService.removeObserver(this, "http-on-examine-response");
+      this.observerService.removeObserver(this, "http-on-examine-cached-response");
+      if(gDebug)
       {
-        var response = responses[iResponse];
-        cdump('Spider: Response:' +
-              ' originalURI: ' + response.originalURI +
-              ' URI: ' + response.URI +
-              ' referer: ' + response.referrer +
-              ' status: ' + response.responseStatus +
-              ' status text: ' + response.responseStatusText +
-              ' content-type: ' + response.contentType +
-              ' succeeded: ' + response.requestSucceeded);
+        cdump('Spider: Current Url: ' + gSpider.mCurrentUrl.mUrl +
+              ', Referer: ' + gSpider.mCurrentUrl.mReferer +
+              ', Depth: ' + gSpider.mCurrentUrl.mDepth);
+        var responses = gSpider.mCurrentUrl.mResponses;
+        for (var iResponse = 0; iResponse < responses.length; iResponse++)
+        {
+          var response = responses[iResponse];
+          cdump('Spider: Response:' +
+                ' originalURI: ' + response.originalURI +
+                ' URI: ' + response.URI +
+                ' referer: ' + response.referrer +
+                ' status: ' + response.responseStatus +
+                ' status text: ' + response.responseStatusText +
+                ' content-type: ' + response.contentType +
+                ' succeeded: ' + response.requestSucceeded);
 
+        }
       }
     }
+    catch(e)
+    {
+      dlog(' ' + e);
+    }
   }
-  catch(e)
-  {
-    dlog(' ' + e);
-  }
-}
-};
+  };
