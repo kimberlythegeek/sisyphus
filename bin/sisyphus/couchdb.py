@@ -625,12 +625,12 @@ class Database():
                     self.logMessage('checkDatabase: compacting %s' % self.dburi)
                     self.status = new_status
 
-                    resp, content = self.http.request(self.dburi + '/_compact', method='POST')
+                    resp, content = self.http.request(self.dburi + '/_compact', method='POST', headers={"Content-Type":"application/json"})
                     if resp['status'].find('2') != 0:
                         self.logMessage('checkDatabase: POST %s/_compact response: %s, %s' % (self.dburi, resp, content))
                     else:
                         time.sleep(5)
-                        resp, content = self.http.request(self.dburi + '/_view_cleanup', method='POST')
+                        resp, content = self.http.request(self.dburi + '/_view_cleanup', method='POST', headers={"Content-Type":"application/json"})
                         if resp['status'].find('2') != 0:
                             self.logMessage('checkDatabase: POST %s/_compact/_view_cleanup response: %s, %s' % (self.dburi, resp, content))
                         else:
@@ -659,7 +659,7 @@ class Database():
                         self.logMessage('checkDatabase: compacting %s/_design/%s' % (self.dburi, design_doc_name))
                         self._design[design_doc_name] = new_status
 
-                        resp, content = self.http.request('%s/_compact/%s' % (self.dburi, design_doc_name), method='POST')
+                        resp, content = self.http.request('%s/_compact/%s' % (self.dburi, design_doc_name), method='POST', headers={"Content-Type":"application/json"})
                         if resp['status'].find('2') != 0:
                             self.logMessage('checkDatabase: POST %s/_compact/%s response: %s, %s' % (self.dburi, design_doc_name, resp, content))
 
