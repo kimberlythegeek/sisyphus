@@ -131,7 +131,7 @@ class UnitTestWorker(sisyphus.worker.Worker):
         reExecutablePath = re.compile(r'^environment: executablepath=(.*)')
         reProfileName    = re.compile(r'^environment: profilename=(.*)')
         reAssertionFail  = re.compile(r'^Assertion fail.*')
-        reASSERTION      = re.compile(r'^.###\!\!\! ASSERTION: (.*), file (.*), line [0-9]+.*')
+        reASSERTION      = re.compile(r'^.?###\!\!\! ASSERTION: (.*), file (.*), line [0-9]+.*')
         reValgrindLeader = re.compile(r'^==[0-9]+==')
         # reftest
         # REFTEST INFO | Loading testid

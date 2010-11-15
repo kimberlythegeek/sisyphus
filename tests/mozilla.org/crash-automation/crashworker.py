@@ -354,7 +354,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
         reExecutablePath   = re.compile(r'^environment: TEST_EXECUTABLEPATH=(.*)')
         reProfileName      = re.compile(r'^environment: TEST_PROFILENAME=(.*)')
         reAssertionFail    = re.compile(r'^Assertion fail.*')
-        reASSERTION        = re.compile(r'^.###\!\!\! ASSERTION: (.*), file (.*), line [0-9]+.*')
+        reASSERTION        = re.compile(r'^.?###\!\!\! ASSERTION: (.*), file (.*), line [0-9]+.*')
         reValgrindLeader   = re.compile(r'^==[0-9]+==')
         reSpiderBegin      = re.compile(r'^Spider: Begin loading (.*)')
         reSpider           = re.compile(r'^Spider:')
