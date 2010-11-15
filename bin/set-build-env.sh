@@ -125,11 +125,7 @@ for step in step1; do # dummy loop for handling exits
         myexit 1
     fi
 
-    if [[ $branch == "1.8.0" ]]; then
-        export BRANCH_CO_FLAGS=${BRANCH_CO_FLAGS:--r MOZILLA_1_8_0_BRANCH}
-    elif [[ $branch == "1.8.1" ]]; then
-        export BRANCH_CO_FLAGS=${BRANCH_CO_FLAGS:--r MOZILLA_1_8_BRANCH}
-    elif [[ $branch == "1.9.0" ]]; then
+    if [[ $branch == "1.9.0" ]]; then
         export BRANCH_CO_FLAGS="";
     elif [[ $branch == "1.9.1" ]]; then
         TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-1.9.1}
@@ -137,7 +133,7 @@ for step in step1; do # dummy loop for handling exits
     elif [[ $branch == "1.9.2" ]]; then
         TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-1.9.2}
         export BRANCH_CO_FLAGS="";
-    elif [[ $branch == "1.9.3" ]]; then
+    elif [[ $branch == "2.0.0" ]]; then
         TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/mozilla-central}
         export BRANCH_CO_FLAGS="";
     else
@@ -146,7 +142,7 @@ for step in step1; do # dummy loop for handling exits
     fi
 
     if [[ -n "$MOZ_CO_DATE" ]]; then
-        if [[ $branch == "1.8.0" || $branch == "1.8.1" || $branch == "1.9.0" ]]; then
+        if [[ $branch == "1.9.0" ]]; then
             export DATE_CO_FLAGS="-D \"$MOZ_CO_DATE\""
         else
             export DATE_CO_FLAGS="--date \"<$MOZ_CO_DATE\""
@@ -218,40 +214,20 @@ for step in step1; do # dummy loop for handling exits
                 export VC9EXPRESSDIR=`regtool get "$MSVC9EXPRESSKEY/ProductDir" 2> /dev/null`
             fi
 
-            case $branch in
-                1.8.0)
-                    # only msvc6 supported
-                    if [[ -n "$VC6DIR" ]]; then
-                        startbat=start-msvc6.bat
-                    fi
-                    ;;
-                1.8.1)
-                    # msvc6 official, vc7.1 (2003) supported
-                    if [[ -n "$VC6DIR" ]]; then
-                        startbat=start-msvc6.bat
-                    elif [[ -n "$VC71DIR" ]]; then
-                        startbat=start-msvc71.bat
-                    fi
-                    ;;
-                *)
-                    # msvc8 official, vc7.1, (2003), vc9 (2009) supported
-                    # for 1.9.0 and later
-                    if [[ -n "$VC8DIR" ]]; then
-                        startbat=start-msvc8.bat
-                        # set VCINSTALLDIR for use in detecting the MS CRT
-                        # source when building jemalloc.
-                        VCINSTALLDIR=$VC8DIR
-                    elif [[ -n "$VC8EXPRESSDIR" ]]; then
-                        startbat=start-msvc8.bat
-                    elif [[ -n "$VC71DIR" ]]; then
-                        startbat=start-msvc71.bat
-                    elif [[ -n "$VC9DIR" || -n "$VC9EXPRESSDIR" ]]; then
-                        startbat=start-msvc9.bat
-                    fi
-                    ;;
-                *)
-                    ;;
-            esac
+            # msvc8 official, vc7.1, (2003), vc9 (2009) supported
+            # for 1.9.0 and later
+            if [[ -n "$VC8DIR" ]]; then
+                startbat=start-msvc8.bat
+                # set VCINSTALLDIR for use in detecting the MS CRT
+                # source when building jemalloc.
+                VCINSTALLDIR=$VC8DIR
+            elif [[ -n "$VC8EXPRESSDIR" ]]; then
+                startbat=start-msvc8.bat
+            elif [[ -n "$VC71DIR" ]]; then
+                startbat=start-msvc71.bat
+            elif [[ -n "$VC9DIR" || -n "$VC9EXPRESSDIR" ]]; then
+                startbat=start-msvc9.bat
+            fi
 
             if [[ -z "$startbat" ]]; then
                 myexit 2
@@ -414,7 +390,7 @@ for step in step1; do # dummy loop for handling exits
             1.9.2)
                 export TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-1.9.2}
                 ;;
-            1.9.3)
+            2.0.0)
                 export TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/mozilla-central}
                 ;;
         esac
@@ -430,7 +406,7 @@ for step in step1; do # dummy loop for handling exits
             1.9.2)
                 export TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-1.9.2}
                 ;;
-            1.9.3)
+            2.0.0)
                 export TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/mozilla-central}
                 ;;
         esac

@@ -577,6 +577,10 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
                     for major_version in branches_doc["major_versions"]:
 
+                        # PowerPC is not supported after Firefox 3.6
+                        if major_version > '0306' and worker_doc['cpu_name'] == 'ppc':
+                            continue
+
                         new_signature_doc = dict(self.signature_doc)
                         del new_signature_doc['_id']
                         del new_signature_doc['_rev']
@@ -871,6 +875,31 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 # Depending on the population of workers, the worker
                 # was not the best at the time it was originally
                 # processed the signature, but if we are the best now,
+                # we can go ahead and delete it and try for the next
+                # job
+
+                self.viewdata['processedcount'] += 1
+
+                if not self.isBetterWorkerAvailable(signature_doc):
+                    self.debugMessage("checkSignatureForWorker: there is not a better worker available, deleting signature %s" % signature_id)
+                    try:
+                        self.testdb.deleteDocument(signature_doc)
+                    except KeyboardInterrupt:
+                        raise
+                    except SystemExit:
+                        raise
+                    except:
+                        # ignore conflicts.
+                        exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+
+                        errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+                        self.logMessage("checkSignatureForWorker: %s, signature: %s, exception: %s" %
+                                        (exceptionValue, signature_doc["_id"], errorMessage))
+                continue
+
+            if signature_doc['major_version'] > '0306' and self.document['cpu_name'] == 'ppc':
+                # PowerPC is not supported after Firefox 3.6
+                # processed the signature. If we are the best worker for this signature,
                 # we can go ahead and delete it and try for the next
                 # job
 

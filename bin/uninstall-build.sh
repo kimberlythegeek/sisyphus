@@ -105,29 +105,19 @@ if [[ $OSID == "nt" ]]; then
 
     if [[ -d "$executabledir/uninstall" ]]; then
 
-        if [[ "$branch" == "1.8.0" ]]; then
-            uninstallexe="$executabledir/uninstall/uninstall.exe"
-            uninstallini="$executabledir/uninstall/uninstall.ini"
-            if [[ -n "$uninstallexe"  && -e "$uninstallexe" ]]; then
-                if sed -i.bak 's/Run Mode=Normal/Run Mode=Silent/' $uninstallini;
-                    then
-                    if $uninstallexe; then true; fi
-                fi
-            fi
+        uninstalloldexe="$executabledir/uninstall/uninst.exe"
+        uninstallnewexe="$executabledir/uninstall/helper.exe"
+        if [[ -n "$uninstallnewexe" && -e "$uninstallnewexe" ]]; then
+            if $uninstallnewexe /S /D=`cygpath -a -w $executabledir | sed 's@\\\\@\\\\\\\\@g'`; then true; fi
+        elif [[ -n "$uninstalloldexe" && -e "$uninstalloldexe" ]]; then
+            if $uninstalloldexe /S /D=`cygpath -a -w $executabledir | sed 's@\\\\@\\\\\\\\@g'`; then true; fi
         else
-            uninstalloldexe="$executabledir/uninstall/uninst.exe"
-            uninstallnewexe="$executabledir/uninstall/helper.exe"
-            if [[ -n "$uninstallnewexe" && -e "$uninstallnewexe" ]]; then
-                if $uninstallnewexe /S /D=`cygpath -a -w $executabledir | sed 's@\\\\@\\\\\\\\@g'`; then true; fi
-            elif [[ -n "$uninstalloldexe" && -e "$uninstalloldexe" ]]; then
-                if $uninstalloldexe /S /D=`cygpath -a -w $executabledir | sed 's@\\\\@\\\\\\\\@g'`; then true; fi
-            else
-                uninstallexe="$executabledir/$product/uninstall/uninstaller.exe"
-                if [[ -n "$uninstallexe" && -e "$uninstallexe" ]]; then
-                    if $uninstallexe /S /D=`cygpath -a -w "$executabledir"  | sed 's@\\\\@\\\\\\\\@g'`; then true; fi
-                fi
+            uninstallexe="$executabledir/$product/uninstall/uninstaller.exe"
+            if [[ -n "$uninstallexe" && -e "$uninstallexe" ]]; then
+                if $uninstallexe /S /D=`cygpath -a -w "$executabledir"  | sed 's@\\\\@\\\\\\\\@g'`; then true; fi
             fi
         fi
+
         # the NSIS uninstaller will copy itself, then fork to the new
         # copy so that it can delete itself. This causes a race condition
         # between the uninstaller deleting the files and the rm command below

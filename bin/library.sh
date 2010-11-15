@@ -119,10 +119,10 @@ if [[ -z "$LIBRARYSH" ]]; then
         esac
 
         case $branch in
-            1.8.0|1.8.1|1.9.0|1.9.1|1.9.2|1.9.3)
+            1.9.0|1.9.1|1.9.2|2.0.0)
                 ;;
             *)
-                error "branch \"$branch\" must be one of 1.8.0 1.8.1 1.9.0 1.9.1 1.9.2 1.9.3" $LINENO
+                error "branch \"$branch\" must be one of 1.9.0 1.9.1 1.9.2 2.0.0" $LINENO
         esac
 
      }

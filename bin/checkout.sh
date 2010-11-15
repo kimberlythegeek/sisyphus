@@ -45,8 +45,6 @@ if [[ -z "$BUILDTREE" ]]; then
 fi
 
 case $branch in
-    1.8.0);;
-    1.8.1);;
     1.9.0);;
     *)
         if [[ -z "$TEST_MOZILLA_HG" ]]; then

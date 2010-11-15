@@ -96,11 +96,7 @@ if [[ $OSID == "nt" ]]; then
 
     if echo $filetype | grep -iq windows; then
         chmod u+x "$filename"
-        if [[ $branch == "1.8.0" ]]; then
-            $filename -ms -hideBanner -dd `cygpath -a -w "$executablepath"`
-        else
-            $filename /S /D=`cygpath -a -w "$executablepath"`
-        fi
+        $filename /S /D=`cygpath -a -w "$executablepath"`
     elif echo  $filetype | grep -iq 'zip archive'; then
         tmpdir=`mktemp  -d /tmp/firefoxzip.XXXX` || exit 1
         # paranoia

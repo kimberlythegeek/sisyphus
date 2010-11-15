@@ -161,6 +161,10 @@ Example:
                 for os_version in operating_systems[os_name]:
                     for cpu_name in operating_systems[os_name][os_version]:
 
+                        # PowerPC is not supported after Firefox 3.6
+                        if major_version > '0306' and cpu_name == 'ppc':
+                            continue
+
                         signature_doc                   = {}
                         signature_doc['type']           = 'signature'
                         signature_doc['major_version']  = major_version

@@ -1,5 +1,5 @@
 {
-  "1.9.3" :  [
+  "2.0.0" :  [
     "crashtest",
     "jstestbrowser",
     "mochitest-a11y",

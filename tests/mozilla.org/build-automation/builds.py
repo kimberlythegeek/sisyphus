@@ -66,7 +66,7 @@ def main():
 Initialize builds database at the specified couchdb server.
 
 Example:
-%prog --couch http://couchserver --versions 3.5:1.9.1,3.6:1.9.2,3.7:1.9.3
+%prog --couch http://couchserver --versions 3.5:1.9.1,3.6:1.9.2,4.0:2.0.0
 
 
 '''
@@ -80,9 +80,9 @@ Example:
                       default='sisyphus')
     parser.add_option('--versions', action='store', type='string',
                       dest='supported_versions',
-                      default='3.5:1.9.1,3.6:1.9.2,3.7:1.9.3',
+                      default='3.5:1.9.1,3.6:1.9.2,4.0:2.0.0',
                       help='Comma delimited string of supported Firefox major versions:branches. ' +
-                      'Defaults to 3.5:1.9.1,3.6:1.9.2,3.7:1.9.3')
+                      'Defaults to 3.5:1.9.1,3.6:1.9.2,4.0:2.0.0')
     (options, args) = parser.parse_args()
 
     if options.couchserveruri is None:
@@ -112,6 +112,7 @@ Example:
     else:
         doc = branches_rows[0]
         doc.branches = branches_doc["branches"]
+        doc.major_versions = branches_doc["major_versions"]
         doc.version_to_branch = branches_doc["version_to_branch"]
 
     sisyphusdb.updateDocument(doc)
