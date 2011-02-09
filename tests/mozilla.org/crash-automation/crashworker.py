@@ -354,8 +354,8 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 # don't zombify ourselves
                 continue
 
-            if worker_row['state'] == 'disabled' or worker_row['state'] == 'zombie':
-                # don't zombify disabled or zombified workers
+            if worker_row['state'] == 'disabled' or worker_row['state'] == 'zombie' or 'signature_id' not in worker_row:
+                # don't zombify disabled or zombified workers or non-crash workers.
                 self.debugMessage('killZombies: %s already %s' % (worker_row_id, worker_row['state']))
                 continue
 
