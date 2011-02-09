@@ -52,8 +52,14 @@ def makeUnicodeString(s):
             s = unicode(s, "utf-8", errors='replace')
     return s
 
+# Return a string containing the formatted exception message.
+# If an error occurs, such as a MemoryError, return a simple
+# message.
 def formatException(etype, evalue, etraceback):
-    return str(traceback.format_exception(etype, evalue, etraceback))
+    try:
+        return str(traceback.format_exception(etype, evalue, etraceback))
+    except:
+        return "Error in formatException"
 
 def getTimestamp(hiresolution=False):
     timestamp = datetime.datetime.now()
