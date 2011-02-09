@@ -64,6 +64,8 @@ options          = None
 
 os.chdir(sisyphus_dir)
 
+os.environ["userpreferences"]= sisyphus_dir + '/prefs/spider-user.js'
+
 stackwalkPath = os.environ.get('MINIDUMP_STACKWALK', "/usr/local/bin/minidump_stackwalk")
 # if MINIDUMP_STACKWALK was not specified, set it to the default value if it exists.
 # this will pass it on to the unit test runners.

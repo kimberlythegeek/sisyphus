@@ -67,12 +67,13 @@ os.chdir(sisyphus_dir)
 os.environ["TEST_TOPSITE_TIMEOUT"]="300"
 os.environ["TEST_TOPSITE_PAGE_TIMEOUT"]="120"
 os.environ["XPCOM_DEBUG_BREAK"]="warn"
+os.environ["userpreferences"]= sisyphus_dir + '/prefs/spider-user.js'
 
 stackwalkPath = os.environ.get('MINIDUMP_STACKWALK', "/usr/local/bin/minidump_stackwalk")
 
 class CrashTestWorker(sisyphus.worker.Worker):
 
-    def __init__(self, startdir, programPath, couchserveruri, couchdbname, worker_comment, debug):
+    def __init__(self, startdir, programPath, couchserveruri, couchdbname, userhook, worker_comment, debug):
         sisyphus.worker.Worker.__init__(self, "crashtest", startdir, programPath, couchserveruri, couchdbname, worker_comment, debug)
         self.signature_doc = None
         self.document['signature_id'] = None
@@ -155,6 +156,12 @@ class CrashTestWorker(sisyphus.worker.Worker):
         # already been processed by an equivalent worker.
 
         self.workers = {self.document['_id']: self.document}
+
+        # self.userhook is the url of the userhook script to be executed
+        # for each page load. The script is required to be located in the
+        # _design/bughunter/userhooks/ directory on the bughunter couchdb
+        # server.
+        self.userhook = self.testdburi + '/_design/bughunter/userhooks/' + userhook
 
     def checkForUpdate(self):
         if os.stat(self.programPath)[stat.ST_MTIME] != self.programModTime:
@@ -389,7 +396,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 "-t",
                 "tests/mozilla.org/top-sites/test.sh -u " +
                 url +
-                " -D 1 -h http://test.mozilla.com/tests/mozilla.org/crash-automation/userhook-crash.js",
+                " -D 1 -h " + self.userhook,
                 product,
                 branch,
                 buildtype
@@ -1316,6 +1323,12 @@ Example:
                       help='name of database, defaults to sisyphus.',
                       default='sisyphus')
 
+    parser.add_option('--userhook', action='store', type='string',
+                      dest='userhook',
+                      help='userhook to execute for each loaded page. ' +
+                      'Defaults to test-crash-on-load.js.',
+                      default='test-crash-on-load.js')
+
     parser.add_option('--comment', action='store', type='string',
                       dest='worker_comment',
                       default='',
@@ -1341,7 +1354,7 @@ Example:
 
     exception_counter = 0
 
-    this_worker     = CrashTestWorker(startdir, programPath, options.couchserveruri, options.databasename, options.worker_comment, options.debug)
+    this_worker     = CrashTestWorker(startdir, programPath, options.couchserveruri, options.databasename, options.userhook, options.worker_comment, options.debug)
 
     programModTime = os.stat(programPath)[stat.ST_MTIME]
 
