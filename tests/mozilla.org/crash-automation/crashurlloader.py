@@ -177,7 +177,7 @@ Example:
                         signature_doc['bug_list']       = None
                         signature_doc['worker']         = None
                         signature_doc['processed_by']   = {}
-                        signature_doc['priority']       = '0'  # priority 0 will be processed first.
+                        signature_doc['priority']       = '1'  # priority 0 will be processed first.
                         try:
                             testdb.create(signature_doc)
                         except Exception, e:

@@ -184,7 +184,7 @@ def create_signature_doc(crashlogdate, crash_doc):
     signature_doc['urlhash']        = {crash_doc['url']: 1}
     signature_doc['worker']         = None
     signature_doc['processed_by']   = {}
-    signature_doc['priority']       = '1'  # default priority. priority 0 will be processed first.
+    signature_doc['priority']       = '3'  # default priority. priorities 0, 1, 2 will be processed first.
 
     return signature_doc
 
@@ -285,7 +285,11 @@ def process_crashdata(db, crashlogdate, crash_docs, ffversionshash, supported_ve
 
 def finalize_curr_signature_doc(curr_signature_doc, ffversionshash, supported_versions):
     skipsignature = False
+    # convert the url hash to an array of urls
     curr_signature_doc['urls'] = [url for url in curr_signature_doc['urlhash']]
+    # bump the priority slightly for high count urls.
+    if len(curr_signature_doc['urls']) > 1000:
+        curr_signature_doc['priority'] = '2'
 
     # get signature's maximum major_version
     sig_major_versions = [sig_major_version for sig_major_version in curr_signature_doc['major_versionhash']]

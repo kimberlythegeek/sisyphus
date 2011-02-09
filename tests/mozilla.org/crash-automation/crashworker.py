@@ -95,6 +95,42 @@ class CrashTestWorker(sisyphus.worker.Worker):
         # matching worker for the signature, therefore the counts of
         # signatures to be skipped are reset periodically.
 
+        # Priorities are used to order groups of jobs. Jobs are
+        # processed in the order of their priorities: 0, 1, 2, and 3.
+
+        # Priority 0 is reserved for jobs which are created from urls
+        # that have generated crashes. A Priority 0 job is created
+        # from a crashing url for each worker class (operating system,
+        # operating system version and cpu type). We wish to check
+        # these urls quickly to determine if a crash is reproducible.
+
+        # Priority 1 is reserved for jobs which have been uploaded via
+        # crashurlloader.py. A Priority 1 job is created from each
+        # input url for each worker class (operating system, operating
+        # system version and cpu type) containing a single crashing
+        # url.
+
+        # Priority 2 is reserved for jobs which have more than 1000
+        # urls.
+
+        # Priority 3 is reserved for jobs uploaded via crashparser.py.
+
+        # Priority 0 and Priority 1 jobs are created in such a way to
+        # guarantee that they cover each possible combination of
+        # operating system, operating system version and cpu type.
+        # Therefore workers perform exact matches on operating system,
+        # operating system version and cpu type for Priority 0 and
+        # Priority 1 jobs. This prevents partially matching workers from
+        # opportunistically testing the same Priority 0 or Priority 1
+        # url multiple times.
+
+        # Priority 2 jobs can block their workers for extended periods
+        # due to the large number of urls. To start processing these
+        # jobs early, they are assigned a separate priority which is
+        # lower than the crashing and user requested jobs, but
+        # higher than the default for normal jobs. This is a simplistic
+        # bin packing algorithm.
+
         # jobviewdata is an array with an entry for each possible
         # priority. Each of the items in the jobviewdata array is an
         # array of viewdata items. viewdata items contain the start
@@ -115,7 +151,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
         # active viewdata item.
         self.viewdata    = None
 
-        for priority in 0, 1:
+        for priority in 0, 1, 2, 3:
             self.jobviewdata.append([])
 
             fullkey = [str(priority),
@@ -148,7 +184,15 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     }
                 viewdata['endkey'].append({});
                 self.jobviewdata[priority].append(viewdata)
-                del key[len(key)-1]
+
+                # Require workers to exactly match jobs for priorities
+                # 0 and 1 and partially match jobs with priorities 2
+                # and 3.
+
+                if priority > 1:
+                    del key[len(key)-1]
+                else:
+                    key = []
 
         # self.workers is a dictionary that contains a cache of worker documents
         # keyed on the worker's id.
@@ -641,6 +685,11 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 worker_rows = self.getAllWorkers()
                 branches_doc  = self.testdb.getDocument('branches')
 
+                # record each worker's os, and cpu information in a hash
+                # so that we only emit one signature per combination rather
+                # than one for each worker.
+                os_cpu_hash = {}
+
                 for worker_doc in worker_rows:
                     # Skip other workers who match us exactly but do reissue a
                     # signature for us so that we can test if the crash is also
@@ -651,6 +700,13 @@ class CrashTestWorker(sisyphus.worker.Worker):
                         worker_doc['os_version'] == self.document['os_version']):
                         continue
 
+                    worker_os_cpu_key = worker_doc['os_name'] + worker_doc['cpu_name'] + worker_doc['os_version']
+                    if worker_os_cpu_key in os_cpu_hash:
+                        # we've already emitted a signature for this os/cpu.
+                        continue
+
+                    os_cpu_hash[worker_os_cpu_key] = 1
+
                     for major_version in branches_doc["major_versions"]:
 
                         # PowerPC is not supported after Firefox 3.6
@@ -659,7 +715,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
                         new_signature_doc = dict(self.signature_doc)
                         del new_signature_doc['_id']
-                        del new_signature_doc['_rev']
+                        del new_signature_doc['_rev'] 
 
                         for field in 'os_name', 'cpu_name', 'os_version':
                             new_signature_doc[field] = worker_doc[field]
