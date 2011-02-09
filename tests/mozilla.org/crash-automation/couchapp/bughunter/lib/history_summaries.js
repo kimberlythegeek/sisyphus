@@ -5,6 +5,8 @@ function history_summary_html() {
   var row;
   var previous_key = null;
   var counters = { total: 0, os: {}, branch: {}, cpu: {} };
+  var bug_list = { open : [], closed : [] };
+  var urls = [];
   var firstdate; // first date for a given key value
   var lastdate;  // last date for a given key value
   var filter = {};    // filter results using object properties
@@ -35,9 +37,28 @@ function history_summary_html() {
   html.push('    <script src="../../script/jquery-ui/js/jquery-ui-1.8.2.custom.min.js"></script>');
 
   html.push('    <script src="../../script/application.js" type="text/javascript"></script>');
+  html.push('    <script src="../../script/utils.js" type="text/javascript"></script>');
   // Must define key_options before including script/date-field-branch-os-filter.js
   html.push('    <script type="text/javascript">');
   html.push('      var key_options = ' + JSON.stringify(key_options) + ';');
+  html.push('    </script>');
+  html.push('    <style type="text/css">');
+  html.push('        /* By default hide the bug list and domains in the details column. */');
+  html.push('        .detail_bugs_domains { display: none; }');
+  html.push('    </style>');
+  html.push('    <script type="text/javascript">');
+  html.push('    function toggleDetailsVisibility() {');
+  html.push('      var toggleButton = document.getElementById("toggleDetailsVisibility");');
+  html.push('      var detailsCSSRule = findCSSRuleBySelector(".detail_bugs_domains");');
+  html.push('      if (detailsCSSRule)');
+  html.push('        if (detailsCSSRule.style.display == "none") {');
+  html.push('          detailsCSSRule.style.display = "";');
+  html.push('          toggleButton.innerHTML = "Hide Bugs/Domains";');
+  html.push('        } else { ');
+  html.push('          detailsCSSRule.style.display = "none"');
+  html.push('          toggleButton.innerHTML = "Show Bugs/Domains";');
+  html.push('        }');
+  html.push('    }');
   html.push('    </script>');
   html.push('    <script src="../../script/date-field-branch-os-filter.js" type="text/javascript"></script>');
   html.push('  </head>');
@@ -168,12 +189,21 @@ function history_summary_html() {
     html.push('<p><a href=\'../' + history_list + '/results_by_type?include_docs=true' +
               '&startkey=' +  history_key.toSource() +
               (req.query.filter ? ('&filter=' + req.query.filter) : '') +
-              '\'>history</a></p>');
+              '\'>history</a>');
 
-    html.push('<p><a href=\'../' + result_list + '/results_by_type?include_docs=true' +
+    html.push('; <a href=\'../' + result_list + '/results_by_type?include_docs=true' +
               '&startkey=' +  result_key.toSource() +
               (req.query.filter ? ('&filter=' + req.query.filter) : '') +
               '\'>results</a></p>');
+
+    html.push('<div class="detail_bugs_domains">');
+    var bug_query = buglist_html(bug_list);
+    if (bug_query) {
+      html.push('<p>' + bug_query + '</p>');
+    }
+
+    html.push('<p>' + domain_html(urls) + '</p>');
+    html.push('</div>');
 
     html.push('</td>');
 
@@ -275,7 +305,9 @@ function history_summary_html() {
       html.push('<tr>');
       html.push('<th>' + key_options.name + '</th>');
       html.push('<th>Date Range</th><th colspan="4">URL Counts Total/Branches/Operating System/CPU</th>');
-      html.push('<th>Details</th>');
+      html.push('<th>Details');
+      html.push('<button id="toggleDetailsVisibility" type="button" onclick="toggleDetailsVisibility()">Show Bugs/Domains</button>');
+      html.push('</th>');
       html.push('</tr>');
       html.push('</thead>');
       html.push('<tbody>');
@@ -311,6 +343,8 @@ function history_summary_html() {
     if (previous_key !== null && current_key + '' != previous_key + '') {
       sendhtml();
       counters = { total: 0, os: {}, branch: {}, cpu: {} };
+      bug_list = { open : [], closed : [] };
+      urls = [];
       firstdate = lastdate = '';
     }
 
@@ -343,6 +377,14 @@ function history_summary_html() {
     counters.branch[doc.branch] += doc.location_id_list.length;
     counters.cpu[doc.cpu_name] += doc.location_id_list.length;
 
+    if (doc.bug_list) {
+      for each (var bug_state in ['open', 'closed']) {
+        bug_list[bug_state] = bug_list[bug_state].concat(doc.bug_list[bug_state])
+      }
+    }
+
+    urls = urls.concat(doc.location_id_list);
+
     previous_key = current_key.slice(0);
   }
 
@@ -359,4 +401,61 @@ function history_summary_html() {
   html.push('</html>');
 
   html.send();
+}
+
+function buglist_html(bug_list) {
+  // convert the bug list into a hash to eliminate duplicates
+  var bug_hash = {};
+  var bug_numbers = [];
+  var bug_number;
+  var bug_state;
+
+  if (bug_list.open.length == 0 && bug_list.closed.length == 0)
+    return '';
+
+  for each (bug_state in ['open', 'closed']) {
+    for each (bug_number in bug_list[bug_state]) {
+      if (!(bug_number in bug_hash)) {
+        bug_numbers.push(bug_number);
+      }
+      bug_hash[bug_number] = bug_state;
+    }
+  }
+
+  bug_numbers.sort();
+
+  var html  = '<a href="https://bugzilla.mozilla.org/buglist.cgi?bug_id=' +
+    bug_numbers.join(',') + '">';
+  for each (bug_number in bug_numbers) {
+    if (bug_hash[bug_number] == 'open')
+      html += bug_number;
+    else
+      html += '<strike>' + bug_number + '</strike>';
+    html += ' ';
+  }
+  html += '</a>';
+
+  return html;
+
+}
+
+function domain_html(urls) {
+  var domain_hash = {};
+  var re = new RegExp('https?://([^/]*)/?');
+
+  for each (var url in urls) {
+    captures = re.exec(url);
+    if (captures) {
+      domain_hash[captures[1]] = 1;
+    }
+  }
+
+  var domain_list = [];
+  for (var domain in domain_hash) {
+    domain_list.push(domain);
+  }
+
+  domain_list.sort();
+
+  return domain_list.join(' ');
 }

@@ -168,7 +168,9 @@ function(head, req) {
       html.push('<tr>');
       html.push('<td>&nbsp;</td>');
       html.push('<td>');
-      html.push('<a href=\'../../_list/result_locations/results_by_location?include_docs=true&startkey=["' + escape(doc.location_id) + '"]&endkey=["' + escape(doc.location_id) + ', {}"]\'>Search by Location</a>');
+      html.push('<a href=\'../../_list/result_locations/results_by_location?include_docs=true&startkey=["' + escape(doc.location_id) + '"]&endkey=["' + escape(doc.location_id) + ', {}"]\'>Search Results by Location</a>');
+      html.push('; ');
+      html.push('<a href="https://bugzilla.mozilla.org/buglist.cgi?field0-0-0=bug_file_loc&type0-0-1=substring&field0-0-1=longdesc&classification=Client%20Software&classification=Components&query_format=advanced&value0-0-1=' + escape(doc.location_id) + '&type0-0-0=substring&value0-0-0=' + escape(doc.location_id) + '">Search Bugzilla by Location</a>');
       html.push('</td>');
       html.push('</tr>');
       html.push('');
