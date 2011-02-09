@@ -57,6 +57,7 @@ import sisyphus.utils
 import sisyphus.couchdb
 import sisyphus.builder
 import sisyphus.worker
+import sisyphus.crashreports
 
 startdir       = os.getcwd()
 programPath = os.path.abspath(os.path.join(os.path.realpath(os.path.dirname(sys.argv[0])), os.path.basename(sys.argv[0])))
@@ -407,12 +408,14 @@ class CrashTestWorker(sisyphus.worker.Worker):
         self.testdb.createDocument(result_doc)
 
         page               = "startup"
+        crashmessage       = ""
         executablepath     = ""
         profilename        = ""
         reExecutablePath   = re.compile(r'^environment: TEST_EXECUTABLEPATH=(.*)')
         reProfileName      = re.compile(r'^environment: TEST_PROFILENAME=(.*)')
-        reAssertionFail    = re.compile(r'^Assertion fail.*')
+        reAssertionFail    = re.compile(r'^(Assertion failure: .*), at .*')
         reASSERTION        = re.compile(r'^.?###\!\!\! ASSERTION: (.*), file (.*), line [0-9]+.*')
+        reABORT            = re.compile(r'^.?###\!\!\! (ABORT: .*), file (.*), line [0-9]+.*')
         reValgrindLeader   = re.compile(r'^==[0-9]+==')
         reSpiderBegin      = re.compile(r'^Spider: Begin loading (.*)')
         reSpider           = re.compile(r'^Spider:')
@@ -554,7 +557,12 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
                 match = reAssertionFail.match(line)
                 if match:
-                    result_doc["assertionfail"] = match.group(0)
+                    crashmessage = result_doc["assertionfail"] = match.group(1)
+                    continue
+
+                match = reABORT.match(line)
+                if match:
+                    crashmessage = result_doc["abort"] = match.group(1)
                     continue
 
                 match = reASSERTION.match(line)
@@ -675,7 +683,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
                 result_doc["reproduced"] = True
 
-                self.process_crashreport(result_doc["_id"], product, branch, buildtype, timestamp, stdout, page, "crashtest", extra_test_args, extradict)
+                self.process_crashreport(result_doc["_id"], product, branch, buildtype, timestamp, stdout, page, crashmessage, "crashtest", extra_test_args, extradict)
 
         self.testdb.updateDocument(result_doc)
 

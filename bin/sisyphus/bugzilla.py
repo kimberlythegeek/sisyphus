@@ -77,9 +77,10 @@ def timedHttpRequest(url, timeout = 300):
 
         except:
             signal.alarm(0)
-            exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-            if exceptionType != IOError and not re.search('/httplib2/', str(exceptionTraceback)):
-                raise
+            # silently fail.
+            #exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+            #if exceptionType != IOError and exceptionType != HttpLib2Error:
+            #    raise
             resp = {}
             content = '{}'
             time.sleep(60)

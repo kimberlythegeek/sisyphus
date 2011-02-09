@@ -277,6 +277,30 @@ function(head, req) {
           html.push(steps_to_html(doc.steps));
           html.push('</td>');
           html.push('</tr>');
+          if (doc.assertionfail) {
+            html.push('');
+            html.push('<tr>');
+            html.push('<td>');
+            html.push('Assertion failure');
+            html.push('</td>');
+            html.push('<td>');
+            html.push(doc.assertionfail);
+            html.push('</td>');
+            html.push('</tr>');
+            html.push('');
+          }
+          if (doc.abort) {
+            html.push('');
+            html.push('<tr>');
+            html.push('<td>');
+            html.push('Abort');
+            html.push('</td>');
+            html.push('<td>');
+            html.push(doc.abort);
+            html.push('</td>');
+            html.push('</tr>');
+            html.push('');
+          }
           html.push('');
           html.push('<tr>');
           html.push('<td>');

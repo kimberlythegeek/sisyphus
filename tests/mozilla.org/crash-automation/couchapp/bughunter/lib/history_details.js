@@ -57,7 +57,8 @@ function history_details_html() {
     if (previous_key === null)
       return;
 
-    html.push('<h2>' + escape_html(previous_key[previous_key.length - 1]) + '</h2>');
+    html.push('<h2>' + escape_html(previous_key.join(' ')) + '</h2>');
+//    html.push('<h2>' + escape_html(previous_key[previous_key.length - 1]) + '</h2>');
 
     html.push('<table border="1" cellspacing="0" cellpadding="1" width="100%">');
     html.push('<thead>');

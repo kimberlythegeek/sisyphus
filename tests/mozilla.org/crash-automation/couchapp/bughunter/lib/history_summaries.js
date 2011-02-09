@@ -77,7 +77,8 @@ function history_summary_html() {
       return;
 
     html.push('<tr>');
-    html.push('<td width="50%">' + escape_html(previous_key[previous_key.length - 1]) + '</td>');
+    html.push('<td width="50%">' + escape_html(previous_key.join(' ')) + '</td>');
+//    html.push('<td width="50%">' + escape_html(previous_key[previous_key.length - 1]) + '</td>');
     html.push('<td>' + firstdate + ' - ' + lastdate + '</td>');
     html.push('<td>' + counters.total + '</td>');
 

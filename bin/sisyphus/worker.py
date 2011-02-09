@@ -863,127 +863,6 @@ class Worker():
             result_valgrind_doc["count"] = count
             self.testdb.updateDocument(result_valgrind_doc, True)
 
-
-    def parse_crashreport(self, crashreport):
-        """
-        Parse the crash report and report interesting stuff
-
-        Format:
-
-        Operating system: Mac OS X
-                          10.5.8 9L30
-        CPU: x86
-             GenuineIntel family 6 model 23 stepping 6
-             2 CPUs
-
-        Crash reason:  EXC_BAD_ACCESS / KERN_PROTECTION_FAILURE
-        Crash address: 0x4
-
-        Thread 0 (crashed)
-         0  XUL!nsThebesFontMetrics::GetMetrics() const [nsThebesFontMetrics.cpp : 117 + 0x26]
-            eip = 0x040cb2e6   esp = 0xbfff77c0   ebp = 0xbfff77d8   ebx = 0x040cbc54
-            esi = 0x063b1338   edi = 0x0000b478   eax = 0x00000004   ecx = 0x0473d654
-            edx = 0x00000004   efl = 0x00210286
-            Found by: given as instruction pointer in context
-         1  XUL!nsThebesFontMetrics::GetExternalLeading(int&) [nsThebesFontMetrics.cpp : 195 + 0xa]
-            eip = 0x040cbc60   esp = 0xbfff77e0   ebp = 0xbfff7808
-            Found by: previous frame's frame pointer
-         2  XUL!_ZL19GetNormalLineHeightP14nsIFontMetrics [nsHTMLReflowState.cpp : 2078 + 0x18]
-            eip = 0x034402b8   esp = 0xbfff7810   ebp = 0xbfff7858
-            Found by: previous frame's frame pointer
-         3  XUL!_ZL17ComputeLineHeightP14nsStyleContexti [nsHTMLReflowState.cpp : 2128 + 0x12]
-            eip = 0x03440520   esp = 0xbfff7860   ebp = 0xbfff78a8
-            Found by: previous frame's frame pointer
-
-        The first Thread line will be the crasher.
-        Interesting stuff to pull out:
-
-        Crash reason   : EXC_BAD_ACCESS / KERN_PROTECTION_FAILURE
-        Crash address  : 0x4
-        Thread number  : 0
-        Signature      : nsThebesFontMetrics::GetMetrics()
-        Stack          : nsThebesFontMetrics::GetMetrics() nsThebesFontMetrics::GetExternalLeading(int&) ...
-
-        """
-
-        reReason     = re.compile(r'Crash reason:\s+(.*)')
-        reAddress    = re.compile(r'Crash address:\s+(.*)')
-        reThread     = re.compile(r'Thread ([0-9]+) [(]crashed[)]')
-        reFrameDecl  = re.compile(r'\s([0-9]+)\s+([^)]+[)]).*')
-        reFrameOff   = re.compile(r'\s([0-9]+)\s+([^\[]*).*')
-        reason       = None
-        address      = None
-        thread       = None
-        message      = None
-        signature    = None
-        frames       = []
-        frames_max   = 4
-        reNumbers    = re.compile(r'[0-9]+', re.MULTILINE)
-
-        message      = ''
-        signature    = ''
-        stack        = []
-
-        report_lines = crashreport.split('\n')
-
-        for line in report_lines:
-            if reason is None:
-                match = reReason.match(line)
-                if match:
-                    reason = match.group(1)
-
-            if address is None:
-                match = reAddress.match(line)
-                if match:
-                    address = match.group(1)
-
-            if thread is None:
-                match = reThread.match(line)
-                if match:
-                    thread = match.group(1)
-            elif not line:
-                break
-            else:
-                match = reFrameDecl.match(line)
-                if not match:
-                    match = reFrameOff.match(line)
-                if match:
-                    frame_number = match.group(1)
-                    frame_stktext   = match.group(2)
-                    frame_sigtext   = re.sub(' \+ ', '@', frame_stktext) # foo.dll + 0x1234 => foo.dll@0x1234
-                    frame_sigtext   = re.sub('\s*[^\s]*[!]', ' ', frame_sigtext) # foo!bar => bar
-                    frame_sigtext   = re.sub('\s\[[^\]]*\]\s*', ' ', frame_sigtext) # foo [bar] => foo
-                    frame_sigtext   = re.sub('[(][^)]*[)]', '', frame_sigtext)    # foo(bar) => foo
-                    frame_sigtext   = re.sub('\s+', ' ', frame_sigtext)
-                    frame_sigtext   = frame_sigtext.strip()
-                    frames.append({'number': frame_number, 'sigtext': frame_sigtext, 'stktext': frame_stktext})
-                    if len(frames) > frames_max:
-                        break
-
-        if len(frames) > 0:
-            message   = frames[0]['sigtext']
-            signature = ''
-            stack     = []
-            for frame in frames:
-                stack.append(frame['stktext'])
-                if not re.search('^0x[0-9a-fA-F]+$', frame['sigtext']):
-                    # do not include raw addresses in the sigature as they
-                    # are so variable and make it impossible to match.
-                    signature += ' ' + frame['sigtext']
-            if not signature:
-                signature += ' ' + frames[0]['sigtext']
-
-            message = message.strip()
-            signature = signature.strip()
-            if re.search('^0x[0-9a-fA-F]+$', message):
-                # top frame is a pure address. pull in next frame.
-                # in format address | frame
-                topframe_list = signature.replace('Flash Player', 'Flash_Player').split(' ')
-                if len(topframe_list) > 1:
-                    message  = topframe_list[0] + ' | ' + topframe_list[1].replace('Flash_Player', 'Flash Player')
-
-        return {'reason' : reason, 'address' : address, 'thread' : thread, 'message' : message, 'signature' : signature, 'stack' : stack}
-
     def update_bug_list_crashreports(self, product, branch, buildtype, os_name, os_version, cpu_name, timestamp, crashmessage, crashsignature, crashurl_list):
         """
 
@@ -1142,7 +1021,14 @@ class Worker():
                 if 'bugs' in content:
                     bug_list = self.extractBugzillaBugList(bug_list, content)
 
-            if crashsignature and crashsignature != "0x0":
+            if crashmessage:
+                self.debugMessage('update_bug_list_crashreports: begin searchBugzillaText: %s %s' % (crashmessage, bug_age))
+                resp, content = sisyphus.bugzilla.searchBugzillaText(crashmessage, 'contains', None, bug_age)
+                self.debugMessage('update_bug_list_crashreports: end   searchBugzillaText: %s %s' % (crashmessage, bug_age))
+                if 'bugs' in content:
+                    bug_list = self.extractBugzillaBugList(bug_list, content)
+
+            if crashsignature and crashsignature != "0x0" and crashsignature != "(no signature)":
                 self.debugMessage('update_bug_list_crashreports: begin searchBugzillaText: %s %s' % (crashsignature, bug_age))
                 resp, content = sisyphus.bugzilla.searchBugzillaText(crashsignature, 'contains_all', None, bug_age)
                 self.debugMessage('update_bug_list_crashreports: end   searchBugzillaText: %s %s' % (crashsignature, bug_age))
@@ -1180,9 +1066,9 @@ class Worker():
 
         self.debugMessage('update_bug_list_crashreports: end %s' % bug_list)
 
-    def process_crashreport(self, result_id, product, branch, buildtype, timestamp, crash_report, location_id, test, extra_test_args, dumpextra):
+    def process_crashreport(self, result_id, product, branch, buildtype, timestamp, crash_report, location_id, crashmessage, test, extra_test_args, dumpextra):
 
-        crash_data = self.parse_crashreport(crash_report)
+        crash_data = sisyphus.crashreports.parse_crashreport(crash_report)
 
         os_name              = self.document["os_name"]
         os_version           = self.document["os_version"]
@@ -1191,8 +1077,10 @@ class Worker():
         lastkey              = None
         result_crash_doc     = None
 
-        crashmessage   = crash_data["message"]
-        crashsignature = crash_data["signature"]
+        if 'HangID' in dumpextra:
+            crashmessage = 'hang | %s' % crashmessage
+        crashsignature = ' '.join(crash_data["signature_list"])
+
         currkey = crashmessage + ":" + crashsignature
 
         self.update_bug_list_crashreports(product, branch, buildtype,
@@ -1219,7 +1107,7 @@ class Worker():
             "bug"             : "",
             "comment"         : "",
             "extra"           : {},
-            "stack"           : crash_data["stack"]
+            "stack"           : crash_data["signature_list"]
             }
         for extraproperty in dumpextra:
             if extraproperty != 'ServerURL':
