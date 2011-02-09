@@ -962,8 +962,8 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 # exception updating signature_doc
                 exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
                 errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
-                self.logMessage("checkSignatureForWorker: exception %s updating signature: %s, %s" %
-                                (exceptionValue, signature_doc["_id"], errorMessage))
+                self.debugMessage("checkSignatureForWorker: exception %s updating signature: %s, %s" %
+                                  (exceptionValue, signature_doc["_id"], errorMessage))
                 signature_doc = None
 
                 # update worker to remove signature
@@ -974,7 +974,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     # exception updating worker
                     exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
                     errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
-                    self.logMessage("checkSignatureForWorker: exception %s updating worker: %s, %s" %
+                    self.debugMessage("checkSignatureForWorker: exception %s updating worker: %s, %s" %
                                     (exceptionValue, self.document["_id"], errorMessage))
 
             if signature_doc:
