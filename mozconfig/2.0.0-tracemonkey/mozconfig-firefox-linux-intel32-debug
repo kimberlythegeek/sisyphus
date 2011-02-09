@@ -26,8 +26,6 @@ ac_add_options --enable-valgrind
 ac_add_options --disable-installer
 ac_add_options --enable-official-branding
 
-CC=gcc44
-CXX=g++44
 
 export CFLAGS="-gdwarf-2"
 export CXXFLAGS="-gdwarf-2"

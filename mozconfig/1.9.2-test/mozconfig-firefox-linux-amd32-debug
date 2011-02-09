@@ -27,8 +27,6 @@ ac_add_options --enable-official-branding
 export ac_cv_have_visibility_class_bug=yes
 export ac_cv_visibility_pragma=no
 
-CC=gcc44
-CXX=g++44
 
 export CFLAGS="-gstabs+"
 export CXXFLAGS="-gstabs+"

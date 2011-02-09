@@ -21,8 +21,6 @@ ac_add_options --enable-logrefcnt
 ac_add_options --enable-official-branding
 ac_add_options --disable-installer
 
-CC=gcc44
-CXX=g++44
 
 export CFLAGS="-gdwarf-2"
 export CXXFLAGS="-gdwarf-2"

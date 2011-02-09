@@ -24,8 +24,6 @@ ac_add_options --enable-valgrind
 ac_add_options --disable-installer
 ac_add_options --enable-official-branding
 
-CC=gcc44
-CXX=g++44
 export ac_cv_have_visibility_class_bug=yes
 
 export CFLAGS="-gdwarf-2"

@@ -1,7 +1,5 @@
 . $topsrcdir/browser/config/mozconfig
 
-CC=/tools/gcc/bin/gcc
-CXX=/tools/gcc/bin/g++
 CPU=`cat /proc/cpuinfo | grep 'processor.*: [0-9]*' | wc -l`
 let J=$CPU+1
 if [[ $J -gt 4 ]]; then let J=4; fi
