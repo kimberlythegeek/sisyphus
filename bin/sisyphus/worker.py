@@ -300,9 +300,21 @@ class Worker():
             if len(history_assertions) > 1:
                 self.logMessage("update_bug_list_assertions: deleting %d duplicates %s %s from history" %
                                 (len(history_assertions) - 1, assertionmessage, assertionfile))
+                history_stale = True
                 iassertion = 1
                 lassertion = len(history_assertions)
                 while iassertion < lassertion:
+                    # add the bug_list and location_id_list information of the duplicate history
+                    # documents rather than simply discarding them.
+                    if not bug_list:
+                        bug_list = history_assertions[iassertion]["bug_list"]
+                    else:
+                        if history_assertions[iassertion]["bug_list"]:
+                            bug_list["open"].extend(history_assertions[iassertion]["bug_list"]["open"])
+                            bug_list["closed"].extend(history_assertions[iassertion]["bug_list"]["closed"])
+                        if history_assertions[iassertion]["location_id_list"]:
+                            assertionurl_list.extend(history_assertions[iassertion]["location_id_list"])
+
                     try:
                         # We can have update conflicts if the update bug history is currently running
                         # on another worker. Just ignore them but pass through any other exceptions.
@@ -353,9 +365,9 @@ class Worker():
 
             if len(history_assertions) > 0:
                 for cache in history_assertions:
-                    if cache["bug_list"]:
+                    if "bug_list" in cache and cache["bug_list"]:
                         break
-                if cache["bug_list"]:
+                if "bug_list" in cache and cache["bug_list"]:
                     history_assertion["bug_list"]   = cache["bug_list"]
                     history_assertion["updatetime"] = cache["updatetime"]
                     bug_age  = 7
@@ -611,9 +623,21 @@ class Worker():
             if len(history_valgrinds) > 1:
                 self.logMessage("update_bug_list_valgrinds: deleting %d duplicates %s %s from history" %
                                 (len(history_valgrinds) - 1, valgrindmessage, valgrindsignature))
+                history_stale = True
                 ivalgrind = 1
                 lvalgrind = len(history_valgrinds)
                 while ivalgrind < lvalgrind:
+                    # add the bug_list and location_id_list information of the duplicate history
+                    # documents rather than simply discarding them.
+                    if not bug_list:
+                        bug_list = history_valgrinds[ivalgrind]["bug_list"]
+                    else:
+                        if history_valgrinds[ivalgrind]["bug_list"]:
+                            bug_list["open"].extend(history_valgrinds[ivalgrind]["bug_list"]["open"])
+                            bug_list["closed"].extend(history_valgrinds[ivalgrind]["bug_list"]["closed"])
+                        if history_valgrinds[ivalgrind]["location_id_list"]:
+                            valgrindurl_list.extend(history_valgrinds[ivalgrind]["location_id_list"])
+
                     try:
                         # We can have update conflicts if the update bug history is currently running
                         # on another worker. Just ignore them but pass through any other exceptions.
@@ -665,9 +689,9 @@ class Worker():
 
             if len(history_valgrinds) > 0:
                 for cache in history_valgrinds:
-                    if cache["bug_list"]:
+                    if "bug_list" in cache and cache["bug_list"]:
                         break
-                if cache["bug_list"]:
+                if "bug_list" in cache and cache["bug_list"]:
                     history_valgrind["bug_list"]   = cache["bug_list"]
                     history_valgrind["updatetime"] = cache["updatetime"]
                     bug_age  = 7
@@ -983,9 +1007,21 @@ class Worker():
             if len(history_crashes) > 1:
                 self.logMessage("update_bug_list_crashreports: deleting %d duplicates %s %s from history" %
                                 (len(history_crashes) - 1, crashmessage, crashsignature))
+                history_stale = True
                 icrash = 1
                 lcrash = len(history_crashes)
                 while icrash < lcrash:
+                    # add the bug_list and location_id_list information of the duplicate history
+                    # documents rather than simply discarding them.
+                    if not bug_list:
+                        bug_list = history_crashes[icrash]["bug_list"]
+                    else:
+                        if history_crashes[icrash]["bug_list"]:
+                            bug_list["open"].extend(history_crashes[icrash]["bug_list"]["open"])
+                            bug_list["closed"].extend(history_crashes[icrash]["bug_list"]["closed"])
+                        if history_crashes[icrash]["location_id_list"]:
+                            crashurl_list.extend(history_crashes[icrash]["location_id_list"])
+
                     try:
                         # We can have update conflicts if the update bug history is currently running
                         # on another worker. Just ignore them but pass through any other exceptions.
@@ -1037,9 +1073,9 @@ class Worker():
 
             if len(history_crashes) > 0:
                 for cache in history_crashes:
-                    if cache["bug_list"]:
+                    if "bug_list" in cache and cache["bug_list"]:
                         break
-                if cache["bug_list"]:
+                if "bug_list" in cache and cache["bug_list"]:
                     history_crash["bug_list"]   = cache["bug_list"]
                     history_crash["updatetime"] = cache["updatetime"]
                     bug_age  = 7
