@@ -1033,8 +1033,10 @@ class Worker():
                 resp, content = sisyphus.bugzilla.searchBugzillaText(crashsignature, 'contains_all', None, bug_age)
                 self.debugMessage('update_bug_list_crashreports: end   searchBugzillaText: %s %s' % (crashsignature, bug_age))
                 if 'bugs' not in content:
+                    # Artificially limit the date range for attachment queries to 7 days to limit
+                    # the bugzilla query to a more reasonable range than all bugs.
                     self.debugMessage('update_bug_list_crashreports: begin searchBugzillaTextAttachments: %s %s' % (crashsignature, bug_age))
-                    resp, content = sisyphus.bugzilla.searchBugzillaTextAttachments(crashsignature, 'contains_all', 'crash', bug_age)
+                    resp, content = sisyphus.bugzilla.searchBugzillaTextAttachments(crashsignature, 'contains_all', 'crash', 7)
                     self.debugMessage('update_bug_list_crashreports: end   searchBugzillaTextAttachments: %s %s' % (crashsignature, bug_age))
                 if 'bugs' in content:
                     bug_list = self.extractBugzillaBugList(bug_list, content)

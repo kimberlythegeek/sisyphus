@@ -57,7 +57,7 @@ def timedHttpRequest_handler(signum, frame):
     print 'timedHttpRequest timeout'
     raise IOError('HttpRequestTimeout')
 
-def timedHttpRequest(url, timeout = 300):
+def timedHttpRequest(url, attempts = 1, timeout = 300):
     """
     Attempt to perform an http request. If it does not return within
     timeout seconds, raise an empty response. Retry once after a delay
@@ -66,7 +66,7 @@ def timedHttpRequest(url, timeout = 300):
     usage: resp, content = timedHttpRequest('http://example.com/?yomama', 300)
 
     """
-    for attempt in range(2):
+    for attempt in range(attempts):
         try:
             signal.signal(signal.SIGALRM, timedHttpRequest_handler)
 
@@ -83,7 +83,6 @@ def timedHttpRequest(url, timeout = 300):
             #    raise
             resp = {}
             content = '{}'
-            time.sleep(60)
 
     try:
         jcontent = json.loads(content)
@@ -117,8 +116,12 @@ def searchBugzillaSummary(query, querytype='contains', keywords=None, age=None):
     if keywords is not None:
         url += "&keywords_type=contains_all&keywords=" + urllib.quote(keywords)
 
-    if age is not None:
-        url += "&changed_after=" + ageToDate(age)
+    # If age is not specified, default to one year to prevent queries from hitting
+    # the entire history.
+    if age is None:
+        age = 365
+
+    url += "&changed_after=" + ageToDate(age)
 
     resp, content = timedHttpRequest(url)
 
@@ -145,8 +148,12 @@ def searchBugzillaComments(query, querytype='contains', keywords=None, age=None)
     if keywords is not None:
         url += "&keywords_type=contains_all&keywords=" + urllib.quote(keywords)
 
-    if age is not None:
-        url += "&changed_after=" + ageToDate(age)
+    # If age is not specified, default to one year to prevent queries from hitting
+    # the entire history.
+    if age is None:
+        age = 365
+
+    url += "&changed_after=" + ageToDate(age)
 
     resp, content = timedHttpRequest(url)
 
@@ -175,8 +182,12 @@ def searchBugzillaUrls(query, querytype='contains', keywords=None, age=None):
     if keywords is not None:
         url += "&keywords_type=contains_all&keywords=" + urllib.quote(keywords)
 
-    if age is not None:
-        url += "&changed_after=" + ageToDate(age)
+    # If age is not specified, default to one year to prevent queries from hitting
+    # the entire history.
+    if age is None:
+        age = 365
+
+    url += "&changed_after=" + ageToDate(age)
 
     resp, content = timedHttpRequest(url)
 
@@ -205,8 +216,12 @@ def searchBugzillaText(query, querytype='contains', keywords=None, age=None):
     if keywords is not None:
         url += "&keywords_type=contains_all&keywords=" + urllib.quote(keywords)
 
-    if age is not None:
-        url += "&changed_after=" + ageToDate(age)
+    # If age is not specified, default to one year to prevent queries from hitting
+    # the entire history.
+    if age is None:
+        age = 365
+
+    url += "&changed_after=" + ageToDate(age)
 
     resp, content = timedHttpRequest(url)
 
@@ -242,8 +257,12 @@ def searchBugzillaTextAttachments(query, querytype='contains', keywords=None, ag
              "&field0-0-0=attachment.content_type&type0-0-0=contains&value0-0-0=text" +
              "&field0-1-0=attachment.data&type0-1-0=" + querytype + "&value0-1-0=" + query)
 
-    if age is not None:
-        url += "&changed_after=" + ageToDate(age)
+    # If age is not specified, default to one year to prevent queries from hitting
+    # the entire history.
+    if age is None:
+        age = 365
+
+    url += "&changed_after=" + ageToDate(age)
 
     resp, content = timedHttpRequest(url)
 
