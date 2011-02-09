@@ -2107,10 +2107,11 @@ class Worker():
             # matching the Windows style path for the working directory
             # using Windows process ids.
 
-            win_build_pattern = '^[a-zA-Z]? *([0-9]+) .*(\\work\\mozilla\\builds\\[^\\]+\\mozilla\\|mozilla-build)'
+            win_build_pattern = '^[a-zA-Z]? *([0-9]+) .*(/work/mozilla/builds/[^/]+/mozilla/|mozilla-build)'
             ps_proc = subprocess.Popen(["ps", "-W"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             for ps_line in ps_proc.stdout:
+                ps_line = ps_line.replace('\\', '/')
                 ps_match = re.search(win_build_pattern, ps_line)
                 if ps_match:
                     process_list.append({ "process_style" : "windows", "pid" : ps_match.group(1), "line" : ps_line})
@@ -2163,12 +2164,13 @@ class Worker():
             # matching the Windows style path for the working directory
             # using Windows process ids.
 
-            win_build_pattern = '^[a-zA-Z]? *([0-9]+) .*(\\work\\mozilla\\builds\\[^\\]+\\mozilla\\|mozilla-build)'
+            win_build_pattern = '^[a-zA-Z]? *([0-9]+) .*(/work/mozilla/builds/[^/]+/mozilla/|mozilla-build)'
             ps_proc = subprocess.Popen(["ps", "-W"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             kill_args = ["/bin/kill", "-f", "-9"]
 
             kill_pids = []
             for ps_line in ps_proc.stdout:
+                ps_line = ps_line.replace('\\', '/')
                 ps_match = re.search(win_build_pattern, ps_line)
                 if ps_match:
                     kill_pids.append(ps_match.group(1))

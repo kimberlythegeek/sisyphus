@@ -398,11 +398,12 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 # fix the issue on Windows. Just restart the program.
                 self.reloadProgram()
 
+        hung_process = False
         test_process_list = self.psTest()
         if test_process_list:
-            if self.debug:
-                for test_process in test_process_list:
-                    self.debugMessage('runTest: test process still running: %s' % test_process['line'])
+            hung_process = True
+            for test_process in test_process_list:
+                self.debugMessage('runTest: test process still running: %s' % test_process['line'])
             self.killTest()
 
         logfilename = re.search('log: (.*\.log) ', stdout).group(1)
@@ -486,6 +487,9 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     result_doc["reproduced"] = False
 
         logfile.close()
+
+        if hung_process:
+            result_doc['exitstatus'] += ' HANG'
 
         result_doc = self.testdb.saveFileAttachment(result_doc, 'log', logfilename, 'text/plain', True, True)
 
