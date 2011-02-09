@@ -139,10 +139,10 @@ function(head, req) {
           send('<h2>Location: ' + escape_html(current_location) + '<\/h2>');
         }
 
-        html.push('<tr><td colspan="2"><hr /></td></tr>');
 
         switch (doc.type) {
         case 'result_header_crashtest':
+          html.push('<tr><td colspan="2"><hr style="border-style: double;"/></td></tr>');
           html.push('<tr>');
           html.push('<td>');
           html.push('Result id:');

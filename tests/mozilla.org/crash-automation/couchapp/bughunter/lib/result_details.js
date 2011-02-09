@@ -30,6 +30,7 @@ function result_details_html() {
   html.push('  <head>');
   html.push('  <title>' + key_options.name + ' Result Details - Bug Hunter</title>');
   html.push('    <link rel="stylesheet" href="' + app_path + '/style/main.css" type="text/css"/>');
+  html.push('    <script src="/_utils/script/couch.js" type="text/javascript"></script>');
   html.push('    <script src="/_utils/script/json2.js" type="text/javascript"></script>');
   html.push('    <script src="/_utils/script/sha1.js" type="text/javascript"></script>');
   html.push('    <script src="/_utils/script/jquery.js?1.4.2" type="text/javascript"></script>');
@@ -45,6 +46,7 @@ function result_details_html() {
   html.push('      var key_options = ' + JSON.stringify(key_options) + ';');
   html.push('    </script>');
   html.push('    <script src="' + app_path + '/script/date-field-branch-os-filter.js" type="text/javascript"></script>');
+  html.push('    <script src="' + app_path + '/script/retest.js" type="text/javascript"></script>');
   html.push('  </head>');
   html.push('  <body>');
   html.push('  <div id="wrap">');
@@ -60,8 +62,9 @@ function result_details_html() {
     if (previous_key === null)
       return;
 
-    html.push('<h2>' + escape_html(previous_key.join(' ')) + '</h2>');
-//    html.push('<h2>' + escape_html(previous_key[previous_key.length - 1]) + '</h2>');
+    var signature = previous_key.join(' ');
+
+    html.push('<h2 id="signature">' + signature + '</h2>');
 
     html.push('<table border="1" cellspacing="0" cellpadding="1" width="100%">');
     html.push('<thead>');
@@ -72,7 +75,7 @@ function result_details_html() {
     html.push('</thead>');
     html.push('<tbody>');
 
-    html.push('<tr>');
+    html.push('<tr' + ((firstdate != lastdate || counters.total > 1) ? ' class="reproducible"' : '') + '>');
     html.push('<td>' + firstdate + ' - ' + lastdate + '</td>');
     html.push('<td>' + counters.total + '</td>');
 
@@ -149,7 +152,8 @@ function result_details_html() {
     html.push('</td>');
 
     html.push('<td>');
-    html.push('<p><a href="#">retest</a></p>');
+    html.push('<p><button signature="' + signature +
+              '" onclick="retest_results(event)">retest</button></p>');
     html.push('</td>');
 
     html.push('</tr>');
@@ -260,7 +264,7 @@ function result_details_html() {
         html.push('<tr>');
         html.push('<td style="width: 16em;">url</td>');
         html.push('<td>');
-        html.push('<a href="' + osdetail.url + '">' + escape_html(osdetail.url) + '</a>');
+        html.push('<a class="url" href="' + osdetail.url + '">' + escape_html(osdetail.url) + '</a>');
         html.push('</td>');
         html.push('</tr>');
         html.push('<tr>');

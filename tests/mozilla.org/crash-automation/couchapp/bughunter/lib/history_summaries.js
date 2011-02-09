@@ -79,9 +79,10 @@ function history_summary_html() {
     if (previous_key === null)
       return;
 
-    html.push('<tr>');
-    html.push('<td width="50%">' + escape_html(previous_key.join(' ')) + '</td>');
-//    html.push('<td width="50%">' + escape_html(previous_key[previous_key.length - 1]) + '</td>');
+    var signature = previous_key.join(' ');
+
+    html.push('<tr' + ((firstdate != lastdate || counters.total > 1) ? ' class="reproducible"' : '') + '>');
+    html.push('<td width="50%">' + signature + '</td>');
     html.push('<td>' + firstdate + ' - ' + lastdate + '</td>');
     html.push('<td>' + counters.total + '</td>');
 

@@ -1,7 +1,8 @@
 /* add styles here */
 h1 { font-size: 1em; margin: 0; text-align: center; }
 .detail { padding: 1em; border: 1px solid black; }
-#content { border-left: 1px solid black; }
+
+.reproducible { font-weight: bold; }
 
 /* from couchdb www/style/layout.css */
 
@@ -24,6 +25,7 @@ specific language governing permissions and limitations under the License.
 
 body {
     background: #fff;
+    width: 99%;
 }
 
 body.fullwidth #sidebar {
@@ -41,8 +43,8 @@ body.fullwidth #wrap { }
 }
 
 #sidebar {
-    float: left;
-    padding-right: 1em;
+    float: right;
+    padding-left: 1em;
 }
 
 #sidebar #sidebar-content {
@@ -54,10 +56,12 @@ body.fullwidth #wrap { }
 }
 
 #content {
-    overflow-x: auto;
     padding-left: 1em;
 }
 
 #nav ul { margin: 0; padding: 5px;}
 #nav li { margin: 5px 0 0; padding: 5px 0 0;}
 
+#toolbar {
+    text-align: center;
+}

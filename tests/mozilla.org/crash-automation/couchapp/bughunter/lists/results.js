@@ -31,6 +31,7 @@ function(head, req) {
     html.push('  <head>');
     html.push('  <title>Test Results - Bug Hunter</title>');
     html.push('    <link rel="stylesheet" href="' + app_path + '/style/main.css" type="text/css"/>');
+    html.push('    <script src="/_utils/script/couch.js" type="text/javascript"></script>');
     html.push('    <script src="/_utils/script/json2.js" type="text/javascript"></script>');
     html.push('    <script src="/_utils/script/sha1.js" type="text/javascript"></script>');
     html.push('    <script src="/_utils/script/jquery.js?1.4.2" type="text/javascript"></script>');
@@ -46,6 +47,7 @@ function(head, req) {
     html.push('      var key_options = ' + JSON.stringify(key_options) + ';');
     html.push('    </script>');
     html.push('    <script src="' + app_path + '/script/date-field-branch-os-filter.js" type="text/javascript"></script>');
+    html.push('    <script src="' + app_path + '/script/retest.js" type="text/javascript"></script>');
     html.push('  </head>');
     html.push('  <body>');
     html.push('');
@@ -169,11 +171,10 @@ function(head, req) {
 
       for (var idoc = 0; idoc < cacheddocs.length; idoc++) {
 
-        html.push('<tr><td colspan="2"><hr /></td></tr>');
-
         var doc = cacheddocs[idoc];
         switch (doc.type) {
         case 'result_header_crashtest':
+          html.push('<tr><td colspan="2" style="background-color: #ccc; height: 1em;"></td></tr>');
           html.push('<tr>');
           html.push('<td>');
           html.push('Result id:');
@@ -251,7 +252,18 @@ function(head, req) {
           html.push('Changeset');
           html.push('</td>');
           html.push('<td>');
-          html.push(doc.changeset);
+          var changeset_url = 'http://hg.mozilla.org/';
+          switch(doc.branch) {
+          case '1.9.1':
+          case '1.9.2':
+            changeset_url += 'releases/mozilla-' + doc.branch;
+            break;
+          case '2.0.0':
+            changeset_url += 'mozilla-central';
+            break;
+          }
+          changeset_url += '/rev/' + doc.changeset.replace(new RegExp(' .*'), '');
+          html.push('<a href="' + changeset_url + '">' + changeset_url + '</a>');
           html.push('</td>');
           html.push('</tr>');
           html.push('');
@@ -260,7 +272,7 @@ function(head, req) {
           html.push('Location');
           html.push('</td>');
           html.push('<td>');
-          html.push('<a href="' + doc.url + '">' + doc.url + '</a>');
+          html.push('<a class="url" href="' + doc.url + '">' + doc.url + '</a>');
           html.push('</td>');
           html.push('</tr>');
           html.push('');
@@ -270,6 +282,9 @@ function(head, req) {
           html.push('<a href=\'' + list_path + '/result_locations/crash_location/results?include_docs=true&startkey=["' + escape(doc.url) + '"]&endkey=["' + escape(doc.url) + ', {}"]\'>Search Results by Location</a>');
           html.push('; ');
           html.push('<a href="https://bugzilla.mozilla.org/buglist.cgi?field0-0-0=bug_file_loc&type0-0-1=substring&field0-0-1=longdesc&classification=Client%20Software&classification=Components&query_format=advanced&value0-0-1=' + escape(doc.url) + '&type0-0-0=substring&value0-0-0=' + escape(doc.url) + '">Search Bugzilla by Location</a>');
+          html.push('; ');
+          html.push('<button signature="' + doc.signature +
+                    '" onclick="retest_results(event)">retest</button>');
           html.push('</td>');
           html.push('</tr>');
           html.push('<tr>');
@@ -335,6 +350,7 @@ function(head, req) {
           break;
 
         case 'result_header_unittest':
+          html.push('<tr><td colspan="2" style="background-color: #ccc; height: 1em;"></td></tr>');
           html.push('<tr>');
           html.push('<td>');
           html.push('Result id:');
@@ -473,6 +489,7 @@ function(head, req) {
                                    cpu_name     : doc.cpu_name
                                  });
 
+          html.push('<tr><td colspan="2"><hr /></td></tr>');
           html.push('<tr>');
           html.push('<td>Crash</td>');
           html.push('<td>');
@@ -480,6 +497,7 @@ function(head, req) {
           html.push('</td>');
           html.push('</tr>');
           html.push('');
+/*
           html.push('<tr>');
           html.push('<td>');
           html.push('Date');
@@ -498,6 +516,7 @@ function(head, req) {
           html.push('</td>');
           html.push('</tr>');
           html.push('');
+*/
           html.push('<tr>');
           html.push('<td>');
           html.push('url');
@@ -527,9 +546,6 @@ function(head, req) {
           html.push('<td>');
           html.push('Attachments');
           html.push('</td>');
-          html.push('</tr>');
-          html.push('');
-          html.push('<tr>');
           html.push('<td>');
           html.push(attachments_to_html(doc._id, doc._attachments));
           html.push('</td>');
@@ -553,10 +569,10 @@ function(head, req) {
                                    cpu_name     : doc.cpu_name
                                  });
 
+          html.push('<tr><td colspan="2"><hr /></td></tr>');
           html.push('<tr>');
           html.push('<td>Assertion</td>');
           html.push('<td>');
-          html.push('<p>');
           html.push(segmented_search);
           html.push('</td>');
           html.push('</tr>');
@@ -570,6 +586,7 @@ function(head, req) {
           html.push('</td>');
           html.push('</tr>');
           html.push('');
+/*
           html.push('<tr>');
           html.push('<td>');
           html.push('Date');
@@ -588,6 +605,7 @@ function(head, req) {
           html.push('</td>');
           html.push('</tr>');
           html.push('');
+*/
           html.push('<tr>');
           html.push('<td>');
           html.push('url');
@@ -622,12 +640,11 @@ function(head, req) {
                                    cpu_name     : doc.cpu_name
                                  });
 
+          html.push('<tr><td colspan="2"><hr /></td></tr>');
           html.push('<tr>');
           html.push('<td>Valgrind</td>');
           html.push('<td>');
-          html.push('<p>');
           html.push(segmented_search);
-          html.push('</p>');
           html.push('</td>');
           html.push('</tr>');
           html.push('');

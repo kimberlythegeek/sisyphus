@@ -126,7 +126,7 @@ function location_id_list_to_links(location_id_list) {
   var s = '<ol>';
   for (var i = 0; i < location_id_list.length; i++) {
     if (location_id_list[i] != 'head')
-      s += '<li><a href="' + location_id_list[i] + '">' +
+      s += '<li><a class="url" href="' + location_id_list[i] + '">' +
       escape_html(location_id_list[i]) + '<\/a></li>';
   }
   s += '<\/ol>';

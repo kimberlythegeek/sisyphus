@@ -406,17 +406,17 @@
                   return false;
                 }
               );
+            if ($.application.storage.get("sidebar-visibility") == "hidden") {
+              $(document.body).addClass("fullwidth");
+              $("#sidebar-toggle").attr("title", "Show Sidebar").switchClass('ui-icon-circle-minus', 'ui-icon-circle-plus', 0);
+            }
+            else {
+              $(document.body).removeClass("fullwidth");
+              $("#sidebar-toggle").attr("title", "Hide Sidebar").switchClass('ui-icon-circle-plus', 'ui-icon-circle-minus', 0);
+            }
           }
          );
 
-    if ($.application.storage.get("sidebar-visibility") == "hidden") {
-      $(document.body).addClass("fullwidth");
-      $("#sidebar-toggle").attr("title", "Show Sidebar").switchClass('ui-icon-circle-minus', 'ui-icon-circle-plus', 0);
-    }
-    else {
-      $(document.body).removeClass("fullwidth");
-      $("#sidebar-toggle").attr("title", "Hide Sidebar").switchClass('ui-icon-circle-plus', 'ui-icon-circle-minus', 0);
-    }
 
   });
 }
