@@ -868,10 +868,10 @@ class Worker():
         frames       = []
         frames_max   = 4
         reNumbers    = re.compile(r'[0-9]+', re.MULTILINE)
-        reHexNumbers = re.compile(r'0x[0-9a-fA-F]+', re.MULTILINE)
 
         message      = ''
         signature    = ''
+        stack        = []
 
         report_lines = crashreport.split('\n')
 
@@ -898,22 +898,30 @@ class Worker():
                     match = reFrameOff.match(line)
                 if match:
                     frame_number = match.group(1)
-                    frame_text   = match.group(2)
-                    frame_text   = re.sub(' \+ ', '@', frame_text) # foo.dll + 0x1234 => foo.dll@0x1234
-                    frame_text   = re.sub('\s*[^\s]*[!]', ' ', frame_text) # foo!bar => bar
-                    frame_text   = re.sub('\s\[[^\]]*\]\s*', ' ', frame_text) # foo [bar] => foo
-                    frame_text   = re.sub('[(][^)]*[)]', '', frame_text)    # foo(bar) => foo
-                    frame_text   = re.sub('\s+', ' ', frame_text)
-                    frame_text   = frame_text.strip()
-                    frames.append({'number': frame_number, 'text': frame_text})
+                    frame_stktext   = match.group(2)
+                    frame_sigtext   = re.sub(' \+ ', '@', frame_stktext) # foo.dll + 0x1234 => foo.dll@0x1234
+                    frame_sigtext   = re.sub('\s*[^\s]*[!]', ' ', frame_sigtext) # foo!bar => bar
+                    frame_sigtext   = re.sub('\s\[[^\]]*\]\s*', ' ', frame_sigtext) # foo [bar] => foo
+                    frame_sigtext   = re.sub('[(][^)]*[)]', '', frame_sigtext)    # foo(bar) => foo
+                    frame_sigtext   = re.sub('\s+', ' ', frame_sigtext)
+                    frame_sigtext   = frame_sigtext.strip()
+                    frames.append({'number': frame_number, 'sigtext': frame_sigtext, 'stktext': frame_stktext})
                     if len(frames) > frames_max:
                         break
 
         if len(frames) > 0:
-            message   = frames[0]['text']
+            message   = frames[0]['sigtext']
             signature = ''
+            stack     = []
             for frame in frames:
-                signature += ' ' + frame['text']
+                stack.append(frame['stktext'])
+                if not re.search('^0x[0-9a-fA-F]+$', frame['sigtext']):
+                    # do not include raw addresses in the sigature as they
+                    # are so variable and make it impossible to match.
+                    signature += ' ' + frame['sigtext']
+            if not signature:
+                signature += ' ' + frames[0]['sigtext']
+
             message = message.strip()
             signature = signature.strip()
             if re.search('^0x[0-9a-fA-F]+$', message):
@@ -923,7 +931,7 @@ class Worker():
                 if len(topframe_list) > 1:
                     message  = topframe_list[0] + ' | ' + topframe_list[1].replace('Flash_Player', 'Flash Player')
 
-        return {'reason' : reason, 'address' : address, 'thread' : thread, 'message' : message, 'signature' : signature}
+        return {'reason' : reason, 'address' : address, 'thread' : thread, 'message' : message, 'signature' : signature, 'stack' : stack}
 
     def update_bug_list_crashreports(self, product, branch, buildtype, os_name, os_version, cpu_name, timestamp, crashmessage, crashsignature, crashurl_list):
         """
@@ -1148,7 +1156,8 @@ class Worker():
             "updatetime"      : timestamp,
             "bug"             : "",
             "comment"         : "",
-            "extra"           : {}
+            "extra"           : {},
+            "stack"           : crash_data["stack"]
             }
         for extraproperty in dumpextra:
             if extraproperty != 'ServerURL':
