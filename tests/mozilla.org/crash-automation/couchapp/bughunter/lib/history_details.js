@@ -11,6 +11,9 @@ function history_details_html() {
   var filter = {};    // filter results using object properties
   var details = []; // array of objects containing the history details.
 
+  var app_path = assetPath();
+  var list_path = listPath();
+
   if (req.query.filter) {
     try {
       filter = JSON.parse(req.query.filter);
@@ -26,22 +29,22 @@ function history_details_html() {
   html.push('<html>');
   html.push('  <head>');
   html.push('  <title>' + key_options.name + ' History Details - Bug Hunter</title>');
-  html.push('    <link rel="stylesheet" href="../../style/main.css" type="text/css"/>');
+  html.push('    <link rel="stylesheet" href="' + app_path + '/style/main.css" type="text/css"/>');
   html.push('    <script src="/_utils/script/json2.js" type="text/javascript"></script>');
   html.push('    <script src="/_utils/script/sha1.js" type="text/javascript"></script>');
   html.push('    <script src="/_utils/script/jquery.js?1.4.2" type="text/javascript"></script>');
   html.push('    <script src="/_utils/script/jquery.couch.js?1.0.0" type="text/javascript"></script>');
   html.push('    <script src="/_utils/script/jquery.dialog.js?1.0.0" type="text/javascript"></script>');
 
-  html.push('    <link href="../../script/jquery-ui/css/jquery-ui-1.8.2.custom.css" rel="stylesheet" type="text/css"/>');
-  html.push('    <script src="../../script/jquery-ui/js/jquery-ui-1.8.2.custom.min.js"></script>');
+  html.push('    <link href="' + app_path + '/script/jquery-ui/css/jquery-ui-1.8.2.custom.css" rel="stylesheet" type="text/css"/>');
+  html.push('    <script src="' + app_path + '/script/jquery-ui/js/jquery-ui-1.8.2.custom.min.js"></script>');
 
-  html.push('    <script src="../../script/application.js" type="text/javascript"></script>');
+  html.push('    <script src="' + app_path + '/script/application.js" type="text/javascript"></script>');
   // Must define key_options before including script/date-field-branch-os-filter.js
   html.push('    <script type="text/javascript">');
   html.push('      var key_options = ' + JSON.stringify(key_options) + ';');
   html.push('    </script>');
-  html.push('    <script src="../../script/date-field-branch-os-filter.js" type="text/javascript"></script>');
+  html.push('    <script src="' + app_path + '/script/date-field-branch-os-filter.js" type="text/javascript"></script>');
   html.push('  </head>');
   html.push('  <body>');
   html.push('    <div id="wrap">');
@@ -163,7 +166,7 @@ function history_details_html() {
     }
     var result_key  = [result_type].concat(escaped_key);
 
-    html.push('<p><a href=\'../' + result_list + '/results_by_type?include_docs=true' +
+    html.push('<p><a href=\'' + list_path + '/' + result_list + '/crash_type/results?include_docs=true' +
               '&startkey=' +  result_key.toSource() +
               (req.query.filter ? ('&filter=' + req.query.filter) : '') +
               '\'>results</a></p>');

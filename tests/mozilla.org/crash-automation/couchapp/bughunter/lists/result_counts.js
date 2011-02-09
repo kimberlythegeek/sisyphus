@@ -1,7 +1,7 @@
 function(head, req) {
-  // !code lib/bughunter.js
   // !code vendor/couchapp/path.js
   // !code vendor/couchapp/date.js
+  // !code lib/bughunter.js
 
   // The provides function serves the format the client requests.
   // The first matching format is sent, so reordering functions changes
@@ -9,6 +9,7 @@ function(head, req) {
   provides("html", function() {
 
     html = new htmlbuffer();
+    var app_path = assetPath();
 
     var startkey = req.query.startkey;
     var endkey   = req.query.endkey;
@@ -17,21 +18,21 @@ function(head, req) {
     html.push('<html>');
     html.push('  <head>');
     html.push('    <title>Result Counts - Bug Hunter</title>');
-    html.push('    <link rel="stylesheet" href="../../style/main.css" type="text/css"/>');
+    html.push('    <link rel="stylesheet" href="' + app_path + '/style/main.css" type="text/css"/>');
     html.push('    <script src="/_utils/script/json2.js" type="text/javascript"></script>');
     html.push('    <script src="/_utils/script/sha1.js" type="text/javascript"></script>');
     html.push('    <script src="/_utils/script/jquery.js?1.4.2" type="text/javascript"></script>');
     html.push('    <script src="/_utils/script/jquery.couch.js?1.0.0" type="text/javascript"></script>');
     html.push('    <script src="/_utils/script/jquery.dialog.js?1.0.0" type="text/javascript"></script>');
-    html.push('    <link href="../../script/jquery-ui/css/jquery-ui-1.8.2.custom.css" rel="stylesheet" type="text/css"/>');
-    html.push('    <script src="../../script/jquery-ui/js/jquery-ui-1.8.2.custom.min.js"></script>');
-    html.push('    <script src="../../script/application.js" type="text/javascript"></script>');
+    html.push('    <link href="' + app_path + '/script/jquery-ui/css/jquery-ui-1.8.2.custom.css" rel="stylesheet" type="text/css"/>');
+    html.push('    <script src="' + app_path + '/script/jquery-ui/js/jquery-ui-1.8.2.custom.min.js"></script>');
+    html.push('    <script src="' + app_path + '/script/application.js" type="text/javascript"></script>');
     html.push('    <script type="text/javascript">');
     html.push('      // tell date_filter.js whether the key is a simple date or');
     html.push('      // if it is an array with a date as the first element.');
     html.push('      var key_type = Array;');
     html.push('    </script>');
-    html.push('    <script src="../../script/date-filter.js" type="text/javascript"></script>');
+    html.push('    <script src="' + app_path + '/script/date-filter.js" type="text/javascript"></script>');
     html.push('  </head>');
     html.push('  <body>');
     html.push('    <div id="wrap">');

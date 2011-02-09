@@ -1,4 +1,5 @@
 function(head, req) {
+  // !code vendor/couchapp/path.js
   // !code lib/bughunter.js
   // !code lib/history_summaries.js
 

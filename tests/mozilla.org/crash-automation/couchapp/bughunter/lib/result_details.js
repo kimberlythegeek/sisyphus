@@ -11,6 +11,9 @@ function result_details_html() {
   var filter = {};    // filter results using object properties
   var details = []; // array of objects containing the history details.
 
+  var app_path = assetPath();
+  var list_path = listPath();
+
   if (req.query.filter) {
     try {
       filter = JSON.parse(req.query.filter);
@@ -26,22 +29,22 @@ function result_details_html() {
   html.push('<html>');
   html.push('  <head>');
   html.push('  <title>' + key_options.name + ' Result Details - Bug Hunter</title>');
-  html.push('    <link rel="stylesheet" href="../../style/main.css" type="text/css"/>');
+  html.push('    <link rel="stylesheet" href="' + app_path + '/style/main.css" type="text/css"/>');
   html.push('    <script src="/_utils/script/json2.js" type="text/javascript"></script>');
   html.push('    <script src="/_utils/script/sha1.js" type="text/javascript"></script>');
   html.push('    <script src="/_utils/script/jquery.js?1.4.2" type="text/javascript"></script>');
   html.push('    <script src="/_utils/script/jquery.couch.js?1.0.0" type="text/javascript"></script>');
   html.push('    <script src="/_utils/script/jquery.dialog.js?1.0.0" type="text/javascript"></script>');
 
-  html.push('    <link href="../../script/jquery-ui/css/jquery-ui-1.8.2.custom.css" rel="stylesheet" type="text/css"/>');
-  html.push('    <script src="../../script/jquery-ui/js/jquery-ui-1.8.2.custom.min.js"></script>');
+  html.push('    <link href="' + app_path + '/script/jquery-ui/css/jquery-ui-1.8.2.custom.css" rel="stylesheet" type="text/css"/>');
+  html.push('    <script src="' + app_path + '/script/jquery-ui/js/jquery-ui-1.8.2.custom.min.js"></script>');
 
-  html.push('    <script src="../../script/application.js" type="text/javascript"></script>');
+  html.push('    <script src="' + app_path + '/script/application.js" type="text/javascript"></script>');
   // Must define key_options before including script/date-field-branch-os-filter.js
   html.push('    <script type="text/javascript">');
   html.push('      var key_options = ' + JSON.stringify(key_options) + ';');
   html.push('    </script>');
-  html.push('    <script src="../../script/date-field-branch-os-filter.js" type="text/javascript"></script>');
+  html.push('    <script src="' + app_path + '/script/date-field-branch-os-filter.js" type="text/javascript"></script>');
   html.push('  </head>');
   html.push('  <body>');
   html.push('  <div id="wrap">');
@@ -204,7 +207,7 @@ function result_details_html() {
         html.push('<tr>');
         html.push('<td>Result</td>');
         html.push('<td>');
-        html.push('<a href=\'../results/results_by_result_id?include_docs=true' +
+        html.push('<a href=\'' + list_path + '/results/crash_result_id/results?include_docs=true' +
                   '&startkey=["' + osdetail.result_id + '"]' +
                   '&endkey=["' + osdetail.result_id + '", {}]\'>' + osdetail.result_id + '</a>');
         html.push('</td>');
@@ -263,7 +266,7 @@ function result_details_html() {
         html.push('<tr>');
         html.push('<td>&nbsp;</td>');
         html.push('<td>');
-        html.push('<a href=\'../../_list/result_locations/results_by_location?include_docs=true&startkey=["' + escape(osdetail.url) + '"]&endkey=["' + escape(osdetail.url) + '", {}]\'>Search Results by Location</a>');
+        html.push('<a href=\'' + list_path + '/result_locations/crash_location/results?include_docs=true&startkey=["' + escape(osdetail.url) + '"]&endkey=["' + escape(osdetail.url) + '", {}]\'>Search Results by Location</a>');
         html.push('; ');
         html.push('<a href="https://bugzilla.mozilla.org/buglist.cgi?field0-0-0=bug_file_loc&type0-0-1=substring&field0-0-1=longdesc&classification=Client%20Software&classification=Components&query_format=advanced&value0-0-1=' + escape(osdetail.url) + '&type0-0-0=substring&value0-0-0=' + escape(osdetail.url) + '">Search Bugzilla by Location</a>');
         html.push('</td>');

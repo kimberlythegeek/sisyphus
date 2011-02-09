@@ -301,7 +301,7 @@ class Worker():
         bug_list           = None
         now                = datetime.datetime.now()
 
-        history_assertions = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+        history_assertions = self.getRows(self.testdb.db.views.crash_type.results,
                                           startkey=["history_assertion", assertionmessage, assertionfile,
                                                     product, branch, buildtype, os_name, os_version, cpu_name],
                                           endkey=["history_assertion", assertionmessage, assertionfile,
@@ -384,7 +384,7 @@ class Worker():
             # since the bug list does not depend on the full key
             # try to get a matching assertion using just the assertionmessage.
 
-            history_assertions = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+            history_assertions = self.getRows(self.testdb.db.views.crash_type.results,
                                               startkey=["history_assertion", assertionmessage],
                                               endkey=["history_assertion", assertionmessage, {}],
                                               include_docs=True)
@@ -624,7 +624,7 @@ class Worker():
         bug_list           = None
         now                = datetime.datetime.now()
 
-        history_valgrinds = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+        history_valgrinds = self.getRows(self.testdb.db.views.crash_type.results,
                                          startkey=["history_valgrind", valgrindmessage, valgrindsignature,
                                                    product, branch, buildtype, os_name, os_version, cpu_name],
                                          endkey=["history_valgrind", valgrindmessage, valgrindsignature,
@@ -708,7 +708,7 @@ class Worker():
             # try to get a matching valgrind using just the valgrindmessage
             # and valgrindsignature.
 
-            history_valgrinds = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+            history_valgrinds = self.getRows(self.testdb.db.views.crash_type.results,
                                              startkey=["history_valgrind", valgrindmessage, valgrindsignature],
                                              endkey=["history_valgrind", valgrindmessage, valgrindsignature, {}],
                                              include_docs=True)
@@ -888,7 +888,7 @@ class Worker():
         bug_list           = None
         now                = datetime.datetime.now()
 
-        history_crashes = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+        history_crashes = self.getRows(self.testdb.db.views.crash_type.results,
                                        startkey=["history_crash", crashmessage, crashsignature,
                                                  product, branch, buildtype, os_name, os_version, cpu_name],
                                        endkey=["history_crash", crashmessage, crashsignature,
@@ -972,7 +972,7 @@ class Worker():
             # try to get a matching crash using just the crashmessage
             # and crashsignature.
 
-            history_crashes = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+            history_crashes = self.getRows(self.testdb.db.views.crash_type.results,
                                            startkey=["history_crash", crashmessage, crashsignature],
                                            endkey=["history_crash", crashmessage, crashsignature, {}],
                                            include_docs=True)
@@ -1838,7 +1838,7 @@ class Worker():
         last_checkup_time = datetime.datetime.now() - 2*checkup_interval
 
         try:
-            crash_rows = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+            crash_rows = self.getRows(self.testdb.db.views.crash_type.results,
                                       startkey=["history_crash"],
                                       endkey=["history_crash", {}],
                                       include_docs=True)
@@ -1864,7 +1864,7 @@ class Worker():
                                 (exceptionValue, errorMessage))
 
         try:
-            valgrind_rows = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+            valgrind_rows = self.getRows(self.testdb.db.views.crash_type.results,
                                          startkey=["history_valgrind"],
                                          endkey=["history_valgrind", {}],
                                          include_docs=True)
@@ -1888,7 +1888,7 @@ class Worker():
                             (exceptionValue, errorMessage))
 
         try:
-            assertion_rows = self.getRows(self.testdb.db.views.bughunter.results_by_type,
+            assertion_rows = self.getRows(self.testdb.db.views.crash_type.results,
                                           startkey=["history_assertion"],
                                           endkey=["history_assertion", {}],
                                           include_docs=True)

@@ -1,28 +1,29 @@
 function(head, req) {
-  // !code lib/bughunter.js
   // !code vendor/couchapp/path.js
   // !code vendor/couchapp/date.js
+  // !code lib/bughunter.js
 
   // The provides function serves the format the client requests.
   // The first matching format is sent, so reordering functions changes
   // their priority. In this case HTML is the preferred format, so it comes first.
   provides("html", function() {
 
-    html = new htmlbuffer();
+    var html = new htmlbuffer();
+    var app_path = assetPath();
 
     html.push('<!DOCTYPE html>');
     html.push('<html>');
     html.push('  <head>');
     html.push('    <title>Assertion History - Bug Hunter</title>');
-    html.push('    <link rel="stylesheet" href="../../style/main.css" type="text/css"/>');
+    html.push('    <link rel="stylesheet" href="' + app_path + '"style/main.css" type="text/css"/>');
     html.push('    <script src="/_utils/script/json2.js" type="text/javascript"></script>');
     html.push('    <script src="/_utils/script/sha1.js" type="text/javascript"></script>');
     html.push('    <script src="/_utils/script/jquery.js?1.4.2" type="text/javascript"></script>');
     html.push('    <script src="/_utils/script/jquery.couch.js?1.0.0" type="text/javascript"></script>');
     html.push('    <script src="/_utils/script/jquery.dialog.js?1.0.0" type="text/javascript"></script>');
-    html.push('    <link href="../../script/jquery-ui/css/jquery-ui-1.8.2.custom.css" rel="stylesheet" type="text/css"/>');
-    html.push('    <script src="../../script/jquery-ui/js/jquery-ui-1.8.2.custom.min.js" type="text/javascript"></script>');
-    html.push('    <script src="../../script/application.js" type="text/javascript"></script>');
+    html.push('    <link href="' + app_path + '"script/jquery-ui/css/jquery-ui-1.8.2.custom.css" rel="stylesheet" type="text/css"/>');
+    html.push('    <script src="' + app_path + '"script/jquery-ui/js/jquery-ui-1.8.2.custom.min.js" type="text/javascript"></script>');
+    html.push('    <script src="' + app_path + '"script/application.js" type="text/javascript"></script>');
     html.push('  </head>');
     html.push('  <body>');
     html.push('    <div id="wrap">');
@@ -56,7 +57,7 @@ function(head, req) {
 
       var segmented_search =
         segmented_key_search('results',
-                             listPath() + '/result_assertions/results_by_type',
+                             listPath() + '/result_assertions/crash_type/results',
                              'result_assertion',
                              {
                                assertion    : doc.assertion,

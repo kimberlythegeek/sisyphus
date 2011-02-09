@@ -763,7 +763,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
         startkey = ["result_header_crashtest", "%s_result_%05d_%s" % (signature_doc["_id"], url_index, self.document['_id'])]
         endkey   = ["result_header_crashtest", "%s_result_%05d_%s" % (signature_doc["_id"], url_index, self.document['_id']), {}];
-        result_rows = self.getRows(self.testdb.db.views.bughunter.results_by_type, startkey=startkey, endkey=endkey, include_docs=True)
+        result_rows = self.getRows(self.testdb.db.views.crash_type.results, startkey=startkey, endkey=endkey, include_docs=True)
         self.debugMessage('checkIfUrlAlreadyTested: %s' % (len(result_rows) != 0))
 
         # only count already tested if this worker has tested the url.

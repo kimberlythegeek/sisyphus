@@ -4,20 +4,21 @@ function (doc, req) {
   // !code vendor/couchapp/date.js
 
   var html = new htmlbuffer();
+  var app_path = assetPath();
 
   html.push('<!DOCTYPE html>');
   html.push('<html>');
   html.push('<head>');
   html.push('<title>Assertion History - Bug Hunter</title>');
-  html.push('<link rel="stylesheet" href="../../style/main.css" type="text/css"/>');
+  html.push('<link rel="stylesheet" href="' + app_path + '/style/main.css" type="text/css"/>');
   html.push('<script src="/_utils/script/json2.js" type="text/javascript"></script>');
   html.push('<script src="/_utils/script/sha1.js" type="text/javascript"></script>');
   html.push('<script src="/_utils/script/jquery.js?1.4.2" type="text/javascript"></script>');
   html.push('<script src="/_utils/script/jquery.couch.js?1.0.0" type="text/javascript"></script>');
   html.push('<script src="/_utils/script/jquery.dialog.js?1.0.0" type="text/javascript"></script>');
-  html.push('<link href="../../script/jquery-ui/css/jquery-ui-1.8.2.custom.css" rel="stylesheet" type="text/css"/>');
-  html.push('<script src="../../script/jquery-ui/js/jquery-ui-1.8.2.custom.min.js" type="text/javascript"></script>');
-  html.push('<script src="../../script/application.js" type="text/javascript"></script>');
+  html.push('<link href="' + app_path + '/script/jquery-ui/css/jquery-ui-1.8.2.custom.css" rel="stylesheet" type="text/css"/>');
+  html.push('<script src="' + app_path + '/script/jquery-ui/js/jquery-ui-1.8.2.custom.min.js" type="text/javascript"></script>');
+  html.push('<script src="' + app_path + '/script/application.js" type="text/javascript"></script>');
   html.push('</head>');
   html.push('<body>');
   html.push('<div id="wrap">');

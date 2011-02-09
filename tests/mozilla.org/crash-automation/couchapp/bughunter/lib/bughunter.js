@@ -76,6 +76,7 @@ function attachments_to_html(docid, attachments) {
   var attachment_list = [];
   var filename;
   var size;
+  var app_path = assetPath();
 
   for (filename in attachments)
     attachment_list.push({filename: filename, size: (parseInt(100*attachments[filename].length/k)/100 + 'K')});
@@ -85,7 +86,7 @@ function attachments_to_html(docid, attachments) {
   for (var i = 0; i < attachment_list.length; i++) {
     filename = attachment_list[i].filename;
     size     = attachment_list[i].size;
-    s += '<li><a href="../../../../' + docid + '/' + filename + '">' + filename + ' (' + size + ')</a></li>';
+    s += '<li><a href="' + app_path + '/../../' + docid + '/' + filename + '">' + filename + ' (' + size + ')</a></li>';
   }
 
   if (s)
