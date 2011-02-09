@@ -390,6 +390,10 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
         data    = u""
 
+        # attempt to silence undefined errors if exception thrown during communicate.
+        stdout = ''
+        stderr = ''
+
         proc = subprocess.Popen(
             [
                 "./bin/tester.sh",
@@ -428,95 +432,101 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 self.debugMessage('runTest: test process still running: %s' % test_process['line'])
             self.killTest()
 
-        logfilename = re.search('log: (.*\.log) ', stdout).group(1)
+        match = re.search('log: (.*\.log) ', stdout)
+        if match:
+            logfilename = match.group(1)
 
-        logfile = open(logfilename, "r")
+            logfile = open(logfilename, "r")
 
-        while 1:
-            line = logfile.readline()
-            if not line:
-                break
+            while 1:
+                line = logfile.readline()
+                if not line:
+                    break
 
-            # decode to unicode
-            line = sisyphus.utils.makeUnicodeString(line)
+                # decode to unicode
+                line = sisyphus.utils.makeUnicodeString(line)
 
-            if not executablepath:
-                match = reExecutablePath.match(line)
+                if not executablepath:
+                    match = reExecutablePath.match(line)
+                    if match:
+                        executablepath = match.group(1)
+                        continue
+
+                if not profilename:
+                    match = reProfileName.match(line)
+                    if match:
+                        profilename = match.group(1)
+                        continue
+
+                # record the steps Spider took
+                match = reSpider.match(line)
                 if match:
-                    executablepath = match.group(1)
+                    result_doc['steps'].append(line.strip())
+
+                # dump assertions and valgrind messages whenever we see a
+                # new page being loaded.
+                match = reSpiderBegin.match(line)
+                if match:
+                    self.process_assertions(result_doc["_id"], product, branch, buildtype, timestamp, assertion_list, page, "crashtest", extra_test_args)
+                    valgrind_list = self.parse_valgrind(valgrind_text)
+                    self.process_valgrind(result_doc["_id"], product, branch, buildtype, timestamp, valgrind_list, page, "crashtest", extra_test_args)
+
+                    assertion_list   = []
+                    valgrind_text    = ""
+                    page = match.group(1).strip()
                     continue
 
-            if not profilename:
-                match = reProfileName.match(line)
+                if self.document["os_name"] == "Windows NT":
+                    match = reExploitableClass.match(line)
+                    if match:
+                        result_doc["exploitableclass"] = match.group(1)
+                        continue
+                    match = reExploitableTitle.match(line)
+                    if match:
+                        result_doc["exploitabletitle"] = match.group(1)
+                        continue
+
+                match = reAssertionFail.match(line)
                 if match:
-                    profilename = match.group(1)
+                    result_doc["assertionfail"] = match.group(0)
                     continue
 
-            # record the steps Spider took
-            match = reSpider.match(line)
-            if match:
-                result_doc['steps'].append(line.strip())
-
-            # dump assertions and valgrind messages whenever we see a
-            # new page being loaded.
-            match = reSpiderBegin.match(line)
-            if match:
-                self.process_assertions(result_doc["_id"], product, branch, buildtype, timestamp, assertion_list, page, "crashtest", extra_test_args)
-                valgrind_list = self.parse_valgrind(valgrind_text)
-                self.process_valgrind(result_doc["_id"], product, branch, buildtype, timestamp, valgrind_list, page, "crashtest", extra_test_args)
-
-                assertion_list   = []
-                valgrind_text    = ""
-                page = match.group(1).strip()
-                continue
-
-            if self.document["os_name"] == "Windows NT":
-                match = reExploitableClass.match(line)
+                match = reASSERTION.match(line)
                 if match:
-                    result_doc["exploitableclass"] = match.group(1)
-                    continue
-                match = reExploitableTitle.match(line)
-                if match:
-                    result_doc["exploitabletitle"] = match.group(1)
+                    # record the assertion for later output when we know the test
+                    assertion_list.append({
+                            "message" : match.group(1),
+                            "file"    : re.sub('^([a-zA-Z]:/|/[a-zA-Z]/)', '/', re.sub(r'\\', '/', match.group(2))),
+                            "datetime" : timestamp,
+                            })
                     continue
 
-            match = reAssertionFail.match(line)
-            if match:
-                result_doc["assertionfail"] = match.group(0)
-                continue
+                match = reValgrindLeader.match(line)
+                if match:
+                    valgrind_text += line
+                    continue
 
-            match = reASSERTION.match(line)
-            if match:
-                # record the assertion for later output when we know the test
-                assertion_list.append({
-                        "message" : match.group(1),
-                        "file"    : re.sub('^([a-zA-Z]:/|/[a-zA-Z]/)', '/', re.sub(r'\\', '/', match.group(2))),
-                        "datetime" : timestamp,
-                        })
-                continue
+                match = reUrlExitStatus.match(line)
+                if match:
+                    result_doc["exitstatus"]       = match.group(2)
+                    if re.search('(CRASHED|ABNORMAL)', result_doc["exitstatus"]):
+                        result_doc["reproduced"] = True
+                    else:
+                        result_doc["reproduced"] = False
 
-            match = reValgrindLeader.match(line)
-            if match:
-                valgrind_text += line
-                continue
+            logfile.close()
 
-            match = reUrlExitStatus.match(line)
-            if match:
-                result_doc["exitstatus"]       = match.group(2)
-                if re.search('(CRASHED|ABNORMAL)', result_doc["exitstatus"]):
-                    result_doc["reproduced"] = True
-                else:
-                    result_doc["reproduced"] = False
+            result_doc = self.testdb.saveFileAttachment(result_doc, 'log', logfilename,
+                                                        'text/plain', True, True)
 
-        logfile.close()
+            if os.path.exists(logfilename):
+                os.unlink(logfilename)
 
         if hung_process:
-            result_doc['exitstatus'] += ' HANG'
-
-        result_doc = self.testdb.saveFileAttachment(result_doc, 'log', logfilename, 'text/plain', True, True)
-
-        if os.path.exists(logfilename):
-            os.unlink(logfilename)
+            if 'exitstatus' in result_doc:
+                result_doc['exitstatus'] += ' HANG'
+            else:
+                result_doc['exitstatus'] = 'HANG'
 
         symbolsPath = os.path.join(executablepath, 'crashreporter-symbols')
 
@@ -538,8 +548,8 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 data = ''
                 extraFile = dumpFile.replace('.dmp', '.extra')
                 try:
-                    extraFileHandle = open(extraFile, 'r')
                     extradict = {}
+                    extraFileHandle = open(extraFile, 'r')
                     for extraline in extraFileHandle:
                         data += extraline
                         extrasplit = extraline.rstrip().split('=', 1)
