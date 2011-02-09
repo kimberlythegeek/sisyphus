@@ -73,7 +73,7 @@ stackwalkPath = os.environ.get('MINIDUMP_STACKWALK', "/usr/local/bin/minidump_st
 
 class CrashTestWorker(sisyphus.worker.Worker):
 
-    def __init__(self, startdir, programPath, couchserveruri, couchdbname, userhook, worker_comment, debug):
+    def __init__(self, startdir, programPath, couchserveruri, couchdbname, invisible, userhook, worker_comment, debug):
         sisyphus.worker.Worker.__init__(self, "crashtest", startdir, programPath, couchserveruri, couchdbname, worker_comment, debug)
         self.signature_doc = None
         self.document['signature_id'] = None
@@ -206,6 +206,13 @@ class CrashTestWorker(sisyphus.worker.Worker):
         # _design/bughunter/userhooks/ directory on the bughunter couchdb
         # server.
         self.userhook = self.testdburi + '/_design/bughunter/userhooks/' + userhook
+
+        # self.invisible is the optional argument to the top-sites.sh test script
+        # to make Spider hide the content being loaded.
+        if invisible:
+            self.invisible = ' -i '
+        else:
+            self.invisible = ''
 
     def checkForUpdate(self):
         if os.stat(self.programPath)[stat.ST_MTIME] != self.programModTime:
@@ -444,7 +451,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 "-t",
                 "tests/mozilla.org/top-sites/test.sh -u " +
                 url +
-                " -D 1 -h " + self.userhook,
+                self.invisible + " -D 1 -h " + self.userhook,
                 product,
                 branch,
                 buildtype
@@ -1408,6 +1415,12 @@ Example:
                       'Defaults to test-crash-on-load.js.',
                       default='test-crash-on-load.js')
 
+    parser.add_option('--invisible', action='store_true',
+                      dest='invisible',
+                      help='Flag to start Spider with browser content set to invisible. ' +
+                      'Defaults to False.',
+                      default=False)
+
     parser.add_option('--comment', action='store', type='string',
                       dest='worker_comment',
                       default='',
@@ -1433,7 +1446,7 @@ Example:
 
     exception_counter = 0
 
-    this_worker     = CrashTestWorker(startdir, programPath, options.couchserveruri, options.databasename, options.userhook, options.worker_comment, options.debug)
+    this_worker     = CrashTestWorker(startdir, programPath, options.couchserveruri, options.databasename, options.invisible, options.userhook, options.worker_comment, options.debug)
 
     programModTime = os.stat(programPath)[stat.ST_MTIME]
 

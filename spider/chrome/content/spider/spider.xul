@@ -190,6 +190,7 @@
           id="help" onclick="openHelp()">Help</button>
         <button type="button" 
           onclick="open('about:blank')">Window</button>
+        <xul:button label="Toggle Visibility" oncommand="onVisibility()"/>
       </fieldset>
     </form>
 

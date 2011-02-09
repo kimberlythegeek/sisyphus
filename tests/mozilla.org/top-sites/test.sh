@@ -33,7 +33,7 @@ TEST_TOPSITE_PAGE_TIMEOUT=${TEST_TOPSITE_PAGE_TIMEOUT:-120}
 #
 # options processing
 #
-options="p:b:x:N:s:u:D:d:h:rH"
+options="p:b:x:N:s:u:D:d:h:rHi"
 function usage()
 {
     cat <<EOF
@@ -57,6 +57,7 @@ variable            description
 -h userhook         optional. url to user hook script.
 -r                  optional. obey robots.txt
 -H                  optional. report http responses.
+-i                  optional. make the content invisible.
 -d datafiles        optional. one or more filenames of files containing
                     environment variable definitions to be included.
 
@@ -84,6 +85,7 @@ do
 	H) httpresponses="-httpresponses";;
         d) datafiles=$OPTARG;;
         h) hook=$OPTARG;;
+        i) invisible="-invisible";;
     esac
 done
 
@@ -129,7 +131,7 @@ if [[ -n "$url" ]]; then
 	-uri "$url" \
 	-hook "$hook" \
 	-timeout $TEST_TOPSITE_PAGE_TIMEOUT \
-	-start -quit $robots $httpresponses $depth \
+	-start -quit $robots $httpresponses $depth $invisible \
 	-jserrors
 
     if [[ "$?" == "99" ]]; then
@@ -146,7 +148,7 @@ elif [[ -n "$sitelist" ]]; then
 	        -uri "$url" \
 	        -hook "$hook" \
 	        -timeout $TEST_TOPSITE_PAGE_TIMEOUT \
-	        -start -quit $robots $httpresponses $depth \
+	        -start -quit $robots $httpresponses $depth $invisible \
 	        -jserrors
 
             if [[ "$?" == "99" ]]; then

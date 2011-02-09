@@ -6,7 +6,7 @@ const nsIFactory            = Components.interfaces.nsIFactory;
 const nsIWindowWatcher      = Components.interfaces.nsIWindowWatcher;
 
 const CHROME_URI = "chrome://spider/content/";
-const clh_contractID = "@mozilla.org/commandlinehandler/general-startup;1?type=spider";
+const clh_contractID = "@mozilla.org/commandlinehandler/general-startup;2?type=spider";
 const clh_CID = Components.ID("{38003cf3-3579-4985-b61f-e0ef78dc5bc5}");
 const clh_category = "m-spider";
 
@@ -131,6 +131,7 @@ SpiderHandler.prototype = {
     oArguments.xblerrors    = getFlag('xblerrors');
     oArguments.csserrors    = getFlag('csserrors');
     oArguments.httpresponses = getFlag('httpresponses');
+    oArguments.invisible     = getFlag('invisible');
 
     if (errors)
     {
@@ -171,8 +172,8 @@ SpiderHandler.prototype = {
     "  -chromeerrors        Display chrome errors\n" +
     "  -xblerrors           Display XBL errors\n" +
     "  -csserrors           Display CSS errors\n" +
-    "  -httpresponses       Display HTTP responses\n"
-
+    "  -httpresponses       Display HTTP responses" +
+    "  -invisible           Hide loaded page\n"
 };
 
 // create the singleton

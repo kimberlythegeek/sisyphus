@@ -134,8 +134,8 @@ function init(evt, querystring)
     gForm.xblerrors.checked  = (oArguments.xblerrors == true);
     gForm.csserrors.checked  = (oArguments.csserrors == true);
     gForm.httpresponses.checked  = (oArguments.httpresponses == true);
+    gForm.invisible          = (oArguments.invisible == true);
     gForm.scripturl.value = oArguments.hook;
-
   }
   else if (querystring)
   {
@@ -146,6 +146,10 @@ function init(evt, querystring)
   }
 
   gDebug = gForm.debug.checked;
+
+  if (gForm.invisible)
+    document.getElementById('contentSpider').style.visibility = 'hidden';
+
   dlog('init: querystring ' + querystring);
 
   registerConsoleListener();
@@ -253,7 +257,8 @@ function main(form)
             (gForm.chromeerrors.checked       ? '-chromeerrors '                            : '') +
             (gForm.xblerrors.checked          ? '-xblerrors '                               : '') +
             (gForm.csserrors.checked          ? '-csserrors '                               : '') +
-            (gForm.httpresponses.checked      ? '-httpresponses '                           : '')
+            (gForm.httpresponses.checked      ? '-httpresponses '                           : '') +
+            (gForm.invisible                  ? '-invisible '                               : '')
         );
 
       if (!gInChrome && gCanHaveChromePermissions)
@@ -719,6 +724,13 @@ function openHelp()
   gHelp = window.open('spider-help.htm',
                       'help',
                       'height=600,width=800,resizable=1,scrollbars=1');
+}
+
+function onVisibility(source)
+{
+  var browser = document.getElementById('contentSpider');
+  var visibility = browser.style.visibility;
+  browser.style.visibility = (visibility == 'hidden') ? '' : 'hidden';
 }
 
 function unload()
