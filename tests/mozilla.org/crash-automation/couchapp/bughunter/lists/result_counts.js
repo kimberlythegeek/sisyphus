@@ -56,6 +56,7 @@ function(head, req) {
     var doc_type;
     var signature_id;
     var job_hash = {};
+    var re_result_header = new RegExp('result_header_');
 
     while ((row = getRow())) {
       var doc = row.doc;
@@ -72,7 +73,7 @@ function(head, req) {
 
       ++counts_hash[worker_id][doc_type];
 
-      if (/result_header_/.exec(doc_type))
+      if (re_result_header.exec(doc_type))
       {
         signature_id = doc._id.replace(/_result_.*/, '');
         counts_hash[worker_id].job_hash[signature_id] = 1;

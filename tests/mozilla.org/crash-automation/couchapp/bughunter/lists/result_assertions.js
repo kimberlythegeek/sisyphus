@@ -66,6 +66,7 @@ function(head, req) {
 
     var row, key;
     var stop = false;
+    var re_true_false = new RegExp('true|false');
 
     while ((row = getRow())) {
 
@@ -212,7 +213,7 @@ function(head, req) {
           nextpagequery += '&' + queryprop + '=' + escape(queryval.toSource());
           break;
         default:
-          if (/true|false/.exec(queryval))
+          if (re_true_false.exec(queryval))
             nextpagequery += '&' + queryprop + '=' + escape(queryval);
           else
             nextpagequery += '&' + queryprop + '="' + escape(queryval) + '"';
