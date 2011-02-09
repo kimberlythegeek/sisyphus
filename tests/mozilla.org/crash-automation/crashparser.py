@@ -122,6 +122,11 @@ def create_crash_doc(line, supported_versions_hash):
     if version.find('4.0') == 0 and build < '20100101':
         return None # Ignore bogus version 4
 
+    # remove trailing | processor family data
+    match = re.match(r'([^| ]*).*', cpu_name)
+    if match:
+        cpu_name = match.group(1)
+
     doc = {'signature':signature,
            'url':url,
            'type':'crash',
