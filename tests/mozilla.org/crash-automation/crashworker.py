@@ -438,6 +438,17 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
             logfile = open(logfilename, "r")
 
+            # In pathological cases, there may be an arbitrary, unlimited number
+            # of assertion or valgrind messages for a given page load. In order
+            # to prevent an out of memory condition we set an upper limit to the
+            # number of assertions and valgrind messages we batch before calling
+            # process_assertions and process_valgrind. We use collecting_valgrind
+            # to prevent the possibility that process_valgrind might be called
+            # while a partial valgrind message is being collected.
+            batch_counter = 0
+            batch_counter_limit = 1000
+            collecting_valgrind = False
+
             while 1:
                 line = logfile.readline()
                 if not line:
@@ -463,17 +474,21 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 if match:
                     result_doc['steps'].append(line.strip())
 
-                # dump assertions and valgrind messages whenever we see a
-                # new page being loaded.
+                # Dump assertions and valgrind messages whenever we see a
+                # new page being loaded or when we have collected more than
+                # batch_counter_limit assertion/valgrind messages.
                 match = reSpiderBegin.match(line)
-                if match:
+                if match or (batch_counter > batch_counter_limit and not collecting_valgrind):
                     self.process_assertions(result_doc["_id"], product, branch, buildtype, timestamp, assertion_list, page, "crashtest", extra_test_args)
                     valgrind_list = self.parse_valgrind(valgrind_text)
                     self.process_valgrind(result_doc["_id"], product, branch, buildtype, timestamp, valgrind_list, page, "crashtest", extra_test_args)
 
                     assertion_list   = []
                     valgrind_text    = ""
-                    page = match.group(1).strip()
+                    valgrind_list    = None
+                    batch_counter    = 0
+                    if match:
+                        page = match.group(1).strip()
                     continue
 
                 if self.document["os_name"] == "Windows NT":
@@ -499,12 +514,16 @@ class CrashTestWorker(sisyphus.worker.Worker):
                             "file"    : re.sub('^([a-zA-Z]:/|/[a-zA-Z]/)', '/', re.sub(r'\\', '/', match.group(2))),
                             "datetime" : timestamp,
                             })
+                    batch_counter += 1
                     continue
 
                 match = reValgrindLeader.match(line)
                 if match:
                     valgrind_text += line
+                    batch_counter += 1
+                    collecting_valgrind = True
                     continue
+                collecting_valgrind = False
 
                 match = reUrlExitStatus.match(line)
                 if match:
