@@ -136,7 +136,7 @@ Example:
     for url in urlsfilehandle:
         url = url.rstrip('\n')
         if url.find('http') != 0:
-            return None # skip non-http urls
+            continue # skip non-http urls
 
         match = rePrivateNetworks.match(url)
         if match:
