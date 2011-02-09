@@ -167,19 +167,29 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     'skip'     : 0,
                     'startkey' : list(key),
                     'endkey'   : list(key),
-                    # when a job is returned, the current_startkey and current_startkey_docid
-                    # are set to the values determined by the job and skip is set to 1 so that
-                    # the next query will return the next job. This will prevent the server from
-                    # continually reading and skipping over the initial pending jobs. The
-                    # current values will be reset whenever the skip value is reset to 0.
+
+                    # When a job is returned, the current_startkey and
+                    # current_startkey_docid are set to the job's key
+                    # and id and skip is set to 1 so that the next
+                    # query will return the following job. This will
+                    # prevent the server from continually reading and
+                    # skipping over the initial pending jobs. skip
+                    # will be set to zero when a job is deleted or
+                    # when the viewdata is periodically reset.
+
                     'current_startkey' : None,
                     'current_startkey_docid' : '',
-                    # pendingcount tracks the number of job rows retrieved from the most recent request.
-                    # processedcount tracks the number of jobs which have already been processed by
-                    # this or an equivalent worker. When all jobs for all views for all priorities
-                    # for this class of worker have been processed, the worker will go idle for an
-                    # extended period so that it does not continually pull job queues which it has
-                    # already processed.
+
+                    # pendingcount tracks the number of job rows
+                    # retrieved from the most recent request.
+                    # processedcount tracks the number of jobs which
+                    # have already been processed by this or an
+                    # equivalent worker. When all jobs for all views
+                    # for all priorities for this class of worker have
+                    # been processed, the worker will go idle for an
+                    # extended period so that it does not continually
+                    # pull job queues which it has already processed.
+
                     'pendingcount' : 0,
                     'processedcount' : 0,
                     }
@@ -990,10 +1000,14 @@ class CrashTestWorker(sisyphus.worker.Worker):
                                                      signature_doc['os_version'],
                                                      -len(signature_doc['urls'])]
                 self.viewdata['current_startkey_docid'] = signature_doc['_id']
-                self.viewdata['skip'] = 1
 
-            if not signature_doc or signature_doc["worker"]:
-                self.debugMessage("checkSignatureForWorker: race condition: someone else got the signature document %s" % signature_id)
+            if not signature_doc:
+                self.debugMessage("checkSignatureForWorker: race condition: someone else deleted the signature document %s" % signature_id)
+                self.viewdata['processedcount'] += 1
+                continue
+
+            if signature_doc["worker"]:
+                self.debugMessage("checkSignatureForWorker: race condition: worker %s got the signature document %s" % (signature_doc["worker"], signature_id))
                 continue
 
             # Check if the signature has already been processed by ourselves or another worker
@@ -1019,7 +1033,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
             if processed_by_equivalent_worker:
 
                 # Depending on the population of workers, the worker
-                # was not the best at the time it was originally
+                # was not the best at the time it originally
                 # processed the signature, but if we are the best now,
                 # we can go ahead and delete it and try for the next
                 # job
@@ -1118,8 +1132,13 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
             if signature_doc:
                 self.debugMessage("checkSignatureForWorker: returning signature %s" % signature_doc["_id"])
+                # If we complete processing this signature and delete it, then
+                # skip will be reset to 0. Otherwise the skip value of 1 will prevent
+                # us from seeing this signature again until the viewdata is reset.
+                self.viewdata['skip'] = 1
                 return signature_doc
 
+        self.viewdata['skip'] = 1
         self.debugMessage("checkSignatureForWorker: returning signature None")
         return None
 
@@ -1135,7 +1154,10 @@ class CrashTestWorker(sisyphus.worker.Worker):
         limit         = 64 # 64 * 32 byte id = 2048 bytes.
         signature_doc = None
 
-        resetskip_interval = datetime.timedelta(hours=1)
+        # resetskip_interval must be less than the waittime if no jobs are
+        # currently available. This will ensure that after the no job waittime
+        # is completed, the viewdata will be reset.
+        resetskip_interval = datetime.timedelta(minutes=10)
         if datetime.datetime.now() - self.jobviewdata_datetime > resetskip_interval:
             # Periodically reset the viewdata for each queue in
             # case priorities have changed, new signatures have
@@ -1208,19 +1230,6 @@ class CrashTestWorker(sisyphus.worker.Worker):
             if signature_doc:
                 break # for prioritydata
 
-        if not signature_doc:
-            # if there are no more jobs or if all remaining jobs have already been processed
-            # by this worker's class of worker, then go idle for an hour.
-            more_jobs_available = False
-            for prioritydata in self.jobviewdata:
-                for viewdata in prioritydata:
-                    if viewdata['skip'] != -1 and viewdata['pendingcount'] != viewdata['processedcount']:
-                        more_jobs_available = True
-                        break
-            if not more_jobs_available:
-                self.logMessage("getSignatureForWorker: no more jobs, going idle.")
-                time.sleep(3600)
-
         self.debugMessage("getSignatureForWorker: returning signature %s" % signature_doc)
         return signature_doc
 
@@ -1255,7 +1264,7 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 self.signature_doc = self.getSignatureForWorker()
                 if self.signature_doc:
                     if self.document["state"] == "idle":
-                        self.debugMessage('New signatures available to process, going active.')
+                        self.logMessage('New signatures available to process, going active.')
 
                     url_index     = 0
                     major_version = self.signature_doc["major_version"]
@@ -1273,15 +1282,33 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     branch        = None
                     waittime      = 1
 
-                    if self.document["state"] != "idle":
-                        self.debugMessage('No signatures available to process, going idle.')
+                    # if there are no more jobs or if all remaining
+                    # jobs have already been processed by this
+                    # worker's class of worker, then go idle.
 
-                    # XXX: right now we may need to update here to keep the worker alive
-                    # but when we have a worker heartbeat thread we can move these
-                    # updates to under the conditional above.
+                    more_jobs_available = False
+                    for prioritydata in self.jobviewdata:
+                        for viewdata in prioritydata:
+                            if (viewdata['skip'] != -1 and
+                                viewdata['pendingcount'] != viewdata['processedcount']):
+                                more_jobs_available = True
+                                break
+                        if more_jobs_available:
+                            break
+
+                    if more_jobs_available:
+                        waittime = 300
+                        if self.document["state"] != "idle":
+                            self.logMessage("Contention getting a job. Temporarily going idle.")
+                    else:
+                        waittime = 900
+                        if self.document["state"] != "idle":
+                            self.logMessage("No jobs available. Going idle.")
+
                     self.document["state"]    = "idle"
                     self.document["datetime"] = sisyphus.utils.getTimestamp()
                     self.updateWorker(self.document)
+
                     continue
 
             if (options.build and
@@ -1379,6 +1406,8 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     self.document["datetime"]     = sisyphus.utils.getTimestamp()
                     self.updateWorker(self.document)
                     self.testdb.deleteDocument(self.signature_doc, True)
+                    # Set the skip value to 0 as we do not need to skip over this signature.
+                    self.viewdata["skip"] = 0
                 else:
                     self.debugMessage('doWork: better worker available, setting signature %s worker to None' % self.signature_doc['_id'])
                     self.document["signature_id"] = None
