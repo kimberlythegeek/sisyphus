@@ -1,4 +1,10 @@
 function (doc) {
-  if (doc.type == 'branches')
-    emit(null, doc);
+  try
+  {
+    if (doc.type == 'branches')
+      emit(null, doc);
+  }
+  catch(ex)
+  {
+  }
 }

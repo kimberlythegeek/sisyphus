@@ -1,4 +1,10 @@
 function (doc) {
-  if (doc.type == 'log')
-    emit(doc.datetime, null);
+  try
+  {
+    if (doc.type == 'log')
+      emit(doc.datetime, null);
+  }
+  catch(ex)
+  {
+  }
 }
