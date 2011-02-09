@@ -659,7 +659,7 @@ class Database():
                         pass
                     elif new_status['view_index']['disk_size'] < self._design[design_doc_name]['view_index']['disk_size']:
                         self._design[design_doc_name] = new_status
-                    elif new_status['view_index']['disk_size'] > 2 * self._design[design_doc_name]['view_index']['disk_size']:
+                    elif new_status['view_index']['disk_size'] > 1e9 and new_status['view_index']['disk_size'] > 2 * self._design[design_doc_name]['view_index']['disk_size']:
                         self.logMessage('checkDatabase: compacting %s/_design/%s' % (self.dburi, design_doc_name))
                         self._design[design_doc_name] = new_status
 
