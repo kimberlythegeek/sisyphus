@@ -666,6 +666,18 @@ class Database():
                         resp, content = http.request('%s/_compact/%s' % (self.dburi, design_doc_name), method='POST', headers={"Content-Type":"application/json"})
                         if resp['status'].find('2') != 0:
                             self.logMessage('checkDatabase: POST %s/_compact/%s response: %s, %s' % (self.dburi, design_doc_name, resp, content))
+                    else:
+                        # Retrieve one document from a view in the design document
+                        # to force an update in order to improve ui responsiveness.
+                        resp, content = http.request('%s/_design/%s' % (self.dburi, design_doc_name))
+                        if resp['status'].find('2') != 0:
+                            pass # skip on error
+                        else:
+                            jcontent = json.loads(content)
+                            if 'views' in jcontent:
+                                for view_name in jcontent['views']:
+                                    http.request('%s/_design/%s/_view/%s?limit=1' % (self.dburi, design_doc_name, view_name))
+                                    break
 
         except KeyboardInterrupt:
             raise
