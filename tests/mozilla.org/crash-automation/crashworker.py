@@ -362,6 +362,20 @@ class CrashTestWorker(sisyphus.worker.Worker):
         reExploitableClass = re.compile(r'^Exploitability Classification: (.*)')
         reExploitableTitle = re.compile(r'^Recommended Bug Title: (.*)')
 
+        environment = dict(os.environ)
+
+        # set up environment.
+        if self.document["os_name"] == "Mac OS X":
+            # Set up debug malloc error handling for Mac OS X.
+            # http://developer.apple.com/mac/library/releasenotes/DeveloperTools/RN-MallocOptions/index.html#//apple_ref/doc/uid/TP40001026-DontLinkElementID_1
+            # XXX: kludge.
+            # we want to enable malloc scribble on Mac OS X, but don't want it
+            # active for the shell scripts and other commands used to run the
+            # tests as the extra output from the command line tools breaks the
+            # scripts. Set an environment variable that can be checked by the
+            # test script in order to turn on malloc scribble on Mac OS X.
+            environment["EnableMallocScribble"] = "1"
+
         # buffers to hold assertions and valgrind messages until
         # a test result is seen in the output.
         assertion_list = []
@@ -382,7 +396,8 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            close_fds=True)
+            close_fds=True,
+            env=environment)
 
         try:
             stdout, stderr = proc.communicate()

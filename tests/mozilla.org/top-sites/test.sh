@@ -106,6 +106,22 @@ hook=${hook:-"http://$TEST_HTTP/tests/mozilla.org/top-sites/userhook.js"}
 
 executable=`get_executable $product $branch $executablepath`
 
+if [[ "$OSID" == "darwin" && -n "$EnableMallocScribble" ]]; then
+    # Set debugging allocation error environment variables on Mac OS X
+    # if EnableMallocScribble is set. See crashworker.py runTest().
+
+    # set uninitialized memory to 0xAA
+    MallocPreScribble=1
+    # set freed memory to 0x55
+    MallocScribble=1
+    # add guard pages before/after large allocs
+    MallocGuardEdges=1
+    # abort() if heap corruption detected
+    MallocCheckHeapAbort=1
+    # abort() if illegal free() called
+    MallocBadFreeAbort=1
+fi
+
 if [[ -n "$url" ]]; then
     timed_run.py $TEST_TOPSITE_TIMEOUT "$url" \
         $EXECUTABLE_DRIVER \
