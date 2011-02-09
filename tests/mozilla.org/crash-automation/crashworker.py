@@ -1237,12 +1237,6 @@ class CrashTestWorker(sisyphus.worker.Worker):
                                                   self.document["os_name"], self.document["cpu_name"])
                 build_needed = self.NewBuildNeeded(build_doc, build_checkup_interval)
             else:
-                # check and clean up lock file if necessary.
-                lock_pending_jobs = self.testdb.getDocument('lock_pending_jobs')
-                if lock_pending_jobs and lock_pending_jobs['owner'] == self.document['_id']:
-                    self.logMessage("doWork: deleting stale lock_pending_jobs")
-                    self.testdb.deleteLock(lock_pending_jobs)
-
                 self.signature_doc = self.getSignatureForWorker()
                 if self.signature_doc:
                     if self.document["state"] == "idle":
