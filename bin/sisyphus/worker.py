@@ -2000,35 +2000,102 @@ class Worker():
         update_doc[self.testdb.dburi]["datetime"]  = sisyphus.utils.getTimestamp()
         self.testdb.updateDocument(update_doc, True)
 
+    def psTest(self):
+        # ps test processes
+        process_list = []
+
+        if self.document["os_name"] != "Windows NT":
+            nix_build_pattern = r'^ *([0-9]+) .*/work/mozilla/builds/[^/]+/mozilla/'
+            ps_proc = subprocess.Popen(["ps", "-ax"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            for ps_line in ps_proc.stdout:
+                ps_match = re.search(nix_build_pattern, ps_line)
+                if ps_match:
+                    process_list.append({ "process_style" : "unix", "pid" : ps_match.group(1), "line" : ps_line})
+
+        else:
+
+            cyg_build_pattern = '^[a-zA-Z]? *([0-9]+) .*(/work/mozilla/builds/[^/]+/mozilla/|mozilla-build)'
+            ps_proc = subprocess.Popen(["ps", "-W"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            for ps_line in ps_proc.stdout:
+                ps_match = re.search(cyg_build_pattern, ps_line)
+                if ps_match:
+                    process_list.append({ "process_style" : "cygwin", "pid" : ps_match.group(1), "line" : ps_line})
+
+            # On Windows, next attempt to kill sisyphus and mozilla-build processes
+            # matching the Windows style path for the working directory
+            # using Windows process ids.
+
+            win_build_pattern = '^[a-zA-Z]? *([0-9]+) .*(\\work\\mozilla\\builds\\[^\\]+\\mozilla\\|mozilla-build)'
+            ps_proc = subprocess.Popen(["ps", "-W"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            for ps_line in ps_proc.stdout:
+                ps_match = re.search(win_build_pattern, ps_line)
+                if ps_match:
+                    process_list.append({ "process_style" : "windows", "pid" : ps_match.group(1), "line" : ps_line})
+
+        return process_list
+
     def killTest(self):
         # XXX: os.kill fails to kill the entire test process and children when
         # a test times out. This is most noticible on Windows but can occur on
         # Linux as well. To kill the test reliably, use the external kill program
         # to kill all processes running from the /work/mozilla/builds/[^/]+/mozilla/ directory
         # build tree.
-        # Windows will have a leading space, however Linux, Mac OS X will not.
-
-        #build_dir     = os.environ["BUILD_DIR"]
-        build_dir     = '/work/mozilla/builds'
-        build_pattern = r' *([0-9]+).*%s[/\\][^/\\]+[/\\]mozilla[/\\]' % build_dir.replace('/', '[/\\]')
 
         if self.document["os_name"] != "Windows NT":
+            nix_build_pattern = r'^ *([0-9]+) .*/work/mozilla/builds/[^/]+/mozilla/'
             ps_proc = subprocess.Popen(["ps", "-ax"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             kill_args = ["/bin/kill", "-9"]
+            kill_pids = []
+            for ps_line in ps_proc.stdout:
+                ps_match = re.search(nix_build_pattern, ps_line)
+                if ps_match:
+                    kill_pids.append(ps_match.group(1))
+
+            # kill them all.
+            if len(kill_pids) > 0:
+                kill_args.extend(kill_pids)
+                subprocess.call(kill_args)
         else:
+
+            # On Windows, first attempt to kill sisyphus and mozilla-build processes
+            # matching the *nix style path for the working directory
+            # using the cygwin process ids.
+
+            cyg_build_pattern = '^[a-zA-Z]? *([0-9]+) .*(/work/mozilla/builds/[^/]+/mozilla/|mozilla-build)'
             ps_proc = subprocess.Popen(["ps", "-W"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             kill_args = ["/bin/kill", "-f", "-9"]
 
-        kill_pids = []
-        for ps_line in ps_proc.stdout:
-            ps_match = re.search(build_pattern, ps_line)
-            if ps_match:
-                kill_pids.append(ps_match.group(1))
+            kill_pids = []
+            for ps_line in ps_proc.stdout:
+                ps_match = re.search(cyg_build_pattern, ps_line)
+                if ps_match:
+                    kill_pids.append(ps_match.group(1))
 
-        # kill them all.
-        if len(kill_pids) > 0:
-            kill_args.extend(kill_pids)
-            subprocess.call(kill_args)
+            # kill them all.
+            if len(kill_pids) > 0:
+                kill_args.extend(kill_pids)
+                subprocess.call(kill_args)
+
+            # On Windows, next attempt to kill sisyphus and mozilla-build processes
+            # matching the Windows style path for the working directory
+            # using Windows process ids.
+
+            win_build_pattern = '^[a-zA-Z]? *([0-9]+) .*(\\work\\mozilla\\builds\\[^\\]+\\mozilla\\|mozilla-build)'
+            ps_proc = subprocess.Popen(["ps", "-W"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            kill_args = ["/bin/kill", "-f", "-9"]
+
+            kill_pids = []
+            for ps_line in ps_proc.stdout:
+                ps_match = re.search(win_build_pattern, ps_line)
+                if ps_match:
+                    kill_pids.append(ps_match.group(1))
+
+            # kill them all.
+            if len(kill_pids) > 0:
+                kill_args.extend(kill_pids)
+                subprocess.call(kill_args)
 
     def getRows(self, view, startkey = None, endkey = None, include_docs = None):
         """

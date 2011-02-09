@@ -385,6 +385,13 @@ class CrashTestWorker(sisyphus.worker.Worker):
 
         stdout, stderr = proc.communicate()
 
+        test_process_list = self.psTest()
+        if test_process_list:
+            if self.debug:
+                for test_process in test_process_list:
+                    self.debugMessage('runTest: test process still running: %s' % test_process['line'])
+            self.killTest()
+
         logfilename = re.search('log: (.*\.log) ', stdout).group(1)
 
         logfile = open(logfilename, "r")
