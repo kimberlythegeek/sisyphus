@@ -61,7 +61,8 @@ def buildProduct(db, product, branch, buildtype):
             "-B", buildsteps
             ],
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
+        stderr=subprocess.PIPE,
+        close_fds=True)
 
     stdout, stderr = proc.communicate()
 
@@ -109,7 +110,8 @@ def clobberProduct(db, product, branch, buildtype):
             "-B", buildsteps
             ],
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
+        stderr=subprocess.PIPE,
+        close_fds=True)
 
     stdout, stderr = proc.communicate()
 

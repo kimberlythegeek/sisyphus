@@ -167,7 +167,31 @@ def downloadFile(url, destination, credentials = None, timeout = None):
 
     cmd.append(encodeUrl(url))
 
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
     stdout = proc.communicate()[0]
 
     return proc.returncode == 0
+
+def openFileDescriptorCount():
+
+    count = 0
+
+    for fd in xrange(0x10000):
+        try:
+            os.fstat(fd)
+            count += 1
+        except OSError:
+            pass
+
+    return count
+
+def closeFileDescriptors(fd_start, fd_end):
+
+    # Close file descriptors from fd_start inclusive to fd_end
+    # exclusive. This is equivalent to os.closerange in Python 2.6
+
+    for fd in xrange(fd_start, fd_end):
+        try:
+            os.close(fd)
+        except OSError:
+            pass

@@ -208,7 +208,8 @@ class UnitTestWorker(sisyphus.worker.Worker):
                 ],
             bufsize=1, # line buffered
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
+            stderr=subprocess.STDOUT,
+            close_fds=True)
 
         unittest_id = 'startup'
 

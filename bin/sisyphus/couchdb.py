@@ -63,7 +63,7 @@ class Database():
     def __init__(self, dburi):
         self.dburi   = dburi
         self.db      = couchquery.Database(dburi)
-        self.http    = httplib2.Http()
+        http = httplib2.Http()
         self.status  = None
         self._design = {}
         self.debug   = False
@@ -344,7 +344,8 @@ class Database():
                 self.debugMessage('saveFileAttachment: %s' % uri)
 
                 proc = subprocess.Popen(['curl', '-T', filepath, '-H', 'Content-Type: %s' % content_type, uri],
-                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                        close_fds=True)
                 stdout = proc.communicate()[0]
 
                 # need to retrieve the document to obtain the attachment info
@@ -571,7 +572,8 @@ class Database():
 
         for attempt in attempts:
             try:
-                resp, content = self.http.request(self.dburi, method = 'GET')
+                http = httplib2.Http()
+                resp, content = http.request(self.dburi, method = 'GET')
                 if resp['status'] == '404':
                     raise Exception('no_db_file')
                 break
@@ -591,8 +593,7 @@ class Database():
                 if not re.search('/(couchquery|httplib2)/', errorMessage):
                     raise
 
-                # recreate the http object and database object.
-                self.http    = httplib2.Http()
+                # recreate the database object.
                 self.db      = couchquery.Database(self.dburi)
 
                 messagequeue.append(errorMessage)
@@ -610,7 +611,8 @@ class Database():
         try:
 
             # compact database if its size has doubled.
-            resp, content = self.http.request(self.dburi, method = 'GET')
+            http = httplib2.Http()
+            resp, content = http.request(self.dburi, method = 'GET')
 
             if resp['status'].find('2') != 0:
                 self.logMessage('checkDatabase: GET %s bad response: %s, %s' % (self.dburi, resp, content))
@@ -627,12 +629,12 @@ class Database():
                     self.logMessage('checkDatabase: compacting %s' % self.dburi)
                     self.status = new_status
 
-                    resp, content = self.http.request(self.dburi + '/_compact', method='POST', headers={"Content-Type":"application/json"})
+                    resp, content = http.request(self.dburi + '/_compact', method='POST', headers={"Content-Type":"application/json"})
                     if resp['status'].find('2') != 0:
                         self.logMessage('checkDatabase: POST %s/_compact response: %s, %s' % (self.dburi, resp, content))
                     else:
                         time.sleep(5)
-                        resp, content = self.http.request(self.dburi + '/_view_cleanup', method='POST', headers={"Content-Type":"application/json"})
+                        resp, content = http.request(self.dburi + '/_view_cleanup', method='POST', headers={"Content-Type":"application/json"})
                         if resp['status'].find('2') != 0:
                             self.logMessage('checkDatabase: POST %s/_compact/_view_cleanup response: %s, %s' % (self.dburi, resp, content))
                         else:
@@ -645,7 +647,7 @@ class Database():
                 design_doc_name = design_doc['_id'][len('_design/'):]
 
 
-                resp, content = self.http.request('%s/_design/%s/_info' % (self.dburi, design_doc_name), method='GET')
+                resp, content = http.request('%s/_design/%s/_info' % (self.dburi, design_doc_name), method='GET')
                 if resp['status'].find('2') != 0:
                     self.logMessage('checkDatabase: GET %s/_design/%s/_info response: %s, %s' % (self.dburi, design_doc_name, resp, content))
                 else:
@@ -661,7 +663,7 @@ class Database():
                         self.logMessage('checkDatabase: compacting %s/_design/%s' % (self.dburi, design_doc_name))
                         self._design[design_doc_name] = new_status
 
-                        resp, content = self.http.request('%s/_compact/%s' % (self.dburi, design_doc_name), method='POST', headers={"Content-Type":"application/json"})
+                        resp, content = http.request('%s/_compact/%s' % (self.dburi, design_doc_name), method='POST', headers={"Content-Type":"application/json"})
                         if resp['status'].find('2') != 0:
                             self.logMessage('checkDatabase: POST %s/_compact/%s response: %s, %s' % (self.dburi, design_doc_name, resp, content))
 

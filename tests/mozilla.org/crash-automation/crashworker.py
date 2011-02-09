@@ -381,9 +381,22 @@ class CrashTestWorker(sisyphus.worker.Worker):
                 buildtype
                 ],
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE,
+            close_fds=True)
 
-        stdout, stderr = proc.communicate()
+        try:
+            stdout, stderr = proc.communicate()
+        except:
+            exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+            errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+            self.logMessage('runTest: exception: %s, %s' % (exceptionValue, errorMessage))
+
+            if errorMessage.find('filedescriptor out of range') != -1:
+                self.logMessage('filedescriptors %d out of range. Restarting.' %
+                                sisyphus.utils.openFileDescriptorCount())
+                # Closing file descriptors and trying again does not
+                # fix the issue on Windows. Just restart the program.
+                self.reloadProgram()
 
         test_process_list = self.psTest()
         if test_process_list:
@@ -531,7 +544,8 @@ class CrashTestWorker(sisyphus.worker.Worker):
                             symbolsPath
                             ],
                         stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE)
+                        stderr=subprocess.PIPE,
+                        close_fds=True)
                     stdout, stderr = proc.communicate()
                     self.debugMessage("stackwalking: stdout: %s" % (stdout))
                     self.debugMessage("stackwalking: stderr: %s" % (stderr))
@@ -711,7 +725,6 @@ class CrashTestWorker(sisyphus.worker.Worker):
                     return False
                 self.debugMessage("isBetterWorkerAvailable: True. worker %s has not processed signature and is the best available." % matching_worker_id_doc["worker_id"])
             return True
-
 
         # try a match on the signature's os_name, os_version
         startkey = [signature_doc["os_name"], signature_doc["os_version"]]
@@ -1389,5 +1402,3 @@ if __name__ == "__main__":
     else:
         this_worker.logMessage('Program terminating', False)
         this_worker.testdb.deleteDocument(this_worker.document, False)
-
-

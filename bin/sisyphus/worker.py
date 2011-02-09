@@ -130,7 +130,6 @@ class Worker():
                 "state"        : "new"
                 }
 
-
             # add build information to the worker document.
             for branch in branches:
                 self.document[branch] = {
@@ -179,10 +178,32 @@ class Worker():
         self.testdb.debugMessage(msg)
 
     def reloadProgram(self):
+
         sys.stdout.flush()
+        sys.stderr.flush()
+        test_process_list = self.psTest()
+        if test_process_list:
+            if self.debug:
+                for test_process in test_process_list:
+                    self.debugMessage('runTest: test process still running during reloadProgram: %s' % test_process['line'])
+            self.killTest()
+
         newargv = sys.argv
         newargv.insert(0, sys.executable)
         os.chdir(self.startdir)
+
+        # set all open file handlers to close on exec.
+        # use 64K as the limit to check as that is the max
+        # on Windows XP. The performance issue of doing this
+        # is negligible since it is only run during a program
+        # reload.
+        from fcntl import fcntl, F_GETFD, F_SETFD, FD_CLOEXEC
+        for fd in xrange(0x3, 0x10000):
+            try:
+                fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC)
+            except:
+                pass
+
         os.execvp(sys.executable, newargv)
 
     def checkForUpdate(self, job_doc = None):
@@ -837,6 +858,7 @@ class Worker():
             result_valgrind_doc["count"] = count
             self.testdb.updateDocument(result_valgrind_doc, True)
 
+
     def parse_crashreport(self, crashreport):
         """
         Parse the crash report and report interesting stuff
@@ -1164,7 +1186,6 @@ class Worker():
         lastkey              = None
         result_crash_doc     = None
 
-
         crashmessage   = crash_data["message"]
         crashsignature = crash_data["signature"]
         currkey = crashmessage + ":" + crashsignature
@@ -1434,8 +1455,20 @@ class Worker():
         cmd = [sisyphus_dir + "/bin/install-build.sh", "-p", product, "-b", branch,
                "-x", objdir + objsubdir, "-f", "/tmp/" + productfilename]
 
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        stdout = proc.communicate()[0]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
+        try:
+            stdout = proc.communicate()[0]
+        except:
+            exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+            errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+            self.logMessage('DownloadAndInstallBuild: exception: %s, %s' % (exceptionValue, errorMessage))
+
+            if errorMessage.find('filedescriptor out of range') != -1:
+                self.logMessage('filedescriptors %d out of range. Restarting.' %
+                                sisyphus.utils.openFileDescriptorCount())
+                # Closing file descriptors and trying again does not
+                # fix the issue on Windows. Just restart the program.
+                self.reloadProgram()
 
         if proc.returncode != 0:
             self.logMessage('DownloadAndInstallBuild: install-build.sh %s %s %s failed: %s' %
@@ -1448,7 +1481,19 @@ class Worker():
             os.mkdir(objdir + '/dist/crashreporter-symbols')
             cmd = ["unzip", "-d", objdir + "/dist/crashreporter-symbols", "/tmp/" + symbolsfilename]
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            stdout = proc.communicate()[0]
+            try:
+                stdout = proc.communicate()[0]
+            except:
+                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+                errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+                self.logMessage('DownloadAndInstallBuild: exception: %s, %s' % (exceptionValue, errorMessage))
+
+                if errorMessage.find('filedescriptor out of range') != -1:
+                    self.logMessage('filedescriptors %d out of range. Restarting.' %
+                                    sisyphus.utils.openFileDescriptorCount())
+                    # Closing file descriptors and trying again does not
+                    # fix the issue on Windows. Just restart the program.
+                    self.reloadProgram()
 
             if proc.returncode != 0:
                 self.logMessage('DownloadAndInstallBuild: unzip crashreporter-symbols.zip %s %s %s failed: %s' %
@@ -1534,7 +1579,19 @@ class Worker():
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
 
-        stdout, stderr = proc.communicate()
+        try:
+            stdout, stderr = proc.communicate()
+        except:
+            exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+            errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+            self.logMessage('buildProduct: exception: %s, %s' % (exceptionValue, errorMessage))
+
+            if errorMessage.find('filedescriptor out of range') != -1:
+                self.logMessage('filedescriptors %d out of range. Restarting.' %
+                                sisyphus.utils.openFileDescriptorCount())
+                # Closing file descriptors and trying again does not
+                # fix the issue on Windows. Just restart the program.
+                self.reloadProgram()
 
         if re.search('^FATAL ERROR', stderr, re.MULTILINE):
             buildsuccess = False
@@ -1623,7 +1680,19 @@ class Worker():
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
 
-        stdout = proc.communicate()[0]
+        try:
+            stdout = proc.communicate()[0]
+        except:
+            exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+            errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+            self.logMessage('clobberProduct: exception: %s, %s' % (exceptionValue, errorMessage))
+
+            if errorMessage.find('filedescriptor out of range') != -1:
+                self.logMessage('filedescriptors %d out of range. Restarting.' %
+                                sisyphus.utils.openFileDescriptorCount())
+                # Closing file descriptors and trying again does not
+                # fix the issue on Windows. Just restart the program.
+                self.reloadProgram()
 
         if proc.returncode != 0:
             clobbersuccess = False
@@ -1682,7 +1751,19 @@ class Worker():
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
 
-        packagelog = proc.communicate()[0]
+        try:
+            packagelog = proc.communicate()[0]
+        except:
+            exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+            errorMessage = sisyphus.utils.formatException(exceptionType, exceptionValue, exceptionTraceback)
+            self.logMessage('packageProduct: exception: %s, %s' % (exceptionValue, errorMessage))
+
+            if errorMessage.find('filedescriptor out of range') != -1:
+                self.logMessage('filedescriptors %d out of range. Restarting.' %
+                                sisyphus.utils.openFileDescriptorCount())
+                # Closing file descriptors and trying again does not
+                # fix the issue on Windows. Just restart the program.
+                self.reloadProgram()
 
         if proc.returncode == 0:
             # too verbose and not useful if succeeded.
