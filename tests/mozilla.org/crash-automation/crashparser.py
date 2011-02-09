@@ -55,6 +55,7 @@ import urlparse
 
 rePrivateNetworks = re.compile(r'https?://(localhost|127\.0\.0\.1|192\.168\.[0-9]+\.[0-9]+|172\.16\.[0-9]+\.[0-9]+|10\.[0-9]+\.[0-9]+\.[0-9]+)')
 
+options = None
 supported_versions_hash = None
 supported_versions = None
 bad_lines = []
@@ -243,14 +244,14 @@ def process_crashdata(db, crashlogdate, crash_docs, ffversionshash, supported_ve
                 del curr_signature_doc['urlhash']
                 del curr_signature_doc['major_versionhash']
                 doc_buffer.append(curr_signature_doc)
-                if len(doc_buffer) == 5:  # make configurable
+                if len(doc_buffer) == options.batchsize:
                     info = db.create(doc_buffer)
                     for result in info:
                         if 'error' in result:
                             print 'db.create error %s' % (result)
                             bad_results.append(result)
                             output('x')
-                    count += 5 # make configurable
+                    count += options.batchsize
                     output('.')
                     doc_buffer = []
             curr_signature_doc = create_signature_doc(crashlogdate, crash_doc)
@@ -344,7 +345,7 @@ def load_crashdata(crashlogfile, crash_docs, ffversionshash, supported_versions_
     crash_docs.sort(cmp_crash_docs)
 
 def main():
-    global supported_versions_hash, supported_versions
+    global options, supported_versions_hash, supported_versions
 
     usage = '''usage: %prog [options] crashdump
 
@@ -362,10 +363,15 @@ Example:
                       help='name of database, defaults to sisyphus.',
                       default='sisyphus')
 
-    parser.add_option('-s', '--skipurls', action='store', type='string',
+    parser.add_option('--skipurls', action='store', type='string',
                       dest='skipurlsfile',
                       default=None,
                       help='file containing url patterns to skip when uploading.')
+
+    parser.add_option('--batchsize', action='store', type='int',
+                      dest='batchsize',
+                      default=100,
+                      help='Number of signature documents to batch together during bulk creation. Defaults to 100.')
 
     (options, args) = parser.parse_args()
 

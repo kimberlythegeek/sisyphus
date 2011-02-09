@@ -156,18 +156,23 @@ class Worker():
             self.document["datetime"]     = sisyphus.utils.getTimestamp()
             self.document["state"]        = "recycled"
 
-            # add build information to the worker document if it isn't there already.
+            # Add empty build information to the worker document
+            # overwriting any existing entries. We ignore the existing
+            # build information in the worker's document since the
+            # worker's virtual machine may be been stopped, a snapshot
+            # reverted and the virtual machine restarted thus
+            # invalidating the information.
+
             for branch in branches:
-                if not branch in self.document:
-                    self.document[branch] = {
-                        "builddate"       : None,
-                        "buildsuccess"    : None,
-                        "changeset"       : None,
-                        "executablepath"  : None,
-                        "packagesuccess"  : None,
-                        "clobbersuccess"  : None,
-                        "uploadsuccess"   : None
-                        }
+                self.document[branch] = {
+                    "builddate"       : None,
+                    "buildsuccess"    : None,
+                    "changeset"       : None,
+                    "executablepath"  : None,
+                    "packagesuccess"  : None,
+                    "clobbersuccess"  : None,
+                    "uploadsuccess"   : None
+                    }
 
             self.updateWorker(self.document)
 
