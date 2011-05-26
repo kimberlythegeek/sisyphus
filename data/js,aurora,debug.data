@@ -1,0 +1,6 @@
+product=${product:-js}
+branch=${branch:-aurora}
+buildtype=${buildtype:-debug}
+jsshellsourcepath=${jsshellsourcepath:-/work/mozilla/builds/aurora/mozilla/js/src}
+TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-aurora}
+TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}

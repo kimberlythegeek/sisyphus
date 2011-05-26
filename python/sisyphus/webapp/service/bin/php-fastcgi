@@ -1,0 +1,7 @@
+#!/bin/bash
+#FCGI_USER="www-data"
+#FCGI_GROUP="www-data"
+#FCGI_CHILDREN=0
+
+/usr/bin/spawn-fcgi -a 127.0.0.1 -p 9000 -P /var/run/php-fastcgi.pid -- /usr/bin/php-cgi -b 127.0.0.1:9000
+

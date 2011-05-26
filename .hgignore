@@ -16,3 +16,6 @@ spider/chrome/spider.jar
 spider/file.manifest
 spider/spider.xpi
 xpi/all/spider.xpi
+python/sisyphus/webapp/media/builds/*
+python/sisyphus/webapp/media/logs/*
+python/sisyphus/webapp/media/minidumps/*

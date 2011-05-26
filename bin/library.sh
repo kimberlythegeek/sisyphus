@@ -58,13 +58,18 @@ function _err()
     local rc=$?
     debug "_err: $0"
 
-    if [[ "$rc" -gt 0 ]]; then
-        if [[ -n "$TEST_LOG" ]]; then
-            echo -e "\nFATAL ERROR in $0 exit code $rc\n" >> $TEST_LOG
-        else
-            echo -e "\nFATAL ERROR in $0 exit code $rc\n" 1>&2
-        fi
-    fi
+    case "$rc" in
+        0|66|77|88|99)
+            # ignore exit codes from timed_run.py?
+            ;;
+        *)
+            if [[ -n "$TEST_LOG" ]]; then
+                echo -e "\nFATAL ERROR in $0 exit code $rc\n" >> $TEST_LOG
+            else
+                echo -e "\nFATAL ERROR in $0 exit code $rc\n" 1>&2
+            fi
+            ;;
+    esac
     exit $rc
 }
 
@@ -119,10 +124,10 @@ if [[ -z "$LIBRARYSH" ]]; then
         esac
 
         case $branch in
-            1.9.0|1.9.1|1.9.2|2.0.0)
+            1.9.0|1.9.1|1.9.2|2.0.0|beta|aurora|nightly|tracemonkey)
                 ;;
             *)
-                error "branch \"$branch\" must be one of 1.9.0 1.9.1 1.9.2 2.0.0" $LINENO
+                error "branch \"$branch\" must be one of 1.9.0 1.9.1 1.9.2 2.0.0 beta aurora nightly tracemonkey" $LINENO
         esac
 
      }
@@ -181,7 +186,7 @@ if [[ -z "$LIBRARYSH" ]]; then
 
     dumpenvironment()
     {
-        set | grep '^[A-Z]' | sed 's|^|environment: |'
+        set | grep -v '^SISYPHUS_' | grep '^[A-Z]' | sed 's|^|environment: |'
     }
 
     dumphardware()
@@ -350,7 +355,8 @@ if [[ -z "$LIBRARYSH" ]]; then
     #leak gauge
     #NSPR_LOG_MODULES=DOMLeak:5,DocumentLeak:5,nsDocShellLeak:5
 
-    TEST_MEMORY="`memory.pl`"
+    # disable due to hangs on Windows 7
+    #TEST_MEMORY="`memory.pl`"
 
     # debug msg
     #
@@ -371,7 +377,8 @@ if [[ -z "$LIBRARYSH" ]]; then
     fi
 
     TEST_HTTP=${TEST_HTTP:-test.mozilla.com}
-    TEST_STARTUP_TIMEOUT=${TEST_STARTUP_TIMEOUT:-30}
+    TEST_STARTUP_TIMEOUT=${TEST_STARTUP_TIMEOUT:-60}
+    TEST_STARTUP_TRIES=${TEST_STARTUP_TRIES:-3}
     TEST_MACHINE=`uname -n`
 
     kernel_name=`uname -s`

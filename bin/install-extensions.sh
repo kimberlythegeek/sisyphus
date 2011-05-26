@@ -39,8 +39,6 @@
 
 source $TEST_DIR/bin/library.sh
 
-TEST_STARTUP_TRIES=${TEST_STARTUP_TRIES:-3}
-
 #
 # options processing
 #
@@ -98,7 +96,9 @@ if echo $profilename | egrep -qiv '[a-z0-9_]'; then
     error "profile name must consist of letters, digits or _" $LINENO
 fi
 
+echo "get_executable"
 executable=`get_executable $product $branch $executablepath`
+echo "get extensiondir"
 executableextensiondir=`dirname $executable`/extensions
 
 # create directory to contain installed extensions
@@ -107,6 +107,8 @@ if [[ ! -d /tmp/sisyphus/extensions ]]; then
 fi
 
 for extensionloc in $extensiondir/all/*.xpi $extensiondir/$OSID/*.xpi; do
+    echo "checking $extensiondir"
+
     if [[ $extensionloc == "$extensiondir/all/*.xpi" ]]; then
         continue
     fi
@@ -122,8 +124,8 @@ for extensionloc in $extensiondir/all/*.xpi $extensiondir/$OSID/*.xpi; do
     else
         extensionosinstalldir=$extensioninstalldir
     fi
-    echo installing $extensionloc
 
+    echo installing $extensionloc
     # unzip the extension if it does not already exist
     # or if it is newer than the already unpacked version.
     if [[ ! -e $extensioninstalldir || $extensionloc -nt $extensioninstalldir ]]; then
@@ -131,6 +133,7 @@ for extensionloc in $extensiondir/all/*.xpi $extensiondir/$OSID/*.xpi; do
         unzip -d $extensioninstalldir $extensionloc
     fi
 
+    echo "getting extension uuid"
     extensionuuid=`perl $TEST_DIR/bin/get-extension-uuid.pl $extensioninstalldir/install.rdf`
     if [[ ! -e $executableextensiondir/$extensionuuid ]]; then
         echo $extensionosinstalldir > $executableextensiondir/$extensionuuid

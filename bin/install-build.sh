@@ -94,7 +94,7 @@ filetype=`file $filename`
 
 if [[ $OSID == "nt" ]]; then
 
-    if echo $filetype | grep -iq windows; then
+    if echo $filetype | grep -q " executable "; then
         chmod u+x "$filename"
         $filename /S /D=`cygpath -a -w "$executablepath"`
     elif echo  $filetype | grep -iq 'zip archive'; then

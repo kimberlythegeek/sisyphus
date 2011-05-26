@@ -22,7 +22,7 @@ ac_add_options --disable-debug
 ac_add_options --enable-debugger-info-modules=yes
 
 ac_add_options --enable-tests
-ac_add_options --enable-logrefcnt
+#ac_add_options --enable-logrefcnt
 
 ac_add_options --disable-installer
 

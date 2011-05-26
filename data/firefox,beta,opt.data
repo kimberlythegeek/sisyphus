@@ -1,0 +1,10 @@
+product=${product:-firefox}
+branch=${branch:-beta}
+buildtype=${buildtype:-opt}
+profilename=${profilename:-firefox-beta-profile}
+profiledirectory=${profiledirectory:-/tmp/firefox-beta-profile}
+executablepath=${executablepath:-/work/mozilla/builds/beta/mozilla/firefox-opt/dist}
+userpreferences=${userpreferences:-$TEST_DIR/prefs/test-user.js}
+extensiondir=${extensiondir:-$TEST_DIR/xpi}
+TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-beta}
+TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}

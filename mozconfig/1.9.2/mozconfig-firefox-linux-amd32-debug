@@ -17,7 +17,7 @@ ac_add_options --disable-install-strip
 
 ac_add_options --enable-tests
 # broken link leaksoup ac_add_options --enable-trace-malloc
-ac_add_options --enable-logrefcnt
+#ac_add_options --enable-logrefcnt
 ac_add_options --with-valgrind
 ac_add_options --enable-valgrind
 

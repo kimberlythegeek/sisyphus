@@ -4,12 +4,16 @@ all: spider.xpi
 
 FILES=$(shell cat ./file.manifest)
 
-spider.xpi: chrome/Makejar $(FILES)
+chrome/spider.jar:
 	make -C chrome -f Makejar
-	zip -r -o $@ chrome.manifest install.rdf install.js user.js chrome/spider.jar components/
+
+spider.xpi: file.manifest chrome/Makejar $(FILES)
+	zip -r -o $@ `cat file.manifest`
 	install $@ ../xpi/all/
 
 clean:
+	make -C chrome -f Makejar clean
 	rm -f spider.xpi
+
 
 

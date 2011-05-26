@@ -95,6 +95,8 @@ fi
 
 checkProductBranch $product $branch
 
+echo "get_executable"
+
 executable=`get_executable $product $branch $executablepath`
 
 $TEST_DIR/bin/create-directory.sh -d "$directory" -n
@@ -102,6 +104,8 @@ $TEST_DIR/bin/create-directory.sh -d "$directory" -n
 if echo "$profilename" | egrep -qiv '[a-z0-9_]'; then
     error "profile name \"$profilename\" must consist of letters, digits or _" $LINENO
 fi
+
+echo "get directoryospath for $directory"
 
 if [ $OSID == "nt" ]; then
     directoryospath=`cygpath -a -w $directory`
@@ -120,7 +124,7 @@ while ! $TEST_DIR/bin/timed_run.py ${TEST_STARTUP_TIMEOUT} "-" \
         $executable -CreateProfile "$profilename $directoryospath"; do
     let tries=tries+1
     if [[ "$tries" -gt $TEST_STARTUP_TRIES ]]; then
-        error "Failed to create profile $directory Exiting..." $LINENO
+        error "Failed to create profile $directoryospath Exiting..." $LINENO
     fi
     sleep 30
 done

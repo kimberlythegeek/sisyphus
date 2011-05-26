@@ -1,0 +1,10 @@
+product=${product:-firefox}
+branch=${branch:-2.0.0}
+buildtype=${buildtype:-opt}
+profilename=${profilename:-firefox-2.0.0-profile}
+profiledirectory=${profiledirectory:-/tmp/firefox-2.0.0-profile}
+executablepath=${executablepath:-/work/mozilla/builds/2.0.0/mozilla/firefox-opt/dist}
+userpreferences=${userpreferences:-$TEST_DIR/prefs/test-user.js}
+extensiondir=${extensiondir:-$TEST_DIR/xpi}
+TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-2.0}
+TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}

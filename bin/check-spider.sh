@@ -39,8 +39,6 @@
 
 source $TEST_DIR/bin/library.sh
 
-TEST_STARTUP_TRIES=${TEST_STARTUP_TRIES:-3}
-
 #
 # options processing
 #

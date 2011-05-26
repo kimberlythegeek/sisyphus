@@ -92,11 +92,21 @@ if [[ `whoami` == "root" ]]; then
     error "can not be run as root" $LINENO
 fi
 
-# get the cannonical name directory name
-mkdir -p "$directory"
+echo get the cannonical directory name
+
+tries=1
+while ! mkdir -p "$directory"; do
+    let tries=tries+1
+    if [[ "$tries" -gt $TEST_STARTUP_TRIES ]]; then
+        error "Failed to mkdir -p $directory" $LINENO
+    fi
+    sleep 30
+done
+
 if ! pushd "$directory" > /dev/null ; then 
     error "$directory is not accessible" $LINENO
 fi
+
 directory=`pwd`
 popd > /dev/null
 
