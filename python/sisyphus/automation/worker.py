@@ -807,7 +807,7 @@ class Worker(object):
                                           self.model_test_crash.__name__, testcrash_row, testcrash_row.id,
                                           uploadpath)
             if os.path.exists(dumpFile):
-                uploader.add('minidump', os.path.basename(dumpFile), dumpFile)
+                uploader.add('minidump', os.path.basename(dumpFile), dumpFile, True)
 
             if os.path.exists(extraFile):
                 uploader.add('extradump', os.path.basename(extraFile), extraFile)
