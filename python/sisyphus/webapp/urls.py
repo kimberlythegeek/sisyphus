@@ -6,10 +6,10 @@ admin.autodiscover()
 
 urlpatterns = patterns('',
 
-    (r'^admin/doc/', include('django.contrib.admindocs.urls')),
+    (r'^djangoadmin/doc/', include('django.contrib.admindocs.urls')),
 
     # Uncomment the next line to enable the admin:
-    (r'^admin/', include(admin.site.urls)),
+    (r'^djangoadmin/', include(admin.site.urls)),
 
     (r'^bughunter/', include('sisyphus.webapp.bughunter.urls')),
 
