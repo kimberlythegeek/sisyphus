@@ -417,10 +417,8 @@ class CrashTestWorker(worker.Worker):
                         if branch_row.product != self.product:
                             continue
 
-                        major_version = branch_row.major_version
-
                         # PowerPC is not supported after Firefox 3.6
-                        if major_version > '0306' and worker_row.cpu_name == 'ppc':
+                        if branch_row.major_version > '0306' and worker_row.cpu_name == 'ppc':
                             continue
 
                         old_test_run = self.testrun_row
@@ -435,7 +433,7 @@ class CrashTestWorker(worker.Worker):
                             product             = self.product,
                             version             = '',
                             build               = '',
-                            branch              = self.branch,
+                            branch              = branch_row.branch,
                             os_name             = worker_row.os_name,
                             os_full_version     = worker_row.os_version,
                             os_version          = worker_row.os_version,
@@ -461,17 +459,17 @@ class CrashTestWorker(worker.Worker):
                             os_name           = worker_row.os_name,
                             os_version        = worker_row.os_version,
                             cpu_name          = worker_row.cpu_name,
-                            product           = old_test_run.product,
-                            branch            = old_test_run.branch,
-                            buildtype         = old_test_run.buildtype,
+                            product           = self.product,
+                            branch            = branch_row.branch,
+                            buildtype         = branch_row.buildtype,
                             build_cpu_name    = None,
                             worker            = None,
                             socorro           = new_socorro_row,
                             changeset         = None,
                             datetime          = utils.getTimestamp(),
-                            major_version     = old_test_run.major_version,
+                            major_version     = branch_row.major_version,
                             bug_list          = None,
-                            crashed          = False,
+                            crashed           = False,
                             extra_test_args   = old_test_run.extra_test_args,
                             steps             = '',
                             fatal_message     = None,
