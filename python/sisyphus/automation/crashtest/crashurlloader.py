@@ -56,6 +56,8 @@ if tempdir not in sys.path:
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
 
+from django.db import connection
+
 import sisyphus.automation.utils
 import sisyphus.webapp.settings
 from sisyphus.webapp.bughunter import models
@@ -81,6 +83,11 @@ def main():
                       default=None,
                       help='set the signature document\'s signature' +
                       'property to allow tracking of this set of urls.')
+
+    parser.add_option('--skip-duplicate-urls', action='store_true',
+                      dest='skipduplicateurls',
+                      default=False,
+                      help='Skip duplicate urls.')
 
     (options, args) = parser.parse_args()
 
@@ -165,6 +172,21 @@ def main():
                         # PowerPC is not supported after Firefox 3.6
                         if major_version > '0306' and cpu_name == 'ppc':
                             continue
+
+                        if options.skipduplicateurls:
+                            cursor = connection.cursor()
+                            if cursor.execute("SELECT SocorroRecord.url FROM SocorroRecord, SiteTestRun WHERE " +
+                                              "SiteTestRun.socorro_id = SocorroRecord.id AND " +
+                                              "SocorroRecord.url = %s AND " +
+                                              "SiteTestRun.os_name = %s AND " +
+                                              "SiteTestRun.os_version = %s AND " +
+                                              "SiteTestRun.cpu_name = %s AND " +
+                                              "SiteTestRun.branch = %s AND " +
+                                              "SiteTestRun.state = 'waiting'" +
+                                              "limit 1",
+                                [url, os_name, os_version, cpu_name, branch]):
+                                continue
+
 
                         socorro_row = models.SocorroRecord(
                             signature           = options.signature,
