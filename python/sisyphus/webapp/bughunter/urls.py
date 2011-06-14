@@ -8,5 +8,7 @@ urlpatterns = patterns('',
                        (r'^admin/$', views.admin),
                        (r'^admin/workers/$', views.workers),
                        (r'^admin/workers/log/(\d*)/', views.worker_log),
+                       (r'^api/admin/workers/$', views.workers_api),
+                       (r'^api/admin/workersummary/$', views.admin),
                        (r'^post_files/$', views.post_files),
 )

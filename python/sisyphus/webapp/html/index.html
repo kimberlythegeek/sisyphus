@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>Worker List - Bughunter</title>
+    <link rel="stylesheet" href="style/main.css" type="text/css"/>
+    <link rel="stylesheet" href="style/Aristo/jquery-ui-1.8.7.custom.css" type="text/css"/>
+    <link rel="stylesheet" href="style/datatables.css" type="text/css"/>
+    <script src="scripts/json2.js"></script>
+    <script src="scripts/jquery-1.6.1.min.js"></script>
+    <script src="scripts/jquery-ui-1.8.13.custom.min.js"></script>
+    <script src="scripts/tempo.min.js"></script>
+    <script src="scripts/underscore-min.js"></script>
+    <script src="scripts/jquery.dataTables.min.js"></script>
+    <script src="scripts/backbone-min.js"></script>
+    <script src="scripts/bughunter/models.js"></script>
+    <script src="scripts/bughunter/views.js"></script>
+    <script src="scripts/bughunter/app.js"></script>
+    <script>
+      $(document).ready(function () {
+        window.app = new BughunterAdminAppController();
+      });
+    </script>
+</head>
+<body>
+<div id="wrapper">
+<div id="toolbar" class="toolbar ui-widget ui-widget-header ui-corner-all">
+  <div id="menu" class="fg-buttonset">
+    <form style="margin-top: 1em;display:inline">
+      <div id="menubar">
+	<input type="radio" id="menuworkers" name="menuradio" value="workers" /><label for="menuworkers">List</label>
+	<input type="radio" id="menuworkersummary" name="menuradio" value="workersummary" /><label for="menuworkersummary">Summary</label>
+      </div>
+    </form>
+  </div>
+  <div id="title">bughunter workers</div>
+  <div style="clear: right"></div>
+</div>
+
+<div id="main" class="ui-widget ui-widget-content ui-corner-all">
+  <table data-template data-if-page="workers" cellpadding="0" class="display">
+  </table>
+  <table data-template data-if-page="workersummary" cellpadding="0" class="display">
+    <thead>
+      <tr>
+        <th rowspan="2">Platform</th>
+        <th rowspan="2">Builders</th>
+        <th colspan="2" class="ui-state-default">Crash Testers</th>
+        <th colspan="2" class="ui-state-default">Unit Testers</th>
+      </tr>
+      <tr>
+        <th>Active</th>
+        <th>Throughput</th>
+        <th>Active</th>
+        <th>Throughput</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+</div>
+</div>
+</body>
+</html>

@@ -2,7 +2,9 @@ import os
 import sys
 import re
 import datetime
+import simplejson
 
+from django.core.serializers.python import Serializer as PythonSerializer
 from django.http import HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, HttpResponseServerError, HttpResponseBadRequest
 from django.shortcuts import render_to_response
 from django.views.decorators.csrf import csrf_exempt
@@ -19,6 +21,20 @@ def unittests(request):
 
 def home(request):
     return render_to_response('bughunter.index.html', {})
+
+def json_view(func):
+    """ decorator that serializes models into json in a sane way """
+    def wrap(request, *a, **kw):
+        serializer = PythonSerializer()  # to get a good dict
+        models = func(request, *a, **kw)
+        d = serializer.serialize(models)
+        response = []
+        for m in d:
+            m['fields']['id'] = m['pk']
+            response.append(m['fields'])
+        json = simplejson.dumps(response)
+        return HttpResponse(json, mimetype='application/json')
+    return wrap
 
 def admin(request):
     worker_types = ['builder', 'crashtest', 'unittest']
@@ -63,6 +79,7 @@ def admin(request):
     worker_data_list = []
     for worker_key in worker_data:
         worker_data_list.append({'worker_key'       : worker_key,
+                                 'id'               : worker_key,
                                  'builder_active'   : worker_data[worker_key]['builder']['active'],
                                  'builder_total'    : worker_data[worker_key]['builder']['total'],
                                  'crashtest_active' : worker_data[worker_key]['crashtest']['active'],
@@ -74,6 +91,9 @@ def admin(request):
                                  })
 
     worker_data_list.sort( cmp=lambda x, y: cmp(x['worker_key'], y['worker_key'] ))
+    if 'application/json' in request.META['HTTP_ACCEPT']:
+        json = simplejson.dumps(worker_data_list)
+        return HttpResponse(json, mimetype='application/json')
     return render_to_response('bughunter.admin.html', {'worker_data_list' : worker_data_list})
 
 def workers(request):
@@ -194,3 +214,7 @@ def post_files(request):
         response = HttpResponseServerError("ERROR: %s" % errorMessage)
 
     return response
+
+@json_view
+def workers_api(request):
+    return models.Worker.objects.order_by('hostname').all()

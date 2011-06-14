@@ -1,0 +1,68 @@
+body {
+  background: #577F5D;
+}
+
+.display {
+  font-size: smaller;
+  width: 100%;
+  border-spacing: 0;
+}
+
+.css_right {
+  float: right;
+}
+
+.css_left {
+  float: left;
+}
+
+td.text_right {
+  text-align: right;
+}
+
+.toolbar {
+  position: relative;
+  width: 90%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding: 10px;
+}
+
+#title {
+  position: absolute;
+  height: 20px;
+  top: 50%;
+  margin-top: -10px;
+}
+
+#main {
+  width: 90%;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 10px;
+}
+
+tr.disabled {
+  color: #8F8F8F;
+}
+
+tr.dead {
+  color: #cc0000;
+}
+
+tr.zombie {
+  color: #cc0000;
+}
+
+#menu {
+  float: right;
+}
+
+.fg-buttonset { margin-right:1.5em; padding-left: 1px; }
+.fg-button { font-size: 0.5em;  }
+
+#wrapper {
+  display: none;
+}
