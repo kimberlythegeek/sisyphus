@@ -89,6 +89,7 @@ WorkerCollectionView = DataTableCollectionView.extend({
       var colNum = this.columnMap[name];
       this.updateCell(changes[name], rowId, colNum, colNum-1); // -1 since id is hidden
     }
+    this.updateRowHighlighting(model, rowId);
   },
 
   addRow: function(model, redraw) {
@@ -101,14 +102,18 @@ WorkerCollectionView = DataTableCollectionView.extend({
       data.push(model.get(this.columns[i].modelKey));
     }
     var added = this.datatable.fnAddData(data, redraw);
-    var state = model.get('state');
-    if (state == 'disabled' || state == 'dead' || state == 'zombie') {
-      var row = $(this.datatable.fnGetNodes(added[0]));
-      if (!row.hasClass(state)) {
-        row.addClass(state);
-      }
-    }
     this.modelRowMap[modelId] = added[0];
+    this.updateRowHighlighting(model, added[0]);
+  },
+
+  updateRowHighlighting: function(model, rowId) {
+    var row = $(this.datatable.fnGetNodes(rowId));
+    var highlightedStates = ['disabled', 'dead', 'zombie'];
+    row.removeClass(highlightedStates.join(' '));
+    var state = model.get('state');
+    if (highlightedStates.indexOf(state) != -1) {
+      row.addClass(state);
+    }
   },
 
 });
