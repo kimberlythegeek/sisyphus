@@ -110,3 +110,7 @@ INSTALLED_APPS = (
     'django.contrib.admindocs',
     'bughunter',
 )
+
+SERIALIZATION_MODULES = {
+    'json': 'wadofstuff.django.serializers.json'
+}

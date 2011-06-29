@@ -1,3 +1,11 @@
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
 body {
   background: #577F5D;
 }
@@ -18,6 +26,18 @@ body {
 
 td.text_right {
   text-align: right;
+}
+
+th.text_right {
+  text-align: right;
+}
+
+th.center {
+  text-align: center;
+}
+
+.hidden {
+  display: none;
 }
 
 .toolbar {
@@ -66,3 +86,62 @@ tr.zombie {
 #wrapper {
   display: none;
 }
+
+div.workerdetails {
+  width: 50%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+div.workerdetails table {
+  width: 100%;
+}
+
+div.worker div {
+  margin-bottom: 10px;
+  padding: 10px;
+}
+
+div.logtimes {
+  text-align: center;
+  width: 50%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+td.logdate {
+  padding-right: 10px;
+  font-size: smaller;
+}
+
+td.logmachine {
+  padding-right: 10px;
+  font-family: monospace;
+}
+
+td.logmessage {
+  font-family: monospace;
+}
+
+#clearlog {
+  float: right;
+}
+
+.fg-button {
+   outline: 0;
+   margin:0 0 0 0;
+   padding: .2em .2em;
+   text-decoration:none !important;
+   cursor:pointer;
+   position: relative;
+   text-align: center;
+   zoom: 1;
+   display: inline-block;
+   font-size: .6em;
+}
+
+span.buttons {
+  margin-left: 10px;
+  visibility: hidden;
+}
+

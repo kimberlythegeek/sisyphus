@@ -4,11 +4,14 @@
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
     <title>Worker List - Bughunter</title>
     <link rel="stylesheet" href="style/main.css" type="text/css"/>
+    <link rel="stylesheet" href="style/anytimec.css" type="text/css"/>
     <link rel="stylesheet" href="style/Aristo/jquery-ui-1.8.7.custom.css" type="text/css"/>
+<!--    <link rel="stylesheet" href="style/smoothness/jquery-ui-1.8.13.custom.css" type="text/css"/> -->
     <link rel="stylesheet" href="style/datatables.css" type="text/css"/>
     <script src="scripts/json2.js"></script>
     <script src="scripts/jquery-1.6.1.min.js"></script>
     <script src="scripts/jquery-ui-1.8.13.custom.min.js"></script>
+    <script src="scripts/anytimec.js"></script>
     <script src="scripts/tempo.min.js"></script>
     <script src="scripts/underscore-min.js"></script>
     <script src="scripts/jquery.dataTables.min.js"></script>
@@ -23,13 +26,13 @@
     </script>
 </head>
 <body>
-<div id="wrapper">
 <div id="toolbar" class="toolbar ui-widget ui-widget-header ui-corner-all">
   <div id="menu" class="fg-buttonset">
     <form style="margin-top: 1em;display:inline">
       <div id="menubar">
 	<input type="radio" id="menuworkers" name="menuradio" value="workers" /><label for="menuworkers">List</label>
 	<input type="radio" id="menuworkersummary" name="menuradio" value="workersummary" /><label for="menuworkersummary">Summary</label>
+	<input type="radio" id="menulogs" name="menuradio" value="logs" /><label for="menulogs">Logs</label>
       </div>
     </form>
   </div>
@@ -37,28 +40,94 @@
   <div style="clear: right"></div>
 </div>
 
-<div id="main" class="ui-widget ui-widget-content ui-corner-all">
-  <table data-template data-if-page="workers" cellpadding="0" class="display">
-  </table>
-  <table data-template data-if-page="workersummary" cellpadding="0" class="display">
-    <thead>
-      <tr>
-        <th rowspan="2">Platform</th>
-        <th rowspan="2">Builders</th>
-        <th colspan="2" class="ui-state-default">Crash Testers</th>
-        <th colspan="2" class="ui-state-default">Unit Testers</th>
-      </tr>
-      <tr>
-        <th>Active</th>
-        <th>Throughput</th>
-        <th>Active</th>
-        <th>Throughput</th>
-      </tr>
-    </thead>
-    <tbody>
-    </tbody>
-  </table>
-</div>
+<div id="wrapper">
+  <div data-template data-if-page="workers" id="main"
+       class="ui-widget ui-widget-content ui-corner-all">
+    <table cellpadding="0" class="display">
+    </table>
+  </div>
+
+  <div data-template data-if-page="workersummary" id="main"
+       class="ui-widget ui-widget-content ui-corner-all">
+    <table cellpadding="0" class="display">
+      <thead>
+	<tr>
+          <th rowspan="2">Platform</th>
+          <th rowspan="2" class="center">Builders</th>
+          <th colspan="2" class="ui-state-default">Crash Testers</th>
+          <th colspan="2" class="ui-state-default">Unit Testers</th>
+	</tr>
+	<tr>
+          <th class="center">Active</th>
+          <th class="center">Throughput</th>
+          <th class="center">Active</th>
+          <th class="center">Throughput</th>
+	</tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+  </div>
+
+  <div data-template data-if-page="worker" class="worker">
+    <div class="ui-widget ui-widget-content ui-corner-all workerdetails">
+      <table>
+       <tr>
+	 <th class="text_right">Hostname</td><td><a href="{{hash}}">{{ worker.hostname }}</a></td>
+	 <th class="text_right">Type</td><td>{{ worker.worker_type }}</td>
+       </tr>
+       <tr>
+	 <th class="text_right">OS</td><td>{{ worker.os_name }} {{ worker.os_version }}</td>
+	 <th class="text_right">CPU</td><td>{{ worker.cpu_name }}</td>
+       </tr>
+       <tr>
+	 <th class="text_right">State</td><td>{{ worker.state }}</td>
+	 <th class="text_right">Last update (PT)</td><td>{{ worker.datetime }}</td>
+       </tr>
+      </table>
+    </div>
+
+    <div class="ui-widget ui-widget-content ui-corner-all">
+      <div class="ui-widget ui-widget-content ui-corner-all logtimes">
+        <form id="logcontrols" name="logcontrols">
+        Start: <input type="text" size="15" id="logstart" pattern="[\d]{4}-[\d]{2}-[\d]{2}(T[\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter start date in the form <YYYY>-<MM>-<DD>[T<HH>:<MM>[:<SS>], or blank for beginning of logs"> PT&nbsp;&nbsp;
+        End: <input type="text" size="15" id="logend" pattern="[\d]{4}-[\d]{2}-[\d]{2}(T[\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter end date in the form <YYYY>-<MM>-<DD>[T<HH>:<MM>[:<SS>], or blank for end of logs"> PT
+        &nbsp;&nbsp;<input type="submit" value="refresh" id="refreshlog" class="ui-state-default ui-corner-all ui-button-text-only" />
+       </form>
+      </div>
+    
+      <button id="clearlog" class="ui-state-default ui-corner-all ui-button-text-only hidden">clear</button>
+      <div class="loading">Loading logs...</div>
+      <div class="hidden nologs">No logs in specified period.</div>
+      <table class="logs display displaylinks">
+	<tr data-template="logs">
+	  <td class="logdate" width="15%">{{ datetime }}</td><td class="logmessage">{{ message }}</td>
+	</tr>
+      </table>
+    </div>
+  </div>
+
+  <div data-template data-if-page="logs" class="worker">
+    <div class="ui-widget ui-widget-content ui-corner-all">
+      <div class="ui-widget ui-widget-content ui-corner-all logtimes">
+        <form id="logcontrols" name="logcontrols">
+        Start: <input type="text" size="15" id="logstart" pattern="[\d]{4}-[\d]{2}-[\d]{2}(T[\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter start date in the form <YYYY>-<MM>-<DD>[T<HH>:<MM>[:<SS>], or blank for beginning of logs"> PT&nbsp;&nbsp;
+        End: <input type="text" size="15" id="logend" pattern="[\d]{4}-[\d]{2}-[\d]{2}(T[\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter end date in the form <YYYY>-<MM>-<DD>[T<HH>:<MM>[:<SS>], or blank for end of logs"> PT
+        &nbsp;&nbsp;<input type="submit" value="refresh" id="refreshlog" class="ui-state-default ui-corner-all ui-button-text-only" />
+       </form>
+      </div>
+    
+      <button id="clearlog" class="ui-state-default ui-corner-all ui-button-text-only hidden">clear</button>
+      <div class="loading">Loading logs...</div>
+      <div class="hidden nologs">No logs in specified period.</div>
+      <table class="logs display displaylinks">
+	<tr data-template="logs">
+          <td class="logdate">{{ datetime }}</td><td class="logmachine"><a href="#admin/worker/{{worker_id}}">{{ hostname }}</a></td><td class="logmessage">{{ message }}</td>
+	</tr>
+      </table>
+    </div>
+  </div>
+
 </div>
 </body>
 </html>

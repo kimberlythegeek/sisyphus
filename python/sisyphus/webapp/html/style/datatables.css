@@ -298,12 +298,12 @@ tr.even td.sorting_3 {
 /*
  * Row highlighting
  */
-#workers tbody tr.even:hover, #workers tbody tr.even td.highlighted {
+table.display tbody tr.even:hover, table.display tbody tr.even td.highlighted, table.display tbody tr.highlighted, table.displaylinks tbody tr.even:hover a {
 	background-color: #577F5D;
 	color: white;
 }
 
-#workers tbody tr.odd:hover, #workers tbody tr.odd td.highlighted {
+table.display tbody tr.odd:hover, table.display tbody tr.odd td.highlighted, table.display tbody tr.odd tr.highlighted, table.displaylinks tbody tr.odd:hover a {
 	background-color: #577F5D;
 	color: white;
 }

@@ -4,7 +4,8 @@ import re
 import datetime
 import simplejson
 
-from django.core.serializers.python import Serializer as PythonSerializer
+from django.db.models import Model
+from django.core import serializers
 from django.http import HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, HttpResponseServerError, HttpResponseBadRequest
 from django.shortcuts import render_to_response
 from django.views.decorators.csrf import csrf_exempt
@@ -12,6 +13,27 @@ from django.views.decorators.csrf import csrf_exempt
 from sisyphus.webapp.bughunter import models
 from sisyphus.webapp import settings
 from sisyphus.automation import utils
+
+def doParseDate(datestring):
+    """Given a date string, try to parse it as an ISO 8601 date.
+    If that fails, try parsing it with the parsedatetime module,
+    which can handle relative dates in natural language."""
+    datestring = datestring.strip()
+    # This is sort of awful. Match YYYY-MM-DD hh:mm:ss, with the time parts all being optional
+    m = re.match("^(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d)(?: (?P<hour>\d\d)(?::(?P<minute>\d\d)(?::(?P<second>\d\d))?)?)?$", datestring)
+    if m:
+        date = (int(m.group("year")), int(m.group("month")), int(m.group("day")),
+                m.group("hour") and int(m.group("hour")) or 0,
+                m.group("minute") and int(m.group("minute")) or 0,
+                m.group("second") and int(m.group("second")) or 0,
+                0, # weekday
+                0, # yearday
+                -1) # isdst
+    else:
+        # fall back to parsedatetime
+        date, x = cal.parse(datestring)
+    return time.mktime(date)
+
 
 def crashtests(request):
     return render_to_response('bughunter.crashtests.html', {})
@@ -22,21 +44,7 @@ def unittests(request):
 def home(request):
     return render_to_response('bughunter.index.html', {})
 
-def json_view(func):
-    """ decorator that serializes models into json in a sane way """
-    def wrap(request, *a, **kw):
-        serializer = PythonSerializer()  # to get a good dict
-        models = func(request, *a, **kw)
-        d = serializer.serialize(models)
-        response = []
-        for m in d:
-            m['fields']['id'] = m['pk']
-            response.append(m['fields'])
-        json = simplejson.dumps(response)
-        return HttpResponse(json, mimetype='application/json')
-    return wrap
-
-def admin(request):
+def worker_summary(request):
     worker_types = ['builder', 'crashtest', 'unittest']
     worker_data  = {}
 
@@ -78,8 +86,7 @@ def admin(request):
 
     worker_data_list = []
     for worker_key in worker_data:
-        worker_data_list.append({'worker_key'       : worker_key,
-                                 'id'               : worker_key,
+        worker_data_list.append({'id'               : worker_key,
                                  'builder_active'   : worker_data[worker_key]['builder']['active'],
                                  'builder_total'    : worker_data[worker_key]['builder']['total'],
                                  'crashtest_active' : worker_data[worker_key]['crashtest']['active'],
@@ -90,22 +97,48 @@ def admin(request):
                                  'unittest_jobs'    : worker_data[worker_key]['unittest']['jobs'],
                                  })
 
-    worker_data_list.sort( cmp=lambda x, y: cmp(x['worker_key'], y['worker_key'] ))
-    if 'application/json' in request.META['HTTP_ACCEPT']:
-        json = simplejson.dumps(worker_data_list)
+    worker_data_list.sort(cmp=lambda x, y: cmp(x['id'], y['id']))
+    json = simplejson.dumps(worker_data_list)
+    return HttpResponse(json, mimetype='application/json')
+
+def worker_api(request, worker_id):
+    json = serializers.serialize('json', [models.Worker.objects.get(pk=worker_id)])
+    response = HttpResponse(json, mimetype='application/json')
+    # Guh, shoot me.
+    # Since the datetimes in the db are stored in local time, we need
+    # to provide the server's local time to the client so it can provide
+    # sensible defaults (e.g. for the last day's worth of logs).
+    # We could also just return UTC offset...
+    response['Sisyphus-Localtime'] = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
+    return response
+
+def worker_log_api(request, worker_id, start, end):
+    logs = models.Log.objects.filter(worker__id__exact=worker_id)
+    if start != '-':
+        logs = logs.filter(datetime__gte=start)
+    if end != '-':
+        logs = logs.filter(datetime__lte=end)
+    logs = logs.order_by('datetime').all()
+    if request.method == 'GET':
+        json = serializers.serialize("json", logs)
         return HttpResponse(json, mimetype='application/json')
-    return render_to_response('bughunter.admin.html', {'worker_data_list' : worker_data_list})
+    if request.method == 'DELETE':
+        logs.delete()
+    return []
 
-def workers(request):
-    worker_rows = models.Worker.objects.order_by('hostname').all()
-
-    return render_to_response('bughunter.workers.html', {'worker_rows' : worker_rows})
-
-def worker_log(request, worker_id):
-    worker_row = models.Worker.objects.get(pk = worker_id)
-    log_rows = models.Log.objects.filter(worker__id__exact=worker_id).order_by('datetime').all()
-
-    return render_to_response('bughunter.worker_log.html', {'worker_row' : worker_row, 'log_rows' : log_rows})
+def all_workers_log_api(request, start, end):
+    logs = models.Log.objects
+    if start != '-':
+        logs = logs.filter(datetime__gte=start)
+    if end != '-':
+        logs = logs.filter(datetime__lte=end)
+    logs = logs.order_by('datetime').select_related('worker')
+    if request.method == 'GET':
+        json = serializers.serialize("json", logs, relations={'worker': {'fields': ('hostname',)}})
+        return HttpResponse(json, mimetype='application/json')
+    if request.method == 'DELETE':
+        logs.delete()
+    return HttpResponse('[]', mimetype='application/json')
 
 @csrf_exempt
 def post_files(request):
@@ -215,6 +248,7 @@ def post_files(request):
 
     return response
 
-@json_view
 def workers_api(request):
-    return models.Worker.objects.order_by('hostname').all()
+    json = serializers.serialize('json', models.Worker.objects.order_by('hostname').all())
+    return HttpResponse(json, mimetype='application/json')
+
