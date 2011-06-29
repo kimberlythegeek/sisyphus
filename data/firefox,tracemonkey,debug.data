@@ -1,9 +1,9 @@
 product=${product:-firefox}
-branch=${branch:-2.0.0}
+branch=${branch:-tracemonkey}
 buildtype=${buildtype:-debug}
-profilename=${profilename:-firefox-2.0.0-tracemonkey-profile}
-profiledirectory=${profiledirectory:-/tmp/firefox-2.0.0-tracemonkey-profile}
-executablepath=${executablepath:-/work/mozilla/builds/2.0.0-tracemonkey/mozilla/firefox-debug/dist}
+profilename=${profilename:-firefox-tracemonkey-profile}
+profiledirectory=${profiledirectory:-/tmp/firefox-tracemonkey-profile}
+executablepath=${executablepath:-/work/mozilla/builds/tracemonkey/mozilla/firefox-debug/dist}
 userpreferences=${userpreferences:-$TEST_DIR/prefs/test-user.js}
 extensiondir=${extensiondir:-$TEST_DIR/xpi}
 TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/tracemonkey}

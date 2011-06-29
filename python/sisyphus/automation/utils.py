@@ -124,23 +124,24 @@ def timedReadLine_handler(signum, frame):
     print 'timedReadLine timeout'
     raise IOError('ReadLineTimeout')
 
-def timedReadLine(filehandle, timeout = 300):
+def timedReadLine(filehandle, timeout = None):
     """
     Attempt to readline from filehandle. If readline does not return
-    within timeout seconds, return an empty line.
+    within timeout seconds, raise IOError('ReadLineTimeout')
     """
 
+    if timeout is None:
+        timeout = 300
+
+    default_alarm_handler = signal.getsignal(signal.SIGALRM)
     signal.signal(signal.SIGALRM, timedReadLine_handler)
     signal.alarm(timeout)
 
     try:
         line = filehandle.readline()
-    except KeyboardInterrupt, SystemExit:
-        raise
-    except:
-        line = ''
-
-    signal.alarm(0)
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, default_alarm_handler)
 
     return line
 
@@ -248,11 +249,10 @@ from django.db import connection
 outstandingLocks = {}
 
 def getLock(name, timeout = 300):
+    cursor    = connection.cursor()
+    cursor.execute("SELECT GET_LOCK(%s, %s) AS RESULT", [name, timeout])
 
-    cursor = connection.cursor()
-    cursor.execute("SELECT GET_LOCK(%s, %s)", [name, timeout])
-
-    if float(connection.queries[-1]['time']) > timeout:
+    if cursor.fetchone()[0] != 1:
         return False
 
     outstandingLocks[name] = datetime.datetime.now()
@@ -341,3 +341,13 @@ class FileUploader(object):
 
         # return the modified row from the database
         return self.dest_row
+
+
+def mungeUnicodeToUtf8(string):
+    # Match long utf-8 encodings of unicode characters and replace them with
+    # the value \uFFFD
+    # http://dev.mysql.com/doc/refman/5.1/en/charset-unicode-utf8.html
+    # MySQL 5.1 only supports 3-byte utf-8.
+    # http://stackoverflow.com/questions/3220031/how-to-filter-or-replace-unicode-characters-that-would-take-more-than-3-bytes-i
+    reUtf8Unicode = re.compile(u'[^\u0000-\uD7FF\uE000-\uFFFF]', re.UNICODE)
+    return reUtf8Unicode.sub(u'\uFFFD', string)

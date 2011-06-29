@@ -174,8 +174,8 @@ class Assertion(AbstractProduct):
     instance specific information.
     """
 
-    assertion         = models.CharField(max_length=256, db_index=True)
-    location          = models.CharField(max_length=256, db_index=True)
+    assertion         = models.CharField(max_length=512, db_index=True)
+    location          = models.CharField(max_length=512, db_index=True)
 
     def __unicode__(self):
         return self.assertion
@@ -292,10 +292,13 @@ class UnitTestRunForm(ModelForm):
     class Meta:
         model = UnitTestRun
 
+# http://dev.mysql.com/doc/refman/5.1/en/charset-unicode-utf8.html
+# Only supports 3-byte utf-8 in MySQL 5.1.
+# http://stackoverflow.com/questions/3220031/how-to-filter-or-replace-unicode-characters-that-would-take-more-than-3-bytes-i
 class UnitTestResult(models.Model): #UnitTestResult(AbstractProduct):
     testrun           = models.ForeignKey(UnitTestRun)
-    unittest_id       = models.CharField(max_length=256)
-    unittest_result   = models.CharField(max_length=256)
+    unittest_id       = models.CharField(max_length=512)
+    unittest_result   = models.CharField(max_length=512)
     unittest_message  = models.TextField()
 
     def __unicode__(self):
@@ -411,7 +414,7 @@ class SiteTestRun(AbstractProduct):
     exitstatus        = models.CharField(max_length=32,   null = True, blank = True)
     returncode        = models.CharField(max_length=3, null = True, blank = True)
     log               = models.CharField(max_length=256,  null = True, blank = True)
-    priority          = models.CharField(max_length=1)
+    priority          = models.CharField(max_length=1, db_index = True)
     state             = models.CharField(max_length=9)
 
     def __unicode__(self):

@@ -86,7 +86,7 @@ case $product in
         if [[ "$OSID" != "nt" ]]; then
             #
             # patch unix-like startup scripts to exec instead of 
-            # forking new processes
+            # forking new processes.
             #
             executable=`get_executable $product $branch $executablepath`
 
@@ -95,7 +95,10 @@ case $product in
             # patch to use exec to prevent forked processes
             cd "$executabledir"
             if [ -e "$product" ]; then
-                if ! grep -q 'exec "\$dist_bin/run-mozilla.sh"' $product; then
+                if [[ "`file $product`" != *text* ]]; then
+                    # See bug https://bugzilla.mozilla.org/show_bug.cgi?id=552864
+                    true;
+                elif ! grep -q 'exec "\$dist_bin/run-mozilla.sh"' $product; then
                     echo "$SCRIPT: patching $product"
                     cp $TEST_DIR/bin/$product.diff .
                     patch -N -p0 < $product.diff

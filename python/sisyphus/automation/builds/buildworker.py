@@ -84,15 +84,32 @@ class BuildWorker(sisyphus.automation.worker.Worker):
         daily_checkup_interval  = datetime.timedelta(days=1)
         daily_last_checkup_time = datetime.datetime.now() - 2*daily_checkup_interval
         build_checkup_interval  = datetime.timedelta(hours=3)
+
         checkup_interval        = datetime.timedelta(minutes=5)
         last_checkup_time       = datetime.datetime.now() - 2*checkup_interval
+
+        zombie_interval   = datetime.timedelta(hours=self.zombie_time)
+        last_zombie_time  = datetime.datetime.now() - 2*zombie_interval
 
         while True:
 
             if datetime.datetime.now() - last_checkup_time > checkup_interval:
                 self.checkForUpdate()
-                self.killZombies()
                 last_checkup_time = datetime.datetime.now()
+
+            if datetime.datetime.now() - last_zombie_time > zombie_interval:
+                self.killZombies()
+                last_zombie_time = datetime.datetime.now()
+                # Reset the zombie_interval so that on average only one worker kills
+                # zombies per zombie_time.
+                worker_count  = models.Worker.objects.filter(worker_type__exact = self.worker_type,
+                                                             state__in = ('waiting',
+                                                                          'building',
+                                                                          'installing',
+                                                                          'executing',
+                                                                          'testing',
+                                                                          'completed')).count()
+                zombie_interval  = datetime.timedelta(hours = worker_count * self.zombie_time)
 
             sys.stdout.flush()
             self.state = 'waiting'

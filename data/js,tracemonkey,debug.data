@@ -1,6 +1,6 @@
 product=${product:-js}
-branch=${branch:-2.0.0}
+branch=${branch:-tracemonkey}
 buildtype=${buildtype:-debug}
-jsshellsourcepath=${jsshellsourcepath:-/work/mozilla/builds/2.0.0-tracemonkey/mozilla/js/src}
+jsshellsourcepath=${jsshellsourcepath:-/work/mozilla/builds/tracemonkey/mozilla/js/src}
 TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/tracemonkey}
 TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}

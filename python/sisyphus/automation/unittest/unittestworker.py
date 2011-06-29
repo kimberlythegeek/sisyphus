@@ -96,7 +96,11 @@ class UnitTestWorker(worker.Worker):
     def runTest(self, extra_test_args):
 
         # kill any test processes still running.
-        self.killTest()
+        test_process_dict = self.psTest()
+        if test_process_dict:
+            for test_process in test_process_dict:
+                self.logMessage('runTest: test process running before test: pid: %s : %s' % (test_process, test_process_dict[test_process]))
+            self.killTest()
 
         timestamp = utils.getTimestamp()
 
@@ -202,6 +206,7 @@ class UnitTestWorker(worker.Worker):
                 "-T", self.buildtype,
                 "-c", "make -C firefox-%s EXTRA_TEST_ARGS=\"%s\" %s" % (self.buildtype, extra_test_args, self.testrun_row.unittestbranch.test)
                 ],
+            preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
             bufsize=1, # line buffered
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -210,8 +215,7 @@ class UnitTestWorker(worker.Worker):
         unittest_id = 'startup'
 
         try:
-            # initial read timeout is the global timeout for the unittest
-            line = utils.timedReadLine(proc.stdout, unittest_timeout.seconds)
+            line = utils.timedReadLine(proc.stdout, self.test_timeout)
             line = utils.makeUnicodeString(line)
 
             while line:
@@ -224,10 +228,12 @@ class UnitTestWorker(worker.Worker):
                     last_update_time = datetime.datetime.now()
 
                 if current_time - unittest_starttime > unittest_timeout:
-                    raise Exception('UnitTestTimeout')
+                    self.logMessage("runTest: %s total test time exceeded timeout: %d seconds" % (extra_test_args, self.global_timeout * 3600))
+                    self.killTest(proc.pid)
 
                 if size > maxsize:
-                    raise Exception('UnitTestSizeError')
+                    self.logMessage("runTest: %s total test output exceeded limit: %d" % (extra_test_args, size))
+                    self.killTest(proc.pid)
 
                 size += len(line)
 
@@ -316,7 +322,7 @@ class UnitTestWorker(worker.Worker):
                         testrun = self.testrun_row,
                         unittest_id = unittest_id,
                         unittest_result = unittest_result,
-                        unittest_message = unittest_message,
+                        unittest_message = utils.mungeUnicodeToUtf8(unittest_message),
                         )
                     unittestresult.save()
 
@@ -348,41 +354,33 @@ class UnitTestWorker(worker.Worker):
                 if match:
                     self.testrun_row.fatal_message = match.group(1)
 
-                # subsequent read timeout is the remaining time before the
-                # global timeout for the unittest.
-                read_timeout = (unittest_endtime - current_time).seconds
-                line = utils.timedReadLine(proc.stdout, read_timeout)
+                line = utils.timedReadLine(proc.stdout, self.test_timeout)
                 line = utils.makeUnicodeString(line)
 
-            try:
-                def timedProcCommunicate_handler(signum, frame):
-                    raise Exception('ProcCommunicateTimeout')
-
-                signal.signal(signal.SIGALRM, timedProcCommunicate_handler)
-                signal.alarm(read_timeout)
-                proc.communicate()
-                signal.alarm(0)
-            except:
-                exceptionType, exceptionValue, errorMessage = utils.formatException()
-                self.logMessage("runTest: %s %s %s: exception: %s" %
-                                (self.product, self.branch, self.testrun_row.unittestbranch.test, errorMessage))
-
+        except KeyboardInterrupt:
+            raise
         except:
             exceptionType, exceptionValue, errorMessage = utils.formatException()
             if proc.poll() is None:
                 self.logMessage("runTest: %s %s %s: exception %s." %
                                 (self.product, self.branch, self.testrun_row.unittestbranch.test, errorMessage))
 
-            if exceptionType == KeyboardInterrupt:
-                raise
-
-        if proc.poll() is None:
-            self.logMessage("runTest: %s %s %s: process not terminated cleanly. killing process." %
-                            (self.product, self.branch, self.testrun_row.unittestbranch.test))
-            self.killTest()
+        hung_process = False
+        test_process_dict = self.psTest()
+        if test_process_dict:
+            hung_process = True
+            for test_process in test_process_dict:
+                self.logMessage('runTest: test process still running: pid: %s : %s' % (test_process, test_process_dict[test_process]))
+            self.killTest(proc.pid)
 
         self.testrun_row.returncode = proc.poll()
         self.testrun_row.exitstatus += utils.convertReturnCodeToExitStatusMessage(proc.returncode)
+
+        if hung_process:
+            if self.testrun_row.exitstatus:
+                self.testrun_row.exitstatus += ' HANG'
+            else:
+                self.testrun_row.exitstatus = 'HANG'
 
         if proc.returncode == -2:
             raise KeyboardInterrupt
@@ -398,11 +396,18 @@ class UnitTestWorker(worker.Worker):
         uploader.add('log', baselogfilename, logfilename, True)
         self.testrun_row = uploader.send()
 
-        symbolsPath = os.path.join(executablepath, 'crashreporter-symbols')
+        if executablepath:
+            symbolsPath = os.path.join(executablepath, 'crashreporter-symbols')
+            self.process_dump_files(timestamp, profilename, unittest_id, symbolsPath, dmpuploadpath)
 
-        self.process_dump_files(timestamp, profilename, unittest_id, symbolsPath, dmploadpath)
-
-        self.testrun_row.save()
+        try:
+            self.testrun_row.save()
+        except KeyboardInterrupt:
+            raise
+        except:
+            exceptionType, exceptionValue, errorMessage = utils.formatException()
+            self.logMessage("runTest: %s %s %s: exception saving testrun_row %s." %
+                            (self.product, self.branch, self.testrun_row.unittestbranch.test, errorMessage))
 
         # process any valgrind messages not associated with a test.
         self.process_assertions(timestamp, assertion_dict, "shutdown", self.testrun_row.unittestbranch.test, extra_test_args)
@@ -414,6 +419,7 @@ class UnitTestWorker(worker.Worker):
         return a test job for this worker
         matching os_name, cpu_name, os_version
         """
+        unittestrun_row = None
         locktimeout     = 300
 
         if not utils.getLock('sisyphus.bughunter.unittestrun', locktimeout):
@@ -432,11 +438,9 @@ class UnitTestWorker(worker.Worker):
 
             except IndexError:
                 unittestrun_row = None
-                pass
 
             except models.UnitTestRun.DoesNotExist:
                 unittestrun_row = None
-                pass
 
             finally:
                 lockDuration = utils.releaseLock('sisyphus.bughunter.unittestrun')
@@ -463,29 +467,8 @@ class UnitTestWorker(worker.Worker):
         unittestbranch_rows = models.UnitTestBranch.objects.all()
 
         for unittestbranch_row in unittestbranch_rows:
-            # special case chunking mochitest-plain
-            if unittestbranch_row.test != "mochitest-plain":
-                unittestrun = models.UnitTestRun(
-                    os_name         = self.os_name,
-                    os_version      = self.os_version,
-                    cpu_name        = self.cpu_name,
-                    product         = self.product,
-                    branch          = self.branch,
-                    buildtype       = self.buildtype,
-                    build_cpu_name  = None,
-                    worker          = None,
-                    unittestbranch  = unittestbranch_row,
-                    changeset       = None,
-                    datetime        = utils.getTimestamp(),
-                    major_version   = None, # XXX remove major version?
-                    crashed         = False,
-                    extra_test_args = extra_test_args, # XXX
-                    exitstatus      = '',
-                    log             = None,
-                    state           = 'waiting',
-                    )
-                unittestrun.save()
-            else:
+            # special case chunking mochitest-plain, reftest, crashtest, jstestbrowser
+            if unittestbranch_row.test in "mochitest-plain,reftest,crashtest,jstestbrowser":
                 total_chunks = 10
                 for chunk in range(total_chunks):
                     chunk_options = '%s --total-chunks=%d --this-chunk=%d' % (extra_test_args, total_chunks, chunk+1)
@@ -509,22 +492,60 @@ class UnitTestWorker(worker.Worker):
                         state           = 'waiting',
                         )
                     unittestrun.save()
+            else:
+                unittestrun = models.UnitTestRun(
+                    os_name         = self.os_name,
+                    os_version      = self.os_version,
+                    cpu_name        = self.cpu_name,
+                    product         = self.product,
+                    branch          = self.branch,
+                    buildtype       = self.buildtype,
+                    build_cpu_name  = None,
+                    worker          = None,
+                    unittestbranch  = unittestbranch_row,
+                    changeset       = None,
+                    datetime        = utils.getTimestamp(),
+                    major_version   = None, # XXX remove major version?
+                    crashed         = False,
+                    extra_test_args = extra_test_args, # XXX
+                    exitstatus      = '',
+                    log             = None,
+                    state           = 'waiting',
+                    )
+                unittestrun.save()
 
     def doWork(self):
 
         waittime  = 0
 
         build_checkup_interval = datetime.timedelta(hours=3)
-        checkup_interval       = datetime.timedelta(minutes=5)
-        last_checkup_time      = datetime.datetime.now() - 2*checkup_interval
+
+        checkup_interval  = datetime.timedelta(minutes=5)
+        last_checkup_time = datetime.datetime.now() - 2*checkup_interval
+
+        zombie_interval   = datetime.timedelta(hours=self.zombie_time)
+        last_zombie_time  = datetime.datetime.now() - 2*zombie_interval
 
         while True:
 
             if datetime.datetime.now() - last_checkup_time > checkup_interval:
                 self.checkForUpdate()
-                self.killZombies()
-                # XXXself.freeOrphanJobs()
                 last_checkup_time = datetime.datetime.now()
+
+            if datetime.datetime.now() - last_zombie_time > zombie_interval:
+                self.killZombies()
+                last_zombie_time = datetime.datetime.now()
+                # Reset the zombie_interval so that on average only one worker kills
+                # zombies per zombie_time.
+                worker_count  = models.Worker.objects.filter(worker_type__exact = self.worker_type,
+                                                             state__in = ('waiting',
+                                                                          'building',
+                                                                          'installing',
+                                                                          'executing',
+                                                                          'testing',
+                                                                          'completed')).count()
+                zombie_interval  = datetime.timedelta(hours = worker_count * self.zombie_time)
+
 
             sys.stdout.flush()
             time.sleep(waittime)
@@ -618,9 +639,9 @@ Example:
 
     parser.add_option('--global-timeout', action='store', type='int',
                       dest='global_timeout',
-                      default=3,
+                      default=1,
                       help='Terminate the test if it runs longer than value hours. ' +
-                      'Defaults to 3.')
+                      'Defaults to 1 hour.')
 
     parser.add_option('--test-timeout', action='store', type='int',
                       dest='test_timeout',

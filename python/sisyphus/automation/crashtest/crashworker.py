@@ -217,6 +217,7 @@ class CrashTestWorker(worker.Worker):
                 self.branch,
                 self.buildtype
                 ],
+            preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             close_fds=True,
@@ -372,7 +373,7 @@ class CrashTestWorker(worker.Worker):
             hung_process = True
             for test_process in test_process_dict:
                 self.logMessage('runTest: test process still running: pid: %s : %s' % (test_process, test_process_dict[test_process]))
-            self.killTest()
+            self.killTest(proc.pid)
 
         if hung_process:
             if self.testrun_row.exitstatus:
@@ -554,6 +555,7 @@ class CrashTestWorker(worker.Worker):
         matches on priority, os_name, cpu_name, os_version.
         """
 
+        sitetestrun_row = None
         locktimeout     = 300
 
         if not utils.getLock('sisyphus.bughunter.sitetestrun', locktimeout):
@@ -571,11 +573,9 @@ class CrashTestWorker(worker.Worker):
 
             except IndexError:
                 sitetestrun_row = None
-                pass
 
             except models.SiteTestRun.DoesNotExist:
                 sitetestrun_row = None
-                pass
 
             finally:
                 lockDuration = utils.releaseLock('sisyphus.bughunter.sitetestrun')
@@ -589,16 +589,33 @@ class CrashTestWorker(worker.Worker):
         waittime  = 0
 
         build_checkup_interval = datetime.timedelta(hours=3)
-        checkup_interval       = datetime.timedelta(minutes=5)
-        last_checkup_time      = datetime.datetime.now() - 2*checkup_interval
+
+        checkup_interval  = datetime.timedelta(minutes=5)
+        last_checkup_time = datetime.datetime.now() - 2*checkup_interval
+
+        zombie_interval   = datetime.timedelta(hours=self.zombie_time)
+        last_zombie_time  = datetime.datetime.now() - 2*zombie_interval
 
         while True:
 
             if datetime.datetime.now() - last_checkup_time > checkup_interval:
                 self.checkForUpdate()
+                last_checkup_time = datetime.datetime.now()
+
+            if datetime.datetime.now() - last_zombie_time > zombie_interval:
                 self.killZombies()
                 self.freeOrphanJobs()
-                last_checkup_time = datetime.datetime.now()
+                last_zombie_time = datetime.datetime.now()
+                # Reset the zombie_interval so that on average only one worker kills
+                # zombies per zombie_time.
+                worker_count  = models.Worker.objects.filter(worker_type__exact = self.worker_type,
+                                                             state__in = ('waiting',
+                                                                          'building',
+                                                                          'installing',
+                                                                          'executing',
+                                                                          'testing',
+                                                                          'completed')).count()
+                zombie_interval  = datetime.timedelta(hours = worker_count * self.zombie_time)
 
             sys.stdout.flush()
             time.sleep(waittime)

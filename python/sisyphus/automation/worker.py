@@ -119,7 +119,10 @@ class Worker(object):
         elif self.os_name.find("Darwin") != -1:
             self.os_name = "Mac OS X"
             self.os_id   = 'darwin'
-            proc = subprocess.Popen(["sw_vers"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc = subprocess.Popen(["sw_vers"],
+                                    preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
             stdout,stderr = proc.communicate()
             lines = stdout.split('\n')
             #os_name = re.search('ProductName:\t(.*)', lines[0]).group(1)
@@ -127,7 +130,10 @@ class Worker(object):
         elif self.os_name.find("CYGWIN") != -1:
             self.os_name = "Windows NT"
             self.os_id   = 'nt'
-            proc = subprocess.Popen(["cygcheck", "-s"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc = subprocess.Popen(["cygcheck", "-s"],
+                                    preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
             stdout,stderr = proc.communicate()
             lines = stdout.split('\r\n')
             self.os_version = re.search('.* Ver ([^ ]*) .*', lines[4]).group(1)
@@ -321,18 +327,18 @@ class Worker(object):
 
         sys.stdout.flush()
         sys.stderr.flush()
-        test_process_list = self.psTest()
-        if test_process_list:
+        process_dict = self.psTest()
+        if process_dict:
             if self.debug:
-                for test_process in test_process_list:
-                    self.debugMessage('reloadProgram: test process still running during reloadProgram: %s' % test_process['line'])
+                for pid in process_dict:
+                    self.debugMessage('reloadProgram: test process still running during reloadProgram: %s' % process_dict[pid])
             self.killTest()
 
         # double check that everything is killed.
-        test_process_list = self.psTest()
-        if test_process_list:
-            for test_process in test_process_list:
-                self.logMessage('reloadProgram: test process still running during reloadProgram: %s' % test_process['line'])
+        process_dict = self.psTest()
+        if process_dict:
+            for pid in process_dict:
+                self.logMessage('reloadProgram: test process still running during reloadProgram: %s' % process_dict[pid])
             self.killTest()
 
         self.state = 'dead'
@@ -660,6 +666,7 @@ class Worker(object):
                         dumpFile,
                         symbolsPath
                         ],
+                    preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     close_fds=True)
@@ -703,6 +710,7 @@ class Worker(object):
                             exploitablePath,
                             dumpFile,
                             ],
+                        preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         close_fds=True)
@@ -829,7 +837,7 @@ class Worker(object):
 
 
     def killZombies(self):
-        """ zombify any *other* worker who has not updated status in zombie_time hours"""
+        """ zombify any *other* worker of the same type who has not updated status in zombie_time hours"""
 
         try:
             if not utils.getLock('sisyphus.bughunter.worker', 300):
@@ -837,8 +845,14 @@ class Worker(object):
                 return
 
             zombie_timestamp = utils.convertTimeToString(datetime.datetime.now() - datetime.timedelta(hours=self.zombie_time))
+            worker_rows      = models.Worker.objects.filter(worker_type__exact = self.worker_type)
             worker_rows      = models.Worker.objects.filter(datetime__lt = zombie_timestamp)
-            worker_rows      = worker_rows.filter(state__in = ('waiting', 'executing', 'testing'))
+            worker_rows      = worker_rows.filter(state__in = ('waiting',
+                                                               'building',
+                                                               'installing',
+                                                               'executing',
+                                                               'testing',
+                                                               'completed'))
             worker_rows      = worker_rows.exclude(pk = self.worker_row.id)
             zombie_count     = worker_rows.update(state = 'zombie', datetime = utils.getTimestamp())
             if zombie_count > 0:
@@ -883,7 +897,8 @@ class Worker(object):
 
         # clobber old build to make sure we don't mix builds.
         # note clobber essentially rm's the objdir.
-        self.clobberProduct()
+        if not self.clobberProduct():
+            return False
 
         # XXX: Do we need to generalize this?
         objdir = '/work/mozilla/builds/%s/mozilla/%s-%s' % (self.branch, self.product, self.buildtype)
@@ -914,6 +929,7 @@ class Worker(object):
                "-x", objdir + objsubdir, "-f", "/tmp/" + productfilename]
 
         proc = subprocess.Popen(cmd,
+                                preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, close_fds=True)
         try:
@@ -941,7 +957,10 @@ class Worker(object):
             # unzip -d /objdir/dist/crashreporter-symbols /tmp/symbolsfilename
             os.mkdir(objdir + '/dist/crashreporter-symbols')
             cmd = ["unzip", "-d", objdir + "/dist/crashreporter-symbols", "/tmp/" + symbolsfilename]
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            proc = subprocess.Popen(cmd,
+                                    preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT)
             try:
                 stdout = proc.communicate()[0]
             except KeyboardInterrupt, SystemExit:
@@ -1044,6 +1063,7 @@ class Worker(object):
                 "-T", self.buildtype,
                 "-B", buildsteps
                 ],
+            preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
 
@@ -1131,6 +1151,10 @@ class Worker(object):
         buildsteps  = "clobber"
         clobbersuccess = True
         clobberlogpath = ''
+        objdir         = "/work/mozilla/builds/%s/mozilla/%s-%s" % (self.branch, self.product, self.buildtype)
+
+        if not os.path.exists(objdir):
+            return True
 
         self.logMessage("begin clobbering %s %s %s" % (self.product, self.branch, self.buildtype))
 
@@ -1138,8 +1162,9 @@ class Worker(object):
             [
                 "rm",
                 "-fR",
-                "/work/mozilla/builds/%s/mozilla/%s-%s" % (self.branch, self.product, self.buildtype)
+                objdir
                 ],
+            preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
 
@@ -1182,6 +1207,8 @@ class Worker(object):
             uploader.add('clobber_log', os.path.basename(clobberlogpath), clobberlogpath, True)
             self.build_row = uploader.send()
 
+        return clobbersuccess
+
     def packageProduct(self):
         packagesuccess = True
 
@@ -1202,6 +1229,7 @@ class Worker(object):
                 "-T", self.buildtype,
                 "-c", "make -C firefox-%s package package-tests buildsymbols SYM_STORE_SOURCE_DIRS=" % (self.buildtype)
                 ],
+            preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
 
@@ -1347,23 +1375,40 @@ class Worker(object):
             pattern = r' *([0-9]+) .*/work/mozilla/builds/[^/]+/mozilla/'
             ps_args = ['ps', '-e', '-x']
         else:
-            pattern = '[a-zA-Z]* *([0-9]+) .*(/work/mozilla/builds/[^/]+/mozilla/|mozilla-build)'
+            pattern = '[a-zA-Z]* *([0-9]+) .*(/work/mozilla/builds/[^/]+/mozilla/|mozilla-build|java|wmplayer|mplayer2)'
             ps_args = ['ps', '-W']
 
-        ps_proc = subprocess.Popen(ps_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        ps_proc = subprocess.Popen(ps_args,
+                                   preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
         for ps_line in ps_proc.stdout:
             ps_line = ps_line.replace('\\', '/')
             ps_match = re.match(pattern, ps_line)
-            if ps_match:
-                process_dict[ps_match.group(1)] = ps_line
+            if ps_match and 'ssh-agent' not in ps_line:
+                pid = ps_match.group(1)
+                try:
+                    int(pid)
+                except ValueError:
+                    self.logMessage("psTest: Invalid pid %s: line: %s" % (pid, ps_line))
+                process_dict[pid] = ps_line
 
         return process_dict
 
-    def killTest(self):
+    def killTest(self, pid = None):
         # XXX: os.kill fails to kill the entire test process and children when
         # a test times out. This is most noticible on Windows but can occur on
         # Linux as well. To kill the test reliably, use the external kill program
         # to kill all test processes.
+
+        if pid is not None:
+            # Note: our calls to Popen used preexec_fn to set the process group of the
+            # Popened process to the same value as the child's pid.
+            try:
+                os.killpg(pid, 9)
+                os.waitpid(pid, os.WNOHANG)
+            except OSError:
+                pass
 
         process_dict = self.psTest()
         pids = [pid for pid in process_dict]
