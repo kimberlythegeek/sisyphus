@@ -3,52 +3,74 @@
 <head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
     <title>Worker List - Bughunter</title>
-    <link rel="stylesheet" href="style/main.css" type="text/css"/>
     <link rel="stylesheet" href="style/anytimec.css" type="text/css"/>
     <link rel="stylesheet" href="style/Aristo/jquery-ui-1.8.7.custom.css" type="text/css"/>
+    <link rel="stylesheet" href="style/main.css" type="text/css"/>
 <!--    <link rel="stylesheet" href="style/smoothness/jquery-ui-1.8.13.custom.css" type="text/css"/> -->
     <link rel="stylesheet" href="style/datatables.css" type="text/css"/>
     <script src="scripts/json2.js"></script>
     <script src="scripts/jquery-1.6.1.min.js"></script>
     <script src="scripts/jquery-ui-1.8.13.custom.min.js"></script>
     <script src="scripts/anytimec.js"></script>
-    <script src="scripts/tempo.min.js"></script>
+    <script src="scripts/ICanHaz.min.js"></script>
     <script src="scripts/underscore-min.js"></script>
     <script src="scripts/jquery.dataTables.min.js"></script>
     <script src="scripts/backbone-min.js"></script>
+    <script src="scripts/bughunter/utils.js"></script>
     <script src="scripts/bughunter/models.js"></script>
     <script src="scripts/bughunter/views.js"></script>
     <script src="scripts/bughunter/app.js"></script>
     <script>
       $(document).ready(function () {
-        window.app = new BughunterAdminAppController();
+        window.auth = new BughunterAuth();
+        window.app = new BughunterAppRouter();
       });
     </script>
 </head>
 <body>
-<div id="toolbar" class="toolbar ui-widget ui-widget-header ui-corner-all">
-  <div id="menu" class="fg-buttonset">
-    <form style="margin-top: 1em;display:inline">
-      <div id="menubar">
-	<input type="radio" id="menuworkers" name="menuradio" value="workers" /><label for="menuworkers">List</label>
-	<input type="radio" id="menuworkersummary" name="menuradio" value="workersummary" /><label for="menuworkersummary">Summary</label>
-	<input type="radio" id="menulogs" name="menuradio" value="logs" /><label for="menulogs">Logs</label>
-      </div>
+
+<!-- ICanHaz templates -->
+
+<script id="login" type="text/html">
+  <div id="loginmain" class="ui-widget ui-widget-content ui-corner-all">
+    <div class="errormsgs"></div>
+    <p><b>log in to bughunter</b></p>
+    <form id="loginform" name="loginform">
+      <p>username: <input type="text" size="30" id="username"/></p>
+      <p>password: <input type="password" size="30" id="password"/></p>
+      <input type="submit" value="log in"/>
     </form>
   </div>
-  <div id="title">bughunter workers</div>
-  <div style="clear: right"></div>
-</div>
+</script>
 
-<div id="wrapper">
-  <div data-template data-if-page="workers" id="main"
-       class="ui-widget ui-widget-content ui-corner-all">
+<script id="toolbar" type="text/html">
+  <div class="toolbar ui-widget ui-widget-header ui-corner-all">
+    <div id="userinfo">
+      logged in as {{username}} [<a href="#logout">log out</a>]
+    </div>
+    <div id="menu" class="fg-buttonset">
+      <form style="margin-top: 1em;display:inline">
+        <div id="menubar">
+	  <input type="radio" id="menuworkers" name="menuradio" value="workers" /><label for="menuworkers">List</label>
+         <input type="radio" id="menuworkersummary" name="menuradio" value="workersummary" /><label for="menuworkersummary">Summary</label>
+         <input type="radio" id="menulogs" name="menuradio" value="logs" /><label for="menulogs">Logs</label>
+        </div>
+      </form>
+    </div>
+    <div class="title"></div>
+    <div style="clear: right"></div>
+  </div>
+</script>
+
+<script id="standardtable" type="text/html">
+  <div id="main" class="ui-widget ui-widget-content ui-corner-all">
     <table cellpadding="0" class="display">
     </table>
   </div>
+</script>
 
-  <div data-template data-if-page="workersummary" id="main"
-       class="ui-widget ui-widget-content ui-corner-all">
+<script id="workersummary" type="text/html">
+  <div id="main" class="ui-widget ui-widget-content ui-corner-all">
     <table cellpadding="0" class="display">
       <thead>
 	<tr>
@@ -68,66 +90,69 @@
       </tbody>
     </table>
   </div>
+</script>
 
-  <div data-template data-if-page="worker" class="worker">
-    <div class="ui-widget ui-widget-content ui-corner-all workerdetails">
-      <table>
-       <tr>
-	 <th class="text_right">Hostname</td><td><a href="{{hash}}">{{ worker.hostname }}</a></td>
-	 <th class="text_right">Type</td><td>{{ worker.worker_type }}</td>
-       </tr>
-       <tr>
-	 <th class="text_right">OS</td><td>{{ worker.os_name }} {{ worker.os_version }}</td>
-	 <th class="text_right">CPU</td><td>{{ worker.cpu_name }}</td>
-       </tr>
-       <tr>
-	 <th class="text_right">State</td><td>{{ worker.state }}</td>
-	 <th class="text_right">Last update (PT)</td><td>{{ worker.datetime }}</td>
-       </tr>
-      </table>
-    </div>
+<script id="datecontrols" type="text/html" class="partial">
+  <div class="ui-widget ui-widget-content ui-corner-all logtimes">
+    <form id="datecontrolsform" name="datecontrolsform">
+      Start: <input type="text" size="15" id="logstart" pattern="[\d]{4}-[\d]{2}-[\d]{2}(T[\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter start date in the form <YYYY>-<MM>-<DD>[T<HH>:<MM>[:<SS>], or blank for beginning of logs"> PT&nbsp;&nbsp;
+      End: <input type="text" size="15" id="logend" pattern="[\d]{4}-[\d]{2}-[\d]{2}(T[\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter end date in the form <YYYY>-<MM>-<DD>[T<HH>:<MM>[:<SS>], or blank for end of logs"> PT
+      &nbsp;&nbsp;<input type="submit" value="refresh" id="refreshlog" class="ui-state-default ui-corner-all ui-button-text-only" />
+   </form>
+  </div>
+</script>
 
-    <div class="ui-widget ui-widget-content ui-corner-all">
-      <div class="ui-widget ui-widget-content ui-corner-all logtimes">
-        <form id="logcontrols" name="logcontrols">
-        Start: <input type="text" size="15" id="logstart" pattern="[\d]{4}-[\d]{2}-[\d]{2}(T[\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter start date in the form <YYYY>-<MM>-<DD>[T<HH>:<MM>[:<SS>], or blank for beginning of logs"> PT&nbsp;&nbsp;
-        End: <input type="text" size="15" id="logend" pattern="[\d]{4}-[\d]{2}-[\d]{2}(T[\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter end date in the form <YYYY>-<MM>-<DD>[T<HH>:<MM>[:<SS>], or blank for end of logs"> PT
-        &nbsp;&nbsp;<input type="submit" value="refresh" id="refreshlog" class="ui-state-default ui-corner-all ui-button-text-only" />
-       </form>
-      </div>
+<script id="loading" type="text/html">
+  <div class="ui-widget ui-widget-content ui-corner-all workerdetails">
+    <div class="loading">Loading...</div>
+  </div>
+</script>
+
+<script id="workerdetails" type="text/html">
+  <div class="ui-widget ui-widget-content ui-corner-all workerdetails">
+    <table>
+      <tr>
+        <th class="text_right">Hostname</th><td><a href="{{hash}}">{{ hostname }}</a></td><th class="text_right">Type</th><td>{{ worker_type }}</td>
+      </tr>
+      <tr>
+        <th class="text_right">OS</th><td>{{ os_name }} {{ os_version }}</td><th class="text_right">CPU</th><td>{{ cpu_name }}</td>
+      </tr>
+      <tr>
+        <th class="text_right">State</th><td>{{ state }}</td><th class="text_right">Last update (PT)</th><td>{{ datetime }}</td>
+      </tr>
+    </table>
+  </div>
+</script>
+
+<script id="workerlogs" type="text/html">
+    <div class="workerlogs ui-widget ui-widget-content ui-corner-all">
+      {{>datecontrols}}
     
       <button id="clearlog" class="ui-state-default ui-corner-all ui-button-text-only hidden">clear</button>
       <div class="loading">Loading logs...</div>
       <div class="hidden nologs">No logs in specified period.</div>
       <table class="logs display displaylinks">
-	<tr data-template="logs">
-	  <td class="logdate" width="15%">{{ datetime }}</td><td class="logmessage">{{ message }}</td>
-	</tr>
       </table>
     </div>
-  </div>
+</script>
 
-  <div data-template data-if-page="logs" class="worker">
-    <div class="ui-widget ui-widget-content ui-corner-all">
-      <div class="ui-widget ui-widget-content ui-corner-all logtimes">
-        <form id="logcontrols" name="logcontrols">
-        Start: <input type="text" size="15" id="logstart" pattern="[\d]{4}-[\d]{2}-[\d]{2}(T[\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter start date in the form <YYYY>-<MM>-<DD>[T<HH>:<MM>[:<SS>], or blank for beginning of logs"> PT&nbsp;&nbsp;
-        End: <input type="text" size="15" id="logend" pattern="[\d]{4}-[\d]{2}-[\d]{2}(T[\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter end date in the form <YYYY>-<MM>-<DD>[T<HH>:<MM>[:<SS>], or blank for end of logs"> PT
-        &nbsp;&nbsp;<input type="submit" value="refresh" id="refreshlog" class="ui-state-default ui-corner-all ui-button-text-only" />
-       </form>
-      </div>
-    
-      <button id="clearlog" class="ui-state-default ui-corner-all ui-button-text-only hidden">clear</button>
-      <div class="loading">Loading logs...</div>
-      <div class="hidden nologs">No logs in specified period.</div>
-      <table class="logs display displaylinks">
-	<tr data-template="logs">
-          <td class="logdate">{{ datetime }}</td><td class="logmachine"><a href="#admin/worker/{{worker_id}}">{{ hostname }}</a></td><td class="logmessage">{{ message }}</td>
-	</tr>
-      </table>
-    </div>
-  </div>
+<script id="workerlogentry" type="text/html">
+  <tr class="{{rowclass}}">
+    <td class="logdate" width="15%">{{ datetime }}</td><td class="logmessage">{{ message }}</td>
+  </tr>
+</script>
 
+<script id="workercombinedlogentry" type="text/html">
+  <tr class="{{rowclass}}">
+    <td class="logdate">{{ datetime }}</td><td class="logmachine"><a href="#admin/worker/{{worker_id}}/{{start}}/{{end}}">{{ hostname }}</a></td><td class="logmessage">{{ message }}</td>
+  </tr>
+</script>
+
+<div id="header">
 </div>
+
+<div id="content">
+</div>
+
 </body>
 </html>

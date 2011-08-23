@@ -4,15 +4,21 @@ import re
 import datetime
 import simplejson
 
+from collections import defaultdict
+
+from django.contrib.auth import authenticate, login, logout
+from django.db import connection, transaction
 from django.db.models import Model
 from django.core import serializers
-from django.http import HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, HttpResponseServerError, HttpResponseBadRequest
+from django.http import HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, HttpResponseServerError, HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import render_to_response
 from django.views.decorators.csrf import csrf_exempt
 
 from sisyphus.webapp.bughunter import models
 from sisyphus.webapp import settings
 from sisyphus.automation import utils
+
+APP_JS = 'application/json'
 
 def doParseDate(datestring):
     """Given a date string, try to parse it as an ISO 8601 date.
@@ -34,6 +40,32 @@ def doParseDate(datestring):
         date, x = cal.parse(datestring)
     return time.mktime(date)
 
+def login_required(func):
+    def wrap(request, *a, **kw):
+        if not request.user.is_authenticated():
+            return HttpResponseForbidden()
+        return func(request, *a, **kw)
+    return wrap
+
+@csrf_exempt
+def log_in(request):
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    post = simplejson.loads(request.raw_post_data)
+    username = post['username']
+    password = post['password']
+    user = authenticate(username=username, password=password)
+    if not user or not user.is_active:
+        response = {}
+    else:
+        login(request, user)
+        response = {'username': user.username}
+    json = simplejson.dumps(response)
+    return HttpResponse(json, mimetype=APP_JS)
+
+def log_out(request):
+    logout(request)
+    return HttpResponse('{}', mimetype=APP_JS)
 
 def crashtests(request):
     return render_to_response('bughunter.crashtests.html', {})
@@ -44,6 +76,7 @@ def unittests(request):
 def home(request):
     return render_to_response('bughunter.index.html', {})
 
+@login_required
 def worker_summary(request):
     worker_types = ['builder', 'crashtest', 'unittest']
     worker_data  = {}
@@ -99,11 +132,11 @@ def worker_summary(request):
 
     worker_data_list.sort(cmp=lambda x, y: cmp(x['id'], y['id']))
     json = simplejson.dumps(worker_data_list)
-    return HttpResponse(json, mimetype='application/json')
+    return HttpResponse(json, mimetype=APP_JS)
 
 def worker_api(request, worker_id):
     json = serializers.serialize('json', [models.Worker.objects.get(pk=worker_id)])
-    response = HttpResponse(json, mimetype='application/json')
+    response = HttpResponse(json, mimetype=APP_JS)
     # Guh, shoot me.
     # Since the datetimes in the db are stored in local time, we need
     # to provide the server's local time to the client so it can provide
@@ -112,6 +145,7 @@ def worker_api(request, worker_id):
     response['Sisyphus-Localtime'] = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
     return response
 
+@login_required
 def worker_log_api(request, worker_id, start, end):
     logs = models.Log.objects.filter(worker__id__exact=worker_id)
     if start != '-':
@@ -121,11 +155,12 @@ def worker_log_api(request, worker_id, start, end):
     logs = logs.order_by('datetime').all()
     if request.method == 'GET':
         json = serializers.serialize("json", logs)
-        return HttpResponse(json, mimetype='application/json')
+        return HttpResponse(json, mimetype=APP_JS)
     if request.method == 'DELETE':
         logs.delete()
     return []
 
+@login_required
 def all_workers_log_api(request, start, end):
     logs = models.Log.objects
     if start != '-':
@@ -135,10 +170,10 @@ def all_workers_log_api(request, start, end):
     logs = logs.order_by('datetime').select_related('worker')
     if request.method == 'GET':
         json = serializers.serialize("json", logs, relations={'worker': {'fields': ('hostname',)}})
-        return HttpResponse(json, mimetype='application/json')
+        return HttpResponse(json, mimetype=APP_JS)
     if request.method == 'DELETE':
         logs.delete()
-    return HttpResponse('[]', mimetype='application/json')
+    return HttpResponse('[]', mimetype=APP_JS)
 
 @csrf_exempt
 def post_files(request):
@@ -248,7 +283,42 @@ def post_files(request):
 
     return response
 
+@login_required
 def workers_api(request):
     json = serializers.serialize('json', models.Worker.objects.order_by('hostname').all())
-    return HttpResponse(json, mimetype='application/json')
+    return HttpResponse(json, mimetype=APP_JS)
 
+def crashes_by_date(request, start, end):
+    cursor = connection.cursor()
+    end_clause = ''
+    if end and end != '-':
+        end_clause = 'AND SiteTestRun.datetime < %s' % end
+
+    cursor.execute("""
+SELECT Crash.signature, fatal_message, SiteTestRun.branch, SiteTestRun.os_name, SiteTestRun.os_version, SiteTestRun.cpu_name, count( * )
+FROM SocorroRecord, Crash, SiteTestCrash, SiteTestRun
+WHERE Crash.id = SiteTestCrash.crash_id
+AND SiteTestRun.id = SiteTestCrash.testrun_id
+AND SocorroRecord.id = SiteTestRun.socorro_id
+AND SiteTestRun.datetime >= %s
+%s
+GROUP BY Crash.signature, fatal_message, SiteTestRun.branch, SiteTestRun.os_name, SiteTestRun.os_version, SiteTestRun.cpu_name
+ORDER BY `SiteTestRun`.`fatal_message` DESC , Crash.signature ASC""", [start, end_clause])
+
+    # results are data[signature][fatal message][branch][platform] = <count>
+    data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int))))
+
+    for row in cursor.fetchall():
+        platform = '%s %s %s' % tuple(row[3:6])
+        data[row[0]][row[1]][row[2]][platform] += row[6]
+
+    response_data = []
+    for signature, sig_matches in data.iteritems():
+        for fatal_message, branches in sig_matches.iteritems():
+            crash = { 'signature': signature,
+                      'fatal_message': fatal_message,
+                      'branches': branches }
+            response_data.append(crash)
+
+    return HttpResponse(simplejson.dumps(response_data), mimetype=APP_JS)
+        

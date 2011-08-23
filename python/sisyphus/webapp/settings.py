@@ -114,3 +114,38 @@ INSTALLED_APPS = (
 SERIALIZATION_MODULES = {
     'json': 'wadofstuff.django.serializers.json'
 }
+
+AUTHENTICATION_BACKENDS = [
+    'auth.backends.EmailOrUsernameModelBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+try:
+    import ldap
+    from django_auth_ldap.config import LDAPSearch, GroupOfNamesType
+except ImportError:
+    pass
+else:
+    AUTHENTICATION_BACKENDS.insert(1, 'auth.backends.MozillaLDAPBackend')
+
+    AUTH_LDAP_SERVER_URI = os.environ['SISYPHUS_LDAP_SERVER_URI']
+    AUTH_LDAP_BIND_DN = os.environ['SISYPHUS_LDAP_BIND_DN']
+    AUTH_LDAP_BIND_PASSWORD = os.environ['SISYPHUS_LDAP_BIND_PASSWORD']
+
+    AUTH_LDAP_USER_ATTR_MAP = {
+        "first_name": "givenName",
+        "last_name": "sn",
+        "email": "mail",
+    }
+
+    AUTH_LDAP_USER_SEARCH = LDAPSearch(
+        "dc=mozilla",
+        ldap.SCOPE_SUBTREE,
+        "mail=%(user)s"
+    )
+
+    AUTH_LDAP_GROUP_SEARCH = LDAPSearch("ou=groups,dc=mozilla",
+        ldap.SCOPE_SUBTREE, "(objectClass=groupOfNames)"
+    )
+    AUTH_LDAP_GROUP_TYPE = GroupOfNamesType()
+    #AUTH_LDAP_REQUIRE_GROUP = os.environ['SISYPHUS_LDAP_RESTRICTED_GROUP']

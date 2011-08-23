@@ -1,5 +1,16 @@
+// FIXME: Many of these views use ids too much; we should prefer element/class
+// selectors.
+
+/**** Partial Views ****/
+
+/**
+ * View for displaying data in a table via the jQuery DataTables plug-in.
+ * This is intended to only wrap one <table> element.
+ */
 DataTableCollectionView = Backbone.View.extend({
+
   init: function(tablename, columns, defaultSorting) {
+    this.colNumDisplayOffset = 0;
     this.modelRowMap = [];
     this.tablename = tablename;
     this.columns = columns;
@@ -35,11 +46,13 @@ DataTableCollectionView = Backbone.View.extend({
     } else if (defaultSorting) {
       this.tableConfig.aaSorting = defaultSorting;
     }
-    this.addRow = _.bind(this.addRow, this);
-    this.changeRow = _.bind(this.changeRow, this);
     this.render = _.bind(this.render, this);
-    this.refresh = _.bind(this.refresh, this);
-    this.collection.bind('refresh', this.refresh);
+    this.reset = _.bind(this.reset, this);
+    this.collection.bind('reset', this.reset);
+    this.collection.bind('add', _.bind(this.add, this));
+    if (this.getCellValue !== undefined && this.getColNum !== undefined) {
+      this.collection.bind('change', _.bind(this.change, this));
+    }
     return this;
   },
 
@@ -53,14 +66,11 @@ DataTableCollectionView = Backbone.View.extend({
 
   destroy: function() {
     this.datatable.fnDestroy();
-    this.el.remove();
   },
 
   render: function() {
     this.datatable.fnDraw();
     this.datatable.bAutoWidth = false;  // prevents column widths from changing
-    var el = this.el;
-    var datatable = this.datatable;
     // Highlight the first row on loading--this gives the user a hint that
     // the 'log' buttons appear on hover.
     var firstRow = $(this.el.find('tbody').find('tr')[0]);
@@ -89,12 +99,37 @@ DataTableCollectionView = Backbone.View.extend({
     );
   },
 
-  refresh: function() {
+  reset: function() {
     this.datatable.fnClearTable();
     this.collection.forEach(function(model) {
-      this.addRow(model, false);
+      this.add(model, false);
     }, this);
     this.render();
+  },
+
+  add: function(model, redraw) {
+    if (redraw === undefined) {
+      redraw = true;
+    }
+    var modelId = model.get('id');
+    var added = this.datatable.fnAddData(this.getRow(model), redraw);
+    this.modelRowMap[modelId] = added[0];
+    this.updateRowHighlighting(model, added[0]);
+  },
+
+  change: function(model) {
+    var modelId = model.get('id');
+    var rowId = this.modelRowMap[modelId];
+    var changes = model.changedAttributes();
+    for (var name in changes) {
+      var value = this.getCellValue(model, name);
+      var colNum = this.getColNum(model, name);
+      this.updateCell(value, rowId, colNum, colNum + this.colNumDisplayOffset);
+    }
+    this.updateRowHighlighting(model, rowId);
+  },
+
+  updateRowHighlighting: function(model, rowId) {
   },
 
   updateCell: function(newValue, rowId, colNum, displayedColNum) {
@@ -108,9 +143,13 @@ DataTableCollectionView = Backbone.View.extend({
     cell.css({ 'background-color': '#ffcc66' });
     cell.animate({ backgroundColor: bgColor }, 2000,
       function() { $(this).css('background-color', ''); });
-  },
+  }
 });
 
+
+/**
+ * List of workers.
+ */
 WorkerCollectionView = DataTableCollectionView.extend({
   initialize: function() {
     this.init('workers', [
@@ -121,46 +160,38 @@ WorkerCollectionView = DataTableCollectionView.extend({
       { sTitle: 'Last&nbsp;Update&nbsp;(PT)', modelKey: 'datetime' },
       { sTitle: 'OS', modelKey: 'os_name', sWidth: '10em' },
       { sTitle: 'Version', modelKey: 'os_version' },
-      { sTitle: 'CPU', modelKey: 'cpu_name' },
+      { sTitle: 'CPU', modelKey: 'cpu_name' }
     ], [[1, 'asc']]);
     this.columnMap = {};
     for (var i = 0; i < this.columns.length; i++) {
       this.columnMap[this.columns[i].modelKey] = i;
     }
-    this.collection.bind('add', this.addRow);
-    this.collection.bind('change', this.changeRow);
+    this.colNumDisplayOffset = -1;  // since id is hidden
   },
 
-  changeRow: function(model) {
-    var modelId = model.get('id');
-    var rowId = this.modelRowMap[modelId];
-    var changes = model.changedAttributes();
-    for (var name in changes) {
-      var colNum = this.columnMap[name];
-      this.updateCell(changes[name], rowId, colNum, colNum-1); // -1 since id is hidden
-    }
-    this.updateRowHighlighting(model, rowId);
+  getCellValue: function(model, name) {
+    //changes[name]
+    return model.get(name);
   },
 
-  addRow: function(model, redraw) {
-    if (redraw === undefined) {
-      redraw = true;
-    }
+  getColNum: function(model, name) {
+    return this.columnMap[name];
+  },
+
+  getRow: function(model) {
     var modelId = model.get('id');
     var data = [];
     for (var i = 0; i < this.columns.length; i++) {
       if (i == 1) {
-	//data.push(model.get(this.columns[i].modelKey) + ' <span class="buttons"><a href="#admin/worker/' + modelId + '" class="fg-button ui-state-default fg-button-icon-solo ui-corner-all" title="Logs"><span class="ui-icon ui-icon-script"></span></a></span>');
         data.push(model.get(this.columns[i].modelKey) + ' <span class="buttons"><a href="#admin/worker/' + modelId + '" class="fg-button ui-state-default fg-button-icon-solo ui-corner-all" title="Logs">log</a></span>');
       } else {
 	data.push(model.get(this.columns[i].modelKey));
       }
     }
-    var added = this.datatable.fnAddData(data, redraw);
-    this.modelRowMap[modelId] = added[0];
-    this.updateRowHighlighting(model, added[0]);
+    return data;
   },
 
+  // FIXME generic callback?
   updateRowHighlighting: function(model, rowId) {
     var row = $(this.datatable.fnGetNodes(rowId));
     var highlightedStates = ['disabled', 'dead', 'zombie'];
@@ -169,120 +200,191 @@ WorkerCollectionView = DataTableCollectionView.extend({
     if (highlightedStates.indexOf(state) != -1) {
       row.addClass(state);
     }
-  },
-
+  }
 });
 
+
+/**
+ * Summary of workers.
+ */
 WorkerSummaryCollectionView = DataTableCollectionView.extend({
   initialize: function() {
-    this.init('workersummary', [{}, {sClass: 'text_right'}, {sClass: 'text_right'}, {sClass: 'text_right'}, {sClass: 'text_right'}, {sClass: 'text_right'}],
-      [[0, 'asc']]);
-    this.collection.bind('add', this.addRow);
-    this.collection.bind('change', this.changeRow);
+    this.init('workersummary', [
+      {}, 
+      {sClass: 'text_right'}, 
+      {sClass: 'text_right'},
+      {sClass: 'text_right'},
+      {sClass: 'text_right'},
+      {sClass: 'text_right'}
+    ], [[0, 'asc']]);
   },
 
-  addRow: function(model, redraw) {
-    if (redraw === undefined) {
-      redraw = true;
-    }
-    var modelId = model.get('id');
-    var data = [modelId, model.builders(), model.crashTesters(), model.crashTesterTP(), model.unitTesters(), model.unitTesterTP()];
-    var added = this.datatable.fnAddData(data, redraw);
-    this.modelRowMap[modelId] = added[0];
+  getRow: function(model) {
+    return [model.get('id'), model.builders(), model.crashTesters(),
+            model.crashTesterTP(), model.unitTesters(), model.unitTesterTP()];
   },
 
-  changeRow: function(model) {
-    var modelId = model.get('id');
-    var rowId = this.modelRowMap[modelId];
-    var changes = model.changedAttributes();
-    for (var name in changes) {
-      if (name.match(/^builder_/)) {
-        this.updateCell(model.builders(), rowId, 1, 1);
-      } else if (name == 'crashtest_jobs') {
-        this.updateCell(model.crashTesterTP(), rowId, 3, 3);
-      } else if (name.match(/^crashtest_/)) {
-        this.updateCell(model.crashTesters(), rowId, 2, 2);
-      } else if (name == 'unittest_jobs') {
-        this.updateCell(model.unitTesterTP(), rowId, 5, 5);
-      } else if (name.match(/^unittest_/)) {
-        this.updateCell(model.unitTesters(), rowId, 4, 4);
-      }
+  getCellValue: function(model, name) {
+    var value = '';
+    if (name.match(/^builder_/)) {
+      value = model.builders();
+    } else if (name == 'crashtest_jobs') {
+      value = model.crashTesterTP();
+    } else if (name.match(/^crashtest_/)) {
+      value = model.crashTesters();
+    } else if (name == 'unittest_jobs') {
+      value = model.unitTesterTP();
+    } else if (name.match(/^unittest_/)) {
+      value = model.unitTesters();
     }
+    return value;
+  },
+
+  getColNum: function(model, name) {
+    var colNum = -1;
+    if (name.match(/^builder_/)) {
+      colNum = 1;
+    } else if (name == 'crashtest_jobs') {
+      colNum = 3;
+    } else if (name.match(/^crashtest_/)) {
+      colNum = 2;
+    } else if (name == 'unittest_jobs') {
+      colNum = 5;
+    } else if (name.match(/^unittest_/)) {
+      colNum = 4;
+    }
+    return colNum;
   },
 
 });
 
-BughunterAdminAppView = Backbone.View.extend({
+
+/**
+ * Crash summary.
+ */
+CrashSummaryCollectionView = DataTableCollectionView.extend({
   initialize: function() {
-    this.options.renderer.render([{ page: 'workers' }]);
-    this.collectionView = new WorkerCollectionView({ el: $('#main table'),
-      collection: this.model.collection });
+    this.init('crashesbydate', [
+      { sTitle: 'Signature' },
+      { sTitle: 'Fatal Message' },
+      { sTitle: 'Total&nbsp;Count', sType: 'numeric' },
+      { sTitle: 'Counts Broken Down', bSortable: false }
+    ], [[2, 'desc']]);
+  },
+
+  getRow: function(model) {
+    var totalCount = 0;
+    var breakDown = '';
+    var branches = model.get('branches');
+    var branchNames = [];
+    for (branch in branches) {
+      branchNames.push(branch);
+    }
+    branchNames.sort();
+    for (var i = 0; i < branchNames.length; i++) {
+      var branch = branchNames[i];
+      var breakDowns = [];
+      for (var platform in branches[branch]) {
+        totalCount += branches[branch][platform];
+        breakDowns.push(platform + ': ' + branches[branch][platform]);
+      }
+      breakDown += '<b>' + branch + '</b>: ' + breakDowns.join(' | ') + '</br>';
+    }
+    breakDown = breakDown.replace(' ', '&nbsp;', 'g');
+    var fatal_message = model.get('fatal_message');
+    if (!fatal_message) {
+      fatal_message = '<i>none</i>';
+    }
+    return [model.get('signature'), fatal_message, totalCount,
+            breakDown];
+  }
+});
+
+
+/**
+ * Header: auth info, menu bar, view title.
+ */
+HeaderView = Backbone.View.extend({
+  render: function() {
+    this.el.html(ich.toolbar({username: window.auth.username}));
+    $('#menubar').buttonset();
+    $("input:radio[name='menuradio']").change(function() {
+      document.location.hash = 'admin/' + 
+                               $('input:radio[name=menuradio]:checked').val();
+    });
+  },
+
+  changeView: function(headerInfo) {
+    var headerTitle = headerInfo.title ? headerInfo.title : '';
+    this.el.find('.title').text(headerTitle);
+    document.title = headerTitle + ' - bughunter';
+    if (headerInfo.buttonId) {
+      $('#' + headerInfo.buttonId).attr('checked', true);
+    } else {
+      // none checked
+      $('input:radio[name=menuradio]').attr('checked', false);
+    }
+    $('#menubar').buttonset('refresh');
+  }
+});
+
+
+/********* Body views *********/
+
+BughunterWorkerListView = Backbone.View.extend({
+  initialize: function() {
+    this.collectionView = null;
+    this.header = {
+      buttonId: 'menuworkers',
+      title: 'workers'
+    };
   },
 
   render: function() {
+    this.el.html(ich.standardtable());
+    this.collectionView = new WorkerCollectionView({ el: $('#main table'),
+      collection: this.model.collection });
     this.collectionView.createTable();
     this.collectionView.datatable.fnAddData([0, 'Loading...', '', '', '', '', '', '']);
   },
 
   destroy: function() {
-    this.collectionView.destroy();
+    if (this.collectionView) {
+      this.collectionView.destroy();
+    }
   }
 });
 
+
 BughunterWorkerSummaryView = Backbone.View.extend({
   initialize: function() {
-    this.options.renderer.render([{ page: 'workersummary' }]);
-    this.collectionView = new WorkerSummaryCollectionView({ el: $('#main table'),
-      collection: this.model.collection });
+    this.collectionView = null;
+    this.header = {
+      buttonId: 'menuworkersummary',
+      title: 'bughunter worker summary'
+    };
   },
 
   render: function() {
+    this.el.html(ich.workersummary());
+    this.collectionView = new WorkerSummaryCollectionView({
+      el: $('#main table'),
+      collection: this.model.collection
+    });
     this.collectionView.createTable();
     this.collectionView.datatable.fnAddData(['Loading...', '', '', '', '', '']);
   },
 
   destroy: function() {
-    this.collectionView.destroy();
+    if (this.workerSummaryCollectionView) {
+      this.workerSummaryCollectionView.destroy();
+    }
   }
 });
 
-BughunterLogsViewBase = Backbone.View.extend({
-  destroy: function() {
-    this.options.renderer.clear();
-  },
 
-  refreshLogs: function() {
-    this.refresh();
-    $('.loading').hide();
-    $('table.logs').show();
-    if (this.model.collection.isEmpty()) {
-      $('.nologs').show();
-    } else {
-      $('.nologs').hide();
-      $('#clearlog').show();
-      $('#clearlog').click(_.bind(function() {
-        $('.loading').show();
-        $('table.logs').hide();
-	this.model.collection.destroy(_.bind(function() {
-	  this.model.collection.fetch();
-	}, this));
-      }, this));
-    }
-
-    // FIXME: Switch to something other than tempo so I don't have to do this.
-    // See below for a complaint about inherited templates.
-    var rows = $('table.logs tr');
-    for (var i = 0; i < rows.length; i++) {
-      if (i % 2 == 0) {
-        $(rows[i]).addClass('even');
-      } else {
-        $(rows[i]).addClass('odd');
-      }
-    }
-
-  },
-
-  initLogCtrls: function() {
+BughunterDateControlsViewBase = Backbone.View.extend({
+  initDateCtrls: function() {
     if (this.model.collection.options.start &&
         this.model.collection.options.start != '-') {
       $('#logstart').val(this.model.collection.options.start);
@@ -294,7 +396,7 @@ BughunterLogsViewBase = Backbone.View.extend({
       format: '%Y-%m-%dT%T'
     };
     function checkForm() {
-      if ($('#logcontrols')[0].checkValidity()) {
+      if ($('#datecontrolsform')[0].checkValidity()) {
         $('#refreshlog').removeClass('ui-state-disabled');
         $('#refreshlog').attr('disabled', false);
       } else {
@@ -308,8 +410,8 @@ BughunterLogsViewBase = Backbone.View.extend({
     $('#logend').keyup(checkForm);
     checkForm();
 
-    $('#logcontrols').submit(_.bind(function() {
-      if (!$('#logcontrols')[0].checkValidity()) {
+    $('#datecontrolsform').submit(_.bind(function() {
+      if (!$('#datecontrolsform')[0].checkValidity()) {
         return false;
       }
       var hash = this.hashBase;
@@ -328,14 +430,60 @@ BughunterLogsViewBase = Backbone.View.extend({
   }
 });
 
-BughunterLogsView = BughunterLogsViewBase.extend({
-  initialize: function() {
-    this.model.collection.bind('refresh', _.bind(this.refreshLogs, this));
-    this.hashBase = 'admin/logs';
+
+// FIXME: Inheritance here is a little weird; too much back-and-forth
+// between base and derived classes.
+BughunterLogsViewBase = BughunterDateControlsViewBase.extend({
+  refreshLogs: function() {
+    this.rowCount = 0;
+    this.createTable();
+    $('.loading').hide();
+    $('table.logs').show();
+    if (this.model.collection.isEmpty()) {
+      $('.nologs').show();
+    } else {
+      $('.nologs').hide();
+      $('#clearlog').show();
+      $('#clearlog').click(_.bind(function() {
+        $('.loading').show();
+        $('table.logs').hide();
+	this.model.collection.destroy(_.bind(function() {
+	  this.model.collection.fetch();
+	}, this));
+      }, this));
+    }
   },
 
-  refresh: function() {
-    this.destroy();
+  insertRow: function(rowData) {
+    if (this.rowCount % 2 == 0) {
+      rowData.rowclass = 'even';
+    } else {
+      rowData.rowclass = 'odd';
+    }
+    this.rowCount++;
+    $("table.logs").append(this.rowTemplate(rowData));
+  }
+});
+
+
+/* Combined worker-logs view */
+BughunterLogsView = BughunterLogsViewBase.extend({
+  initialize: function() {
+    this.model.collection.bind('reset', _.bind(this.refreshLogs, this));
+    this.hashBase = 'admin/logs';
+    this.rowTemplate = ich.workercombinedlogentry;
+    this.header = {
+      buttonId: 'menulogs',
+      title: 'combined worker logs'
+    };
+  },
+
+  render: function() {
+    this.el.html(ich.workerlogs());
+    this.initDateCtrls();
+  },
+
+  createTable: function() {
     var start = this.model.collection.options.start;
     if (!start) {
       start = '-';
@@ -345,43 +493,44 @@ BughunterLogsView = BughunterLogsViewBase.extend({
       end = '-';
     }
     var logs = this.model.collection.toJSON();
-    this.options.renderer.render([{
-      page: 'logs',
-      logs: logs,
-    }]);
-    this.initLogCtrls();
-    // Blah, this is only necessary 'cause a child template can't
-    // seem to read vars from a parent template in tempo.
-    // FIXME: try other JS template libs.
-    $('td.logmachine a').each(function() {
-      $(this).attr('href', $(this).attr('href') + '/' + start + '/' + end);
-    });
+    for (var i = 0; i < logs.length; i++) {
+      logs[i].start = start;
+      logs[i].end = end;
+      this.insertRow(logs[i]);
+    }
   }
 });
 
+
 BughunterWorkerView = BughunterLogsViewBase.extend({
   initialize: function() {
-    // this should be a separate view -- not part of log summary page
     this.model.model.bind('change', _.bind(this.refreshDetails, this));
-    // LogCollection or WorkerLogCollection
-    this.model.collection.bind('refresh', _.bind(this.refreshLogs, this));
+    this.model.collection.bind('reset', _.bind(this.refreshLogs, this));
     this.hashBase = 'admin/worker/' + this.model.model.id;
+    this.rowTemplate = ich.workerlogentry;
+    this.header = {
+      title: 'worker info'
+    };
   },
 
   refreshDetails: function() {
-    /*
-    if (this.model.collection.checkDates()) {
-      var hash = 'admin/worker/' + this.model.model.id +
-        '/' + this.tConv.format(new Date(this.model.collection.options.start)) +
-        '/' + this.tConv.format(new Date(this.model.collection.options.end));
-      Backbone.history.saveLocation(hash);
+    this.el.html('');
+    var workerConfig = { hash: '#admin/worker/' + this.model.model.get('id') };
+    var worker = this.model.model.toJSON();
+    for (var attr in worker) {
+      workerConfig[attr] = worker[attr];
     }
-    */
-    this.refresh();
+    this.el.append(ich.workerdetails(workerConfig));
+    this.el.append(ich.workerlogs());
+    this.initDateCtrls();
     
     // Details only loaded once; otherwise, we might want to change this
     // to not load logs each time.
     this.model.collection.fetch();
+  },
+
+  render: function() {
+    this.el.html(ich.loading());
   },
 
   // There doesn't seem to be a way to do proper nested templates in tempo
@@ -389,14 +538,103 @@ BughunterWorkerView = BughunterLogsViewBase.extend({
   // both times.  Not too bad since this data only loads once, at the moment,
   // but if it gets more complicated, consider using more than one renderer
   // (and thus move the renderer out of the controller and into the views).
-  refresh: function() {
-    this.destroy();
-    this.options.renderer.render([{
-      page: 'worker',
-      hash: '#admin/worker/' + this.model.model.get('id'),
-      worker: this.model.model.toJSON(),
-      logs: this.model.collection.toJSON()
-    }]);
-    this.initLogCtrls();
+  createTable: function() {
+    var logs = this.model.collection.toJSON();
+    for (var i = 0; i < logs.length; i++) {
+      this.insertRow(logs[i]);
+    }
+  }
+});
+
+
+BughunterCrashSummaryView = Backbone.View.extend({
+  initialize: function() {
+    this.menuBarView = null;
+    this.collectionView = null;
+    this.header = {
+      title: 'crashes'
+    };
+  },
+
+  render: function() {
+    this.el.html(ich.standardtable());
+    this.collectionView = new CrashSummaryCollectionView({ el: $('#main table'),
+      collection: this.model.collection });
+    this.collectionView.createTable();
+    this.collectionView.datatable.fnAddData(['Loading...', '', '', '']);
+  },
+
+  destroy: function() {
+    if (this.collectionView) {
+      this.collectionView.destroy();
+    }
+  }
+});
+
+
+BughunterLoginView = Backbone.View.extend({
+  render: function() {
+    this.el.html(ich.login());
+    $('#loginform').submit(_.bind(this.login_form_submitted, this));
+    $('#username').focus();
+  },
+
+  postRender: function() {
+    // This has to be done after the div is show()n.
+    $('#username').focus();
+  },
+
+  login_form_submitted: function() {
+    // FIXME: Needs a loading message of some kind.
+    window.auth.logIn($('#username').val(), $('#password').val(), null,
+      _.bind(function() {
+        this.error('bad username/password');
+      }, this), _.bind(function() {
+        this.error('server error!');
+      }, this));
+    return false;
+  },
+
+  error: function(errmsg) {
+    $('#loginmain .errormsgs').text(errmsg);
+  }
+});
+
+
+/******** Main page view ********/
+
+BughunterPageView = Backbone.View.extend({
+  initialize: function() {
+    this.header = new HeaderView({ el: $('#header') });
+    this.body = null;
+  },
+
+  render: function() {
+    this.header.render();
+    if (this.body) {
+      this.body.render();
+    }
+  },
+
+  loadPage: function(body) {
+    if (this.body) {
+      this.body.el.hide();
+      if (this.body.destroy) {
+        this.body.destroy();
+        this.body.el.html('');
+      }
+    }
+    this.body = body;
+    if (this.body.header) {
+      this.header.changeView(this.body.header);
+      this.header.el.show();
+    } else {
+      this.header.el.hide();
+    }
+    this.body.render();
+    this.body.el.show();
+    if (this.body.postRender) {
+      this.body.postRender();
+    }
   }
 });

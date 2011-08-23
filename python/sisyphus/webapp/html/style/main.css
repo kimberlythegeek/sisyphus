@@ -1,13 +1,65 @@
 a {
   text-decoration: none;
+  color: #197F29;
 }
 
 a:hover {
   text-decoration: underline;
 }
 
+.ui-widget-content a {
+  color: #197F29;
+}
+
 body {
   background: #577F5D;
+}
+
+#header {
+  display: none;
+}
+
+#header .title {
+  position: absolute;
+  height: 20px;
+  top: 50%;
+  margin-top: -10px;
+}
+
+#userinfo {
+  float: right;
+  font-size: 12px;
+  margin-right: 10px;
+  margin-bottom: 5px;
+}
+
+#userinfo a {
+  color: #197F29;
+}
+
+#loginmain {
+  width: 50%;
+  margin-top: 20px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 10px;
+  text-align: center;
+}
+
+#loginmain p {
+  margin-top: 10px;
+  margin-bottom: 5px;
+}
+
+#loginmain input[type="submit"] {
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.errormsgs {
+  color: red;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 .display {
@@ -50,13 +102,6 @@ th.center {
   padding: 10px;
 }
 
-#title {
-  position: absolute;
-  height: 20px;
-  top: 50%;
-  margin-top: -10px;
-}
-
 #main {
   width: 90%;
   margin-left: auto;
@@ -78,12 +123,19 @@ tr.zombie {
 
 #menu {
   float: right;
+  clear: right;
 }
 
-.fg-buttonset { margin-right:1.5em; padding-left: 1px; }
-.fg-button { font-size: 0.5em;  }
+.fg-buttonset {
+  margin-right: 10px;
+  padding-left: 1px;
+}
 
-#wrapper {
+.fg-button {
+  font-size: 0.5em;
+}
+
+#content {
   display: none;
 }
 
@@ -91,13 +143,15 @@ div.workerdetails {
   width: 50%;
   margin-left: auto;
   margin-right: auto;
+  margin-bottom: 10px;
+  padding: 10px;
 }
 
 div.workerdetails table {
   width: 100%;
 }
 
-div.worker div {
+div.workerlogs {
   margin-bottom: 10px;
   padding: 10px;
 }
@@ -107,6 +161,7 @@ div.logtimes {
   width: 50%;
   margin-left: auto;
   margin-right: auto;
+  padding: 10px;
 }
 
 td.logdate {
@@ -144,4 +199,3 @@ span.buttons {
   margin-left: 10px;
   visibility: hidden;
 }
-

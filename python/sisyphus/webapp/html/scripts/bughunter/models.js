@@ -1,4 +1,5 @@
 var BughunterModel = Backbone.Model.extend({
+  // Do some translation from django's standard way of indexing objects.
   parse: function(response) {
     if (_.isArray(response)) {
       response = response[0];
@@ -12,6 +13,7 @@ var BughunterModel = Backbone.Model.extend({
     return hash;
   }
 });
+
 
 var BughunterCollection = Backbone.Collection.extend({
   parse: function(response) {
@@ -30,6 +32,7 @@ var BughunterCollection = Backbone.Collection.extend({
   }
 });
 
+
 var Worker = BughunterModel.extend({
   'id': '',
   'worker_type': '',
@@ -44,6 +47,7 @@ var Worker = BughunterModel.extend({
   },
 });
 
+
 var WorkerCollection = BughunterCollection.extend({
   model: Worker,
   url: 'bughunter/api/admin/workers/',
@@ -51,6 +55,7 @@ var WorkerCollection = BughunterCollection.extend({
     return worker.get('id');
   }
 });
+
 
 var WorkerSummary = Backbone.Model.extend({
   'id': '',
@@ -79,6 +84,7 @@ var WorkerSummary = Backbone.Model.extend({
   }
 });
 
+
 var WorkerLogMessage = BughunterModel.extend({
   'id': '',
   'datetime': '',
@@ -87,15 +93,17 @@ var WorkerLogMessage = BughunterModel.extend({
   'worker_id': '',
 });
 
-var LogCollectionBase = BughunterCollection.extend({
-  initialize: function(models, options) {
-    this.options = options;
-    this.checkDates();
-  },
-  model: WorkerLogMessage,
-  comparator: function(logMessage) {
-    return logMessage.get('datetime');
-  },
+
+var CrashSummary = Backbone.Model.extend({
+  'signature': '',
+  'fatal_message': '',
+  'branches': {}
+});
+
+// No easy way to do multiple inheritance with this method, so
+// DatedCollectionBase has to inherit from BughunterCollection for
+// LogCollectionBase below.
+var DatedCollectionBase = BughunterCollection.extend({
   url: function() {
     var u = this.urlBase;
     if (this.options.start) {
@@ -109,6 +117,52 @@ var LogCollectionBase = BughunterCollection.extend({
       u += '-/';
     }
     return u;
+  },
+  checkDates: function() {
+    var conv = new AnyTime.Converter({ format: '%Y-%m-%dT%T' });
+    var changed = false;
+    if (!this.options.start) {
+      var endDate = this.options.end;
+      if (!endDate) {
+        endDate = new Date();
+      }
+      var startDate = this.defaultStartDate(endDate);
+      this.options.start = conv.format(startDate);
+      changed = true;
+    }
+    return changed;
+  }
+});
+
+
+var CrashSummaryCollection = DatedCollectionBase.extend({
+  initialize: function(models, options) {
+    this.options = options;
+    this.checkDates();
+    this.urlBase = 'bughunter/api/crashes_by_date/';
+  },
+  model: CrashSummary,
+  defaultStartDate: function(endDate) {
+    var startDate = new Date(endDate);
+    startDate.setDate(endDate.getDate() - 1);
+    return startDate;
+  },
+  parse: function(response) {
+    // We only want the functionality from DatedCollectionBase.
+    // FIXME: sort out some sort of multiple inheritance.
+    return response;
+  }
+});
+
+
+var LogCollectionBase = DatedCollectionBase.extend({
+  initialize: function(models, options) {
+    this.options = options;
+    this.checkDates();
+  },
+  model: WorkerLogMessage,
+  comparator: function(logMessage) {
+    return logMessage.get('datetime');
   },
   destroy: function(success, error) {
     // Since generally the user will be clearing a number of log messages
@@ -141,26 +195,13 @@ var LogCollectionBase = BughunterCollection.extend({
     this.options.start = start;
     this.options.end = end;
   },
-  checkDates: function() {
-    var conv = new AnyTime.Converter({ format: '%Y-%m-%dT%T' });
-    var changed = false;
-    if (!this.options.start) {
-      // The default start time is one hour before the end.
-      // If the end isn't given, we'll use now, but we don't set the end
-      // option because we want it to be blank in the UI, so that it is
-      // always 'now' when the view is refreshed.
-      var endDate = this.options.end;
-      if (!endDate) {
-        endDate = new Date();
-      }
-      var startDate = endDate;
-      startDate.setHours(endDate.getHours() - 1);
-      this.options.start = conv.format(startDate);
-      changed = true;
-    }
-    return changed;
+  defaultStartDate: function(endDate) {
+    var startDate = new Date(endDate);
+    startDate.setHours(endDate.getHours() - 1);
+    return startDate;
   }
 });
+
 
 /**
  * Logs from a given worker for a given date range
@@ -171,6 +212,7 @@ var WorkerLogCollection = LogCollectionBase.extend({
     this.urlBase = 'bughunter/api/admin/workers/' + this.options.worker_id + '/log/';
   }
 });
+
 
 /**
  * Logs from all workers for a given date range.
@@ -202,6 +244,7 @@ var LogCollection = LogCollectionBase.extend({
 
 });
 
+
 var WorkerSummaryCollection = Backbone.Collection.extend({
   model: WorkerSummary,
   url: 'bughunter/api/admin/workersummary/',
@@ -210,7 +253,8 @@ var WorkerSummaryCollection = Backbone.Collection.extend({
   }
 });
 
-var BughunterAdminAppModel = BughunterModel.extend({
+
+var BughunterWorkerListModel = BughunterModel.extend({
   initialize: function() {
     this.collection = new WorkerCollection();
   },
@@ -218,6 +262,7 @@ var BughunterAdminAppModel = BughunterModel.extend({
     this.collection.fetch(options);
   }
 });
+
 
 var BughunterWorkerSummaryModel = BughunterModel.extend({
   initialize: function() {
@@ -227,6 +272,7 @@ var BughunterWorkerSummaryModel = BughunterModel.extend({
     this.collection.fetch(options);
   }
 });
+
 
 var BughunterWorkerModel = BughunterModel.extend({
   initialize: function(options) {
@@ -243,9 +289,23 @@ var BughunterWorkerModel = BughunterModel.extend({
   }
 });
 
+
 var BughunterLogsModel = BughunterModel.extend({
   initialize: function(options) {
     this.collection = new LogCollection([], {
+      start: options.start,
+      end: options.end,
+    });
+  },
+  fetch: function(options) {
+    this.collection.fetch(options);
+  }
+});
+
+
+var BughunterCrashSummaryModel = BughunterModel.extend({
+  initialize: function(options) {
+    this.collection = new CrashSummaryCollection([], {
       start: options.start,
       end: options.end,
     });
