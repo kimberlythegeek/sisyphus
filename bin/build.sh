@@ -40,34 +40,18 @@
 source $TEST_DIR/bin/library.sh
 source $TEST_DIR/bin/set-build-env.sh $@
 
+dumpenvironment
+
 case $product in
     firefox)
         cd $BUILDTREE/mozilla
 
-        if ! $buildbash $bashlogin -c "export PATH=\"$BUILDPATH\"; cd $BUILDTREE/mozilla; make -f client.mk build" 2>&1; then
-
-            if [[ -z "$TEST_FORCE_CLOBBER_ON_ERROR" ]]; then
-                error "error during build" $LINENO
-            else
-                echo "error occured during build. attempting a clobber build" $LINENO
-                if ! $buildbash $bashlogin -c "export PATH=\"$BUILDPATH\"; cd $BUILDTREE/mozilla; make -f client.mk distclean" 2>&1; then
-                    error "error during forced clobber" $LINENO
-                fi
-                if ! $buildbash $bashlogin -c "export PATH=\"$BUILDPATH\"; cd $BUILDTREE/mozilla; make -f client.mk build" 2>&1; then
-                    error "error during forced build" $LINENO
-                fi
-            fi
-        fi
-
-
-        if [[ "$branch" != "1.8.1" ]]; then
-            if ! $buildbash $bashlogin -c "export PATH=\"$BUILDPATH\"; cd $BUILDTREE/mozilla; make -C firefox-$buildtype buildsymbols SYM_STORE_SOURCE_DIRS=" 2>&1; then
-                error "error during buildsymbols" $LINENO
-            fi
+        if ! $TEST_DIR/bin/set-build-env.sh $@ -c "make -f client.mk build" 2>&1; then
+            error "error during build" $LINENO
         fi
 
         case "$OSID" in
-            mac) 
+            mac)
                 if [[ "$buildtype" == "debug" ]]; then
                     if [[ "$product" == "firefox" ]]; then
                         executablepath=$product-$buildtype/dist/FirefoxDebug.app/Contents/MacOS
@@ -85,7 +69,7 @@ case $product in
 
         if [[ "$OSID" != "nt" ]]; then
             #
-            # patch unix-like startup scripts to exec instead of 
+            # patch unix-like startup scripts to exec instead of
             # forking new processes.
             #
             executable=`get_executable $product $branch $executablepath`
@@ -140,7 +124,7 @@ case $product in
                     error "autoconf 2.13 not detected"
                 fi
 
-                if ! $buildbash $bashlogin -c "export PATH=\"$BUILDPATH\"; cd $BUILDTREE/mozilla/js/src; eval \"$AUTOCONF\";" 2>&1; then
+                if ! $TEST_DIR/bin/set-build-env.sh $@ -c "cd js/src; eval \"$AUTOCONF\";" 2>&1; then
                     error "during js/src autoconf" $LINENO
                 fi
             fi
@@ -156,21 +140,21 @@ case $product in
 
             if [[ "configure" -nt "$JS_OBJDIR/Makefile" ]]; then
                 if [[ "$buildtype" == "debug" ]]; then
-                    if ! $buildbash $bashlogin -c "export PATH=\"$BUILDPATH\"; cd $BUILDTREE/mozilla/js/src/$JS_OBJDIR; ../configure --prefix=$BUILDTREE/mozilla/js/src/$JS_OBJDIR  --disable-optimize --enable-debug"; then
+                    if ! $TEST_DIR/bin/set-build-env.sh $@ -c "cd js/src/$JS_OBJDIR; ../configure --prefix=$BUILDTREE/mozilla/js/src/$JS_OBJDIR  --disable-optimize --enable-debug"; then
                         error "during js/src/$JS_OBJDIR configure" $LINENO
                     fi
                 else
-                    if ! $buildbash $bashlogin -c "export PATH=\"$BUILDPATH\"; cd $BUILDTREE/mozilla/js/src/$JS_OBJDIR; ../configure --prefix=$BUILDTREE/mozilla/js/src/$JS_OBJDIR  --enable-optimize --disable-debug"; then
+                    if ! $TEST_DIR/bin/set-build-env.sh $@ -c "cd js/src/$JS_OBJDIR; ../configure --prefix=$BUILDTREE/mozilla/js/src/$JS_OBJDIR  --enable-optimize --disable-debug"; then
                         error "during js/src/$JS_OBJDIR configure" $LINENO
                     fi
                 fi
             fi
 
-            if ! $buildbash $bashlogin -c "export PATH=\"$BUILDPATH\"; cd $BUILDTREE/mozilla/js/src/$JS_OBJDIR; make" 2>&1; then
+            if ! $TEST_DIR/bin/set-build-env.sh $@ -c "cd js/src/$JS_OBJDIR; make" 2>&1; then
                 error "during js/src build" $LINENO
             fi
 
-            if ! $buildbash $bashlogin -c "export PATH=\"$BUILDPATH\"; cd $BUILDTREE/mozilla/js/src/$JS_OBJDIR; make install" 2>&1; then
+            if ! $TEST_DIR/bin/set-build-env.sh $@ -c "cd js/src/$JS_OBJDIR; make install" 2>&1; then
                 error "during js/src install" $LINENO
             fi
 
@@ -184,20 +168,16 @@ case $product in
                 export JSBUILDOPT=BUILD_OPT=1
             fi
 
-            if ! $buildbash $bashlogin -c "export PATH=\"$BUILDPATH\"; cd $BUILDTREE/mozilla/js/src; make -f Makefile.ref ${JSBUILDOPT} clean" 2>&1; then
+            if ! $TEST_DIR/bin/set-build-env.sh $@ -c "cd js/src; make -f Makefile.ref ${JSBUILDOPT} clean" 2>&1; then
                 error "during js/src clean" $LINENO
-            fi 
+            fi
 
-            if ! $buildbash $bashlogin -c "export PATH=\"$BUILDPATH\"; cd $BUILDTREE/mozilla/js/src; make -f Makefile.ref ${JSBUILDOPT}" 2>&1; then
+            if ! $TEST_DIR/bin/set-build-env.sh $@ -c "cd js/src; make -f Makefile.ref ${JSBUILDOPT}" 2>&1; then
                 error "during js/src build" $LINENO
             fi
 
         else
-
             error "Neither Makefile.ref or autoconf builds available"
-
         fi
         ;;
 esac
-
-

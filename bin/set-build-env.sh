@@ -161,13 +161,8 @@ for step in step1; do # dummy loop for handling exits
         fi
     fi
 
-    # use BUILDPATH to record the PATH to be used during build
-    # related scripts. This is used to pass MSYS specific PATHs
-    # to mozilla-build on Windows.
-    export BUILDPATH="$PATH"
     case $OSID in
         nt)
-
             # On Windows, Sisyphus is run under Cygwin, so the OS will be CYGWIN
             # regardless. Check if mozilla-build has been installed to the default
             # location, and if so, set up to call mozilla-build to perform the actual
@@ -188,19 +183,25 @@ for step in step1; do # dummy loop for handling exits
             # directory to the home directory prior to executing the command.
 
             export mozillabuild=${mozillabuild:-/c/mozilla-build}
-            export PYTHON=$mozillabuild/python25/python
             export BUILDDIR=${BUILDDIR:-/c/work/mozilla/builds}
-            export buildbash="$mozillabuild/msys/bin/bash"
-            export bashlogin=--login # this is for msys' bash.
 
             # determine installed compilers
-            export MSVCROOTKEY="/machine/SOFTWARE/Microsoft/VisualStudio"
+            case "$TEST_PROCESSORTYPE" in
+                *32)
+                    export HKLM_SOFTWARE="/machine/SOFTWARE"
+                    ;;
+                *64)
+                    export HKLM_SOFTWARE="/machine/SOFTWARE/Wow6432Node"
+                    ;;
+            esac
+            export MSVCROOTKEY="$HKLM_SOFTWARE/Microsoft/VisualStudio"
             export MSVC6KEY="$MSVCROOTKEY/6.0/Setup/Microsoft Visual C++"
             export MSVC71KEY="$MSVCROOTKEY/7.1/Setup/VC"
             export MSVC8KEY="$MSVCROOTKEY/8.0/Setup/VC"
-            export MSVC8EXPRESSKEY="/machine/SOFTWARE/Microsoft/VCExpress/8.0/Setup/VC"
+            export MSVC8EXPRESSKEY="$HKLM_SOFTWARE/Microsoft/VCExpress/8.0/Setup/VC"
             export MSVC9KEY="$MSVCROOTKEY/9.0/Setup/VC"
-            export MSVC9EXPRESSKEY="/machine/SOFTWARE/Microsoft/VCExpress/9.0/Setup/VC"
+            export MSVC9EXPRESSKEY="$HKLM_SOFTWARE/Microsoft/VCExpress/9.0/Setup/VC"
+            export MSVC10KEY="$MSVCROOTKEY/10.0/Setup/VC"
 
             if [[ -z "$VC6DIR" ]]; then
                 export VC6DIR=`regtool get "$MSVC6KEY/ProductDir" 2> /dev/null`
@@ -226,6 +227,10 @@ for step in step1; do # dummy loop for handling exits
                 export VC9EXPRESSDIR=`regtool get "$MSVC9EXPRESSKEY/ProductDir" 2> /dev/null`
             fi
 
+            if [[ -z "$VC10DIR" ]]; then
+                export VC10DIR=`regtool get "$MSVC10KEY/ProductDir" 2> /dev/null`
+            fi
+
             # msvc8 official, vc7.1, (2003), vc9 (2009) supported
             # for 1.9.0 and later
             if [[ -n "$VC8DIR" ]]; then
@@ -239,6 +244,8 @@ for step in step1; do # dummy loop for handling exits
                 startbat=start-msvc71.bat
             elif [[ -n "$VC9DIR" || -n "$VC9EXPRESSDIR" ]]; then
                 startbat=start-msvc9.bat
+            elif [[ -n "$VC10DIR" ]]; then
+                startbat=start-msvc10.bat
             fi
 
             if [[ -z "$startbat" ]]; then
@@ -249,66 +256,12 @@ for step in step1; do # dummy loop for handling exits
 
             # The start batch file changes directory and starts an msys bash shell
             # which will block its execution. Create a working copy without the
-            # bash invocation to just set the environment variables and save them
-            # to ~/mozilla-build-env.dat.
-            varsbat=`echo $startbat | sed 's|start|vars|'`;
-            if [[ ! -e "$varsbat" ]]; then
-                sed 's|\(^cd.*USERPROFILE.*\)|rem \1|; s|\(^.*MOZILLABUILD.*bash.*\)|\1 -c "set > ~/mozilla-build-env.dat"|' $startbat > $varsbat
+            # bash invocation to be used to execute commands in the appropriate
+            # msys environment from cygwin.
+            cmdbat=`echo $startbat | sed 's|start|msys-command|'`;
+            if [[ ! -e "$cmdbat" || "$startbat" -nt "$cmdbat" ]]; then
+                sed 's|\(^cd.*USERPROFILE.*\)|rem \1|; s|^start /d.*|cmd /c %MOZILLABUILD%\\msys\\bin\\bash --login -i  -c %1|' $startbat > $cmdbat
             fi
-
-            # call the windows command line to execute the new batch file
-            varsbat=`cygpath -w "$varsbat"`
-            cmd /c "$varsbat"
-            # escape the windows path delimiter \ in the mozilla-build-env.dat
-            sed -i.bak 's|\\|\\\\\\\\|g' ~/mozilla-build-env.dat
-            # set IFS to bel in order to read full line including leading whitespace.
-            saveIFS=$IFS
-            IFS=`echo -e '\007'`
-            # read from ~/mozilla-build-env.dat without forking a process
-            # see "Advanced Bash-Scripting Guide" 19-4. Avoiding a subshell
-            exec 3< ~/mozilla-build-env.dat
-            while read line <&3; do
-                if ! echo "$line" | grep -q '^[a-zA-Z_0-9]*=[^(]'; then
-                    # skip function definitions
-                    continue
-                fi
-                name="`echo $line | sed 's|\(^[a-zA-Z_0-9]*\)=.*|\1|'`"
-                if [[ "$name" == "_" ]]; then
-                    continue
-                fi
-                if [[ "$name" == "BASH_EXECUTION_STRING" ]]; then
-                    continue
-                fi
-                # skip PS1, PS2, PS3, PS4
-                if [[ "$name" == "PS1" || "$name" == "PS2" || "$name" == "PS3" || "$name" == "PS4" ]]; then
-                    continue
-                fi
-                eval "var=\$$name"
-                # remove any single quotes around the value
-                value="`echo $line | sed \"s|^[a-zA-Z_0-9]*='*\([^']*\)'*|\1|\"`"
-
-
-                if [[ -z "$var" ]]; then
-                    # variable is not defined, i.e. was defined by the batch file.
-                    # export it into the current process.
-                    if eval "export $name='$value'"; then
-                        true
-                    else
-                        echo "error evaluating export $name='$value'"
-                    fi
-                elif [[ "$name" == "PATH" ]]; then
-                    # convert msys relative paths to paths relative to /c/.
-                    value=`echo "$value" | sed 's|/local/bin|/c/mozilla-build/msys/local/bin|' | sed 's|:/usr/local/bin:/mingw/bin:/bin:|:/c/mozilla-build/msys/usr/local/bin:/c/mozilla-build/msys/mingw/bin:/c/mozilla-build/msys/bin:|'`
-                    if eval "export BUILDPATH=\"$value:$PATH\""; then
-                        true
-                    else
-                        echo "error evaluating export BUILDPATH=\"$value:$PATH\""
-                    fi
-                fi
-            done
-            IFS=$saveIFS
-            # close mozilla-build-env.dat
-            exec 3>&-
 
             echo moztools Location: $MOZ_TOOLS
 
@@ -316,14 +269,12 @@ for step in step1; do # dummy loop for handling exits
             # the common cygdrive prefix for cygwin and msys
             TEST_DIR_WIN=`cygpath -w $TEST_DIR`
             BUILDDIR_WIN=`cygpath -w $BUILDDIR`
-            TEST_DIR=`cygpath -u $TEST_DIR_WIN`
-            BUILDDIR=`cygpath -u $BUILDDIR_WIN`
+            export TEST_DIR=`cygpath -u $TEST_DIR_WIN`
+            export BUILDDIR=`cygpath -u $BUILDDIR_WIN`
             ;;
 
         linux)
             export BUILDDIR=${BUILDDIR:-/work/mozilla/builds}
-            export buildbash="/bin/bash"
-            export bashlogin=-l
 
             # if a 64 bit linux system, assume the
             # compiler is in the standard reference
@@ -337,16 +288,10 @@ for step in step1; do # dummy loop for handling exits
 
         darwin)
             export BUILDDIR=${BUILDDIR:-/work/mozilla/builds}
-            export buildbash="/bin/bash"
-            export bashlogin=-l
             ;;
         *)
             ;;
     esac
-
-    export SHELL=$buildbash
-    export CONFIG_SHELL=$buildbash
-    export CONFIGURE_ENV_ARGS=$buildbash
 
     export BUILDTREE="${BUILDTREE:-$BUILDDIR/$branch$extra}"
 
@@ -394,36 +339,17 @@ for step in step1; do # dummy loop for handling exits
     # here project refers to either browser or mail
     # and is used to find mozilla/(browser|mail)/config/mozconfig
     if [[ $product == "firefox" ]]; then
-        project=browser
-        case $branch in
-            1.9.1)
-                export TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-1.9.1}
-                ;;
-            1.9.2)
-                export TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-1.9.2}
-                ;;
-            2.0.0)
-                export TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/mozilla-central}
-                ;;
-        esac
+        export project=browser
         export MOZCONFIG=${MOZCONFIG:-"$TEST_DIR/mozconfig/$branch$extra/mozconfig-firefox-$OSID-$TEST_PROCESSORTYPE-$buildtype"}
 
     else
         echo "Assuming project=browser for product: $product"
-        project=browser
-        case $branch in
-            1.9.1)
-                export TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-1.9.1}
-                ;;
-            1.9.2)
-                export TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-1.9.2}
-                ;;
-            2.0.0)
-                export TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/mozilla-central}
-                ;;
-        esac
+        export project=browser
         export MOZCONFIG=${MOZCONFIG:-"$TEST_DIR/mozconfig/$branch$extra/mozconfig-firefox-$OSID-$TEST_PROCESSORTYPE-$buildtype"}
     fi
+
+    echo "mozconfig: $MOZCONFIG"
+    cat $MOZCONFIG | sed 's/^/mozconfig: /'
 
     if [[ -n "$TEST_MOZILLA_HG" ]]; then
         export TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}
@@ -447,14 +373,14 @@ for step in step1; do # dummy loop for handling exits
 
     case $product in
         firefox)
-            profilename=${profilename:-$product-$branch$extra-profile}
-            profiledirectory=${profiledirectory:-/tmp/$product-$branch$extra-profile}
-            userpreferences=${userpreferences:-$TEST_DIR/prefs/test-user.js}
-            extensiondir=${extensiondir:-$TEST_DIR/xpi}
-            executablepath=${executablepath:-$BUILDTREE/mozilla/$product-$buildtype/dist}
+            export profilename=${profilename:-$product-$branch$extra-profile}
+            export profiledirectory=${profiledirectory:-/tmp/$product-$branch$extra-profile}
+            export userpreferences=${userpreferences:-$TEST_DIR/prefs/test-user.js}
+            export extensiondir=${extensiondir:-$TEST_DIR/xpi}
+            export executablepath=${executablepath:-$BUILDTREE/mozilla/$product-$buildtype/dist}
             ;;
         js)
-            jsshellsourcepath=${jsshellsourcepath:-$BUILDTREE/mozilla/js/src}
+            export jsshellsourcepath=${jsshellsourcepath:-$BUILDTREE/mozilla/js/src}
             ;;
     esac
 
@@ -481,14 +407,19 @@ for step in step1; do # dummy loop for handling exits
         fi
     fi
 
-    set | sed 's/^/environment: /'
-    echo "mozconfig: $MOZCONFIG"
-    cat $MOZCONFIG | sed 's/^/mozconfig: /'
-
     if [[ -n "$commands" ]]; then
-        if  ! $buildbash $bashlogin -c "export PATH=\"$BUILDPATH\"; cd $BUILDTREE/mozilla; $commands" 2>&1; then
-            error "executing commands: $commands"
-        fi
+        case $OSID in
+            nt)
+                if  ! cmd /c `cygpath -w $cmdbat` "cd $BUILDTREE/mozilla; $commands" 2>&1; then
+                    error "executing commands: $commands"
+                fi
+                ;;
+            *)
+                if  ! bash -c "cd $BUILDTREE/mozilla; $commands" 2>&1; then
+                    error "executing commands: $commands"
+                fi
+                ;;
+            esac
     fi
 
 done

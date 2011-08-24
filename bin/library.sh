@@ -186,7 +186,7 @@ if [[ -z "$LIBRARYSH" ]]; then
 
     dumpenvironment()
     {
-        set | grep -v '^SISYPHUS_' | grep '^[A-Z]' | sed 's|^|environment: |'
+        set | grep -v '^SISYPHUS_' | grep '^[A-Za-z]' | sed 's|^|environment: |'
     }
 
     dumphardware()
@@ -257,11 +257,11 @@ if [[ -z "$LIBRARYSH" ]]; then
                 get_executable_name="$get_executable_product${EXE_EXT}"
                 case "$OSID" in
                     darwin)
-                        get_executable_filter="dist/Firefox.*\.app/Contents/MacOS/$get_executable_product"
+                        get_executable_filter="/[a-zA-Z]*\.app/Contents/MacOS/$get_executable_product"
                         get_executable_name="$get_executable_name-bin"
                         ;;
                     *)
-                        get_executable_filter="dist/bin/$get_executable_product"
+                        get_executable_filter="$get_executable_product"
                         ;;
                 esac
                 if find "$get_executable_directory" -perm +111 -type f \
@@ -272,11 +272,23 @@ if [[ -z "$LIBRARYSH" ]]; then
                 )`
 
             if [[ -z "$executable" ]]; then
+                error "get_executable_name=$get_executable_name get_executable_filter=$get_executable_filter get_executable $product $branch $executablepath returned empty path" $LINENO
                 error "get_executable $product $branch $executablepath returned empty path" $LINENO
             fi
 
             if [[ ! -x "$executable" ]]; then
-                error "executable \"$executable\" is not executable" $LINENO
+                # custom builds of Firefox on Linux have two not easily distinguishable executables.
+                # check each and pick the last executable choice which in most cases will be dist/bin/firefox.
+                local executable_list="$executable"
+                local executable_temp
+                for executable_temp in $executable_list; do
+                    if [[ -x "$executable_temp" ]]; then
+                        executable="$executable_temp"
+                    fi
+                done
+                if [[ ! -x "$executable" ]]; then
+                    error "executable \"$executable\" is not executable" $LINENO
+                fi
             fi
 
             echo $executable

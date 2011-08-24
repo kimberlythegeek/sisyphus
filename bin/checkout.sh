@@ -83,6 +83,7 @@ if [[ -n "$TEST_MOZILLA_HG" ]]; then
     echo "`hg root` id `hg id`"
 fi
 
+mkdir -p $BUILDTREE
 cd $BUILDTREE
 
 if [[ -n "$TEST_MOZILLA_HG" ]]; then
@@ -97,6 +98,12 @@ if [[ -n "$TEST_MOZILLA_HG" ]]; then
     if [[ "$OSID" == "nt" ]]; then
         # remove spurious lock file
         rm -f $TEST_MOZILLA_HG_LOCAL/.hg/wlock.lnk
+    fi
+    if [[ -d .hg/patches && -n "`hg qapplied`" ]]; then
+        # qpop any mq patches before pulling from the local repo.
+        if ! hg qpop -a; then
+            error "during hg qpop of patch queue of $project tree" $LINENO
+        fi
     fi
     hg pull
     if [[ "$OSID" == "nt" ]]; then
@@ -133,7 +140,7 @@ fi
 case $product in
     firefox)
         case $branch in
-            1.8.*|1.9.0)
+            1.9.0)
                 if [[ ! ( -d mozilla && \
                     -e mozilla/client.mk && \
                     -e "mozilla/$project/config/mozconfig" ) ]]; then
@@ -142,7 +149,7 @@ case $product in
                         error "during checkout of $project mozconfig" $LINENO
                     fi
                 fi
-                if ! $buildbash $bashlogin -c "export PATH=\"$BUILDPATH\"; cd $BUILDTREE/mozilla; make -f client.mk checkout" 2>&1; then
+                if ! $TEST_DIR/bin/set-build-env.sh $@ -c "make -f client.mk checkout" 2>&1; then
                     error "during checkout of $project tree" $LINENO
                 fi
                 ;;
@@ -154,6 +161,13 @@ case $product in
                 if ! python client.py checkout; then
                     error "during checkout of $project tree" $LINENO
                 fi
+
+                if [[ -d .hg/patches ]]; then
+                    # reapply any mq patches before building.
+                    if ! hg qpush -a; then
+                        error "during hg qpush of patch queue of $project tree" $LINENO
+                    fi
+                fi
                 ;;
         esac
         ;;
@@ -161,7 +175,7 @@ case $product in
     js)
 
         case $branch in
-            1.8.*|1.9.0)
+            1.9.0)
                 if [[ ! ( -d mozilla && \
                     -e mozilla/js && \
                     -e mozilla/js/src ) ]]; then
@@ -188,6 +202,13 @@ case $product in
 
                 if ! python client.py checkout; then
                     error "during checkout of $project tree" $LINENO
+                fi
+
+                if [[ -d .hg/patches ]]; then
+                    # reapply any mq patches before building.
+                    if ! hg qpush -a; then
+                        error "during hg qpush of patch queue of $project tree" $LINENO
+                    fi
                 fi
 
                 cd js/src

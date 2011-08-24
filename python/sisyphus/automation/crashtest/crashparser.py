@@ -74,8 +74,6 @@ from sisyphus.webapp.bughunter import models
 rePrivateNetworks = re.compile(r'https?://(localhost|127\.0\.0\.1|192\.168\.[0-9]+\.[0-9]+|172\.16\.[0-9]+\.[0-9]+|10\.[0-9]+\.[0-9]+\.[0-9]+)')
 
 options                 = None
-supported_versions      = None
-bad_results             = []
 skipurls                = []
 
 def ordered_ffversion(versionstring):
@@ -97,11 +95,18 @@ def load_crashdata(crashlogfile):
     if len(branches_rows) == 0:
         raise Exception('Branch table is empty.')
 
-    supported_versions = {}
-    buildtypes         = {}
+    supported_products   = {}
+    supported_versions   = {}
+    supported_buildtypes = {}
     for branch_row in branches_rows:
-        supported_versions[branch_row.major_version] = branch_row.branch
-        buildtypes[branch_row.buildtype] = 1
+        product = branch_row.product
+        supported_products[product] = 1
+        if product not in supported_versions:
+            supported_versions[product] = {}
+        if product not in supported_buildtypes:
+            supported_buildtypes[product] = {}
+        supported_versions[product][branch_row.major_version] = branch_row.branch
+        supported_buildtypes[product][branch_row.buildtype] = 1
 
     operating_systems = {}
 
@@ -197,6 +202,10 @@ def load_crashdata(crashlogfile):
         # Firefox -> firefox
         product    = product.lower()
 
+        # fennec -> firefox
+        if product not in supported_products:
+            product = 'firefox'
+
         # 6.1.7601 Service Pack 1 -> 6.1
         os_version = '.'.join(os_full_version.split('.')[0:2])
 
@@ -231,7 +240,7 @@ def load_crashdata(crashlogfile):
         minor_version = ordered_ffversion(version)
         major_version = minor_version[0:4]
 
-        if not major_version in supported_versions:
+        if not major_version in supported_versions[product]:
             continue # skip unsupported major versions
 
         if version.find('4.0') == 0 and build < '20100101':
@@ -241,7 +250,7 @@ def load_crashdata(crashlogfile):
         # on data entry which is notoriously wrong. However the
         # version number is guaranteed to be correct. Create the branch
         # information from the Branch table.
-        branch = supported_versions[major_version]
+        branch = supported_versions[product][major_version]
 
         # remove trailing | processor family data
         match = re.match(r'([^| ]*).*', cpu_info)
@@ -336,7 +345,7 @@ def load_crashdata(crashlogfile):
                         try:
                             socorro_row.save()
                             socorro_row_saved = True
-                            for buildtype in buildtypes:
+                            for buildtype in supported_buildtypes[product]:
                                 test_run = models.SiteTestRun(
                                     os_name           = sitetestrun_os_name,
                                     os_version        = sitetestrun_os_version,

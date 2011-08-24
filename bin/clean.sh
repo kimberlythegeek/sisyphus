@@ -43,7 +43,7 @@ source $TEST_DIR/bin/set-build-env.sh $@
 case $product in
     firefox)
 
-        if ! $buildbash $bashlogin -c "cd $BUILDTREE/mozilla; make -f client.mk clean" 2>&1; then
+        if ! $TEST_DIR/bin/set-build-env.sh $@ -c "make -f client.mk clean" 2>&1; then
             error "during client.mk clean" $LINENO
         fi
         ;;
@@ -76,18 +76,18 @@ case $product in
             cd "$BUILDTREE/mozilla/js/src/$JS_OBJDIR"
 
             if [[ -e "Makefile" ]]; then
-                if ! $buildbash $bashlogin -c "cd $BUILDTREE/mozilla/js/src/$JS_OBJDIR; make clean" 2>&1; then
+                if ! $TEST_DIR/bin/set-build-env.sh $@ -c "cd js/src/$JS_OBJDIR; make clean" 2>&1; then
                     error "during js/src clean" $LINENO
                 fi
             fi
 
         elif [[ -e "$BUILDTREE/mozilla/js/src/Makefile.ref" ]]; then
 
-            if ! $buildbash $bashlogin -c "cd $BUILDTREE/mozilla/js/src/editline; make -f Makefile.ref clean" 2>&1; then
+            if ! $TEST_DIR/bin/set-build-env.sh $@ -c "cd js/src/editline; make -f Makefile.ref clean" 2>&1; then
                 error "during editline clean" $LINENO
             fi
 
-            if ! $buildbash $bashlogin -c "cd $BUILDTREE/mozilla/js/src; make -f Makefile.ref clean" 2>&1; then
+            if ! $TEST_DIR/bin/set-build-env.sh $@ -c "cd js/src; make -f Makefile.ref clean" 2>&1; then
                 error "during SpiderMonkey clean" $LINENO
             fi
         else

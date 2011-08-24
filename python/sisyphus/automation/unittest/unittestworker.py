@@ -477,7 +477,7 @@ class UnitTestWorker(worker.Worker):
                         os_version      = self.os_version,
                         cpu_name        = self.cpu_name,
                         product         = self.product,
-                        branch          = self.branch,
+                        branch          = unittestbranch_row.branch,
                         buildtype       = self.buildtype,
                         build_cpu_name  = self.cpu_name,
                         worker          = None,
@@ -498,7 +498,7 @@ class UnitTestWorker(worker.Worker):
                     os_version      = self.os_version,
                     cpu_name        = self.cpu_name,
                     product         = self.product,
-                    branch          = self.branch,
+                    branch          = unittestbranch_row.branch,
                     buildtype       = self.buildtype,
                     build_cpu_name  = None,
                     worker          = None,
@@ -703,7 +703,7 @@ Example:
                 if this_worker.state == "disabled":
                     while True:
                         time.sleep(300)
-                        curr_worker_doc = models.Worker.objects.get(pk = self.hostname)
+                        curr_worker_doc = models.Worker.objects.get(pk = self.worker_row.id)
                         if curr_worker_doc.state != "disabled":
                             this_worker.state = "waiting"
                             break

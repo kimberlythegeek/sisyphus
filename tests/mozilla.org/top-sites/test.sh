@@ -69,7 +69,7 @@ EOF
     exit 2
 }
 
-unset product branch executablepath profilename sitelist depth robots
+unset product branch executablepath profilename sitelist url depth robots httpresponses datafiles hook invisible
 
 while getopts $options optname ;
 do

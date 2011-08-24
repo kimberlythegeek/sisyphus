@@ -168,7 +168,9 @@ class CrashTestWorker(worker.Worker):
         reExecutablePath   = re.compile(r'^environment: TEST_EXECUTABLEPATH=(.*)')
         reProfileName      = re.compile(r'^environment: TEST_PROFILENAME=(.*)')
         reAssertionFail    = re.compile(r'^(Assertion failure: .*), at .*')
-        reABORT            = re.compile(r'^.?###\!\!\! (ABORT: .*), file (.*), line [0-9]+.*')
+        reABORT            = re.compile(r'^.?###\!\!\! (ABORT: .*)')
+        reABORT2           = re.compile(r'^.?###\!\!\! (ABORT: .*), file (.*), line [0-9]+.*')
+        reABORT3           = re.compile(r'^.?###\!\!\! (ABORT: .*) file (.*), line [0-9]+.*')
         reASSERTION        = re.compile(r'^.?###\!\!\! ASSERTION: (.*), file (.*), line [0-9]+.*')
         reValgrindLeader   = re.compile(r'^==[0-9]+==')
         reSpiderBegin      = re.compile(r'^Spider: Begin loading (.*)')
@@ -305,7 +307,13 @@ class CrashTestWorker(worker.Worker):
 
                 match = reABORT.match(line)
                 if match:
-                    self.testrun_row.fatal_message = match.group(1)
+                    self.testrun_row.fatal_message = match.group(1).rstrip()
+                    match = reABORT2.match(line)
+                    if match:
+                        self.testrun_row.fatal_message = match.group(1)
+                    match = reABORT3.match(line)
+                    if match:
+                        self.testrun_row.fatal_message = match.group(1)
                     continue
 
                 match = reASSERTION.match(line)
@@ -562,10 +570,16 @@ class CrashTestWorker(worker.Worker):
             self.debugMessage("getJob: lock timed out")
         else:
             try:
-                sitetestrun_row = models.SiteTestRun.objects.filter(state__exact = "waiting",
-                                                                    os_name__exact = self.os_name,
-                                                                    os_version__exact = self.os_version,
-                                                                    cpu_name__exact = self.build_cpu_name).order_by('priority')[0]
+                sitetestrun_row = (models.SiteTestRun.objects.filter(
+                        state__exact = "waiting",
+                        os_name__exact = self.os_name,
+                        os_version__exact = self.os_version,
+                        cpu_name__exact = self.build_cpu_name).order_by(
+                        'state',
+                        'os_name',
+                        'os_version',
+                        'cpu_name',
+                        'priority')[0])
                 sitetestrun_row.worker = self.worker_row
                 sitetestrun_row.state = 'executing'
                 sitetestrun_row.build_cpu_name = self.build_cpu_name
@@ -758,7 +772,7 @@ def main():
                 if this_worker.state == "disabled":
                     while True:
                         time.sleep(300)
-                        curr_worker_row = models.Worker.objects.get(pk = self.hostname)
+                        curr_worker_row = models.Worker.objects.get(pk = self.worker_row.id)
                         if curr_worker_row.state != "disabled":
                             this_worker.state = "waiting"
                             break

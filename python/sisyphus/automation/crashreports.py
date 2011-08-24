@@ -49,10 +49,11 @@ irrelevantSignatureRegEx = '|'.join([
   'linux-gate',
   'TouchBadMemory',
   'ntdll.dll@0x.*',
-  'msvcr80d.dll@0x.*',
+  'msvc[mpr][0-9]+d.dll@0x.*',
   'libc-[0-9.]*so0x.*',
   'KERNELBASE.dll@0x.*',
   'kernel32.dll@0x.*',
+  'user32.dll@0x.*',
   ])
 reIrrelevantSignature = re.compile(irrelevantSignatureRegEx)
 
@@ -167,6 +168,12 @@ def generateSignatureFromList(signatureList):
 
     sisyphusSignatureList = [socorroSignature]
     sisyphusSignatureList.extend(signatureList[len(newSignatureList) + ignored_frame_count:])
+    # remove irrelevant signatures from the non-socorro part of the signature.
+    indices = range(1,len(sisyphusSignatureList) - 1)
+    indices.reverse()
+    for isignature in indices:
+        if reIrrelevantSignature.match(sisyphusSignatureList[isignature]):
+            del sisyphusSignatureList[isignature]
     sisyphusSignatureList = sisyphusSignatureList[:5]
 
     return sisyphusSignatureList

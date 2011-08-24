@@ -48,7 +48,7 @@ function usage()
     cat<<EOF
 usage:
 $SCRIPT -p product -b branch
-       [-u url [-f filepath] [-c credentials]]
+       [-u downloadurl [-f filepath] [-c credentials]]
        [-B buildcommands -T buildtype]
        [-x executablepath]
        [-N profilename [-D profiledirectory [-L profiletemplate
@@ -60,7 +60,7 @@ variable            description
 ===============     ===========================================================
 -p product          required. one of js firefox.
 -b branch           required. supported branch. see library.sh
--u url              optional. url where to download build
+-u downloadurl      optional. url where to download build
 -f filepath         optional. location to save downloaded build or to find
                     previously downloaded build. If not specified, the
                     default will be the basename of the url saved to the
@@ -100,7 +100,7 @@ EOF
     exit 1
 }
 
-unset product branch url filepath credentials buildcommands buildtype executablepath profilename profiledirectory profiletemplate userpreferences extenstiondir datafiles
+unset product branch downloadurl filepath credentials buildcommands buildtype executablepath profilename profiledirectory profiletemplate userpreferences extenstiondir datafiles
 
 while getopts $options optname ;
   do
@@ -108,7 +108,7 @@ while getopts $options optname ;
       p) product="$OPTARG";;
       b) branch="$OPTARG";;
 
-      u) url="$OPTARG";;
+      u) downloadurl="$OPTARG";;
       f) filepath="$OPTARG";;
       c) credentials="$OPTARG";;
 
@@ -160,7 +160,7 @@ fi
 
 checkProductBranch $product $branch
 
-if [[ ( -n "$url" || -n "$filepath" ) && ( -n "$buildcommands" ) ]]; then
+if [[ ( -n "$downloadurl" || -n "$filepath" ) && ( -n "$buildcommands" ) ]]; then
     echo "you can not both download and build cvs builds at the same time"
     usage
 fi
@@ -175,19 +175,19 @@ if [[ (-n "$profiledirectory" || -n "$extensiondir" ) && -z "$profilename" ]]; t
     usage
 fi
 
-# if the url is specified but not the filepath
+# if the downloadurl is specified but not the filepath
 # generate a default path where to save the
 # downloaded build.
-if [[ -n "$url" && -z "$filepath" ]]; then
-    filepath=`basename $url`
+if [[ -n "$downloadurl" && -z "$filepath" ]]; then
+    filepath=`basename "$downloadurl"`
     if [[ -z "$filepath" ]]; then
         filepath="$product-$branch-file"
     fi
     filepath="/tmp/$filepath"
 fi
 
-if [[ -n "$url" ]]; then
-    download.sh -u "$url" -c "$credentials" -f "$filepath" -t "$TEST_DOWNLOAD_TIMEOUT"
+if [[ -n "$downloadurl" ]]; then
+    download.sh -u "$downloadurl" -c "$credentials" -f "$filepath" -t "$TEST_DOWNLOAD_TIMEOUT"
 fi
 
 # install the build at the specified filepath

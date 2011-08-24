@@ -1,5 +1,5 @@
 {
-  "2.0.0" :  [
+  "nightly" :  [
     "crashtest",
     "jstestbrowser",
     "mochitest-a11y",

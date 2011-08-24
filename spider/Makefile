@@ -4,10 +4,10 @@ all: spider.xpi
 
 FILES=$(shell cat ./file.manifest)
 
-chrome/spider.jar:
+chrome/spider.jar: $(FILES)
 	make -C chrome -f Makejar
 
-spider.xpi: file.manifest chrome/Makejar $(FILES)
+spider.xpi: file.manifest chrome/Makejar chrome/spider.jar $(FILES)
 	zip -r -o $@ `cat file.manifest`
 	install $@ ../xpi/all/
 

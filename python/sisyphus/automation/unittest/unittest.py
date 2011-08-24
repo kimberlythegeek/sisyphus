@@ -101,14 +101,14 @@ Example: -j tests.json
 where tests.json contains:
 
 {
-  "2.0.0" :  [ "jstestbrowser", "reftest"]
+  "nightly" :  [ "jstestbrowser", "reftest"]
 }
 
 It is an error if both -t and -j are specified. If neither is
 specified, the default is equivalent to a tests.json file containing:
 
 {
-  "2.0.0" : ["reftest", "crashtest", "mochitest-plain", "mochitest-chrome", "jstestbrowser" ],
+  "nightly" : ["reftest", "crashtest", "mochitest-plain", "mochitest-chrome", "jstestbrowser" ],
 }
 '''
     parser = OptionParser(usage=usage)
@@ -133,12 +133,6 @@ specified, the default is equivalent to a tests.json file containing:
          print "Only one of -j or -t may be specified."
          raise Exception("Usage")
 
-    # restrict to 2.0.0 for now. note that reftest on 1.9.2 and lower
-    # does not contain the fix for
-    # https://bugzilla.mozilla.org/show_bug.cgi?id=523934 to disable
-    # slow script dialogs which makes running reftest, crashtest or
-    # jstestbrowser problematic there.
-
     if options.tests_dest:
 
         branchdatalist = options.tests_dest.split('+')
@@ -158,7 +152,7 @@ specified, the default is equivalent to a tests.json file containing:
     else:
 
         tests_by_branch = {
-            "2.0.0" : ["reftest", "crashtest", "jstestbrowser", "mochitest-plain", "mochitest-chrome"]
+            "nightly" : ["reftest", "crashtest", "jstestbrowser", "mochitest-plain", "mochitest-chrome"]
             }
 
     testbranch_rows = models.UnitTestBranch.objects.all()

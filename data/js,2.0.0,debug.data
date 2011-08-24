@@ -1,6 +1,0 @@
-product=${product:-js}
-branch=${branch:-2.0.0}
-buildtype=${buildtype:-debug}
-jsshellsourcepath=${jsshellsourcepath:-/work/mozilla/builds/2.0.0/mozilla/js/src}
-TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-2.0}
-TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}

@@ -16,10 +16,10 @@ class AbstractWorker(models.Model):
 class Worker(AbstractWorker):
     """ An abstract base class that encapsulates the information related to a worker."""
 
-    hostname          = models.CharField(max_length=64)
-    datetime          = models.CharField(max_length=19)
-    state             = models.CharField(max_length=1024)
-    worker_type       = models.CharField(max_length=16) # CouchDB change: original field is type and is used in views . worker_unittest, worker_crashtest, worker_builder
+    hostname          = models.CharField(max_length=64, db_index=True)
+    datetime          = models.CharField(max_length=19, db_index=True)
+    state             = models.CharField(max_length=10, db_index=True)
+    worker_type       = models.CharField(max_length=16, db_index=True)
 
     def __unicode__(self):
         return self.hostname
@@ -272,7 +272,7 @@ class UnitTestRun(AbstractProduct):
     worker            = models.ForeignKey(Worker, null = True, blank = True)
     unittestbranch    = models.ForeignKey(UnitTestBranch, null = True, blank = True)
     changeset         = models.CharField(max_length=16, null = True, blank = True)
-    datetime          = models.CharField(max_length=19)
+    datetime          = models.CharField(max_length=19, db_index=True)
     major_version     = models.CharField(max_length=4, null = True, blank = True)
     crashed           = models.NullBooleanField()
     extra_test_args   = models.CharField(max_length=256, null = True, blank = True)
@@ -280,7 +280,7 @@ class UnitTestRun(AbstractProduct):
     exitstatus        = models.CharField(max_length=32, null = True, blank = True)
     returncode        = models.CharField(max_length=3, null = True, blank = True)
     log               = models.CharField(max_length=256, null = True, blank = True)
-    state             = models.CharField(max_length=9)
+    state             = models.CharField(max_length=9, db_index = True)
 
     def __unicode__(self):
         return '%s %s %s' % (self.worker, self.unittestbranch.test, self.extra_test_args)
@@ -404,7 +404,7 @@ class SiteTestRun(AbstractProduct):
     worker            = models.ForeignKey(Worker,         null = True, blank = True)
     socorro           = models.ForeignKey(SocorroRecord)
     changeset         = models.CharField(max_length=16,   null = True, blank = True)
-    datetime          = models.CharField(max_length=19)
+    datetime          = models.CharField(max_length=19, db_index=True)
     major_version     = models.CharField(max_length=4)
     bug_list          = models.CharField(max_length=256,  null = True, blank = True)
     crashed           = models.NullBooleanField()
@@ -415,7 +415,7 @@ class SiteTestRun(AbstractProduct):
     returncode        = models.CharField(max_length=3, null = True, blank = True)
     log               = models.CharField(max_length=256,  null = True, blank = True)
     priority          = models.CharField(max_length=1, db_index = True)
-    state             = models.CharField(max_length=9)
+    state             = models.CharField(max_length=9, db_index = True)
 
     def __unicode__(self):
         if self.worker:
