@@ -420,13 +420,21 @@ BughunterDateControlsViewBase = Backbone.View.extend({
       if (!start) {
         start = '-';
       }
-      hash += '/' + start;
-      if (end) {
-        hash += '/' + end;
+      if (!end) {
+        end = '-';
+      }
+      hash += '/' + start + '/' + end;
+      var extraParms = this.extraParms();
+      for (var i = 0; i < extraParms.length; i++) {
+        hash += '/' + extraParms[i];
       }
       document.location.hash = hash;
       return false;
     }, this));
+  },
+
+  extraParms: function() {
+    return [];
   }
 });
 
@@ -438,11 +446,11 @@ BughunterLogsViewBase = BughunterDateControlsViewBase.extend({
     this.rowCount = 0;
     this.createTable();
     $('.loading').hide();
-    $('table.logs').show();
     if (this.model.collection.isEmpty()) {
       $('.nologs').show();
     } else {
       $('.nologs').hide();
+      $('table.logs').show();
       $('#clearlog').show();
       $('#clearlog').click(_.bind(function() {
         $('.loading').show();
@@ -479,7 +487,8 @@ BughunterLogsView = BughunterLogsViewBase.extend({
   },
 
   render: function() {
-    this.el.html(ich.workerlogs());
+    this.el.html(ich.datecontrols());
+    this.el.append(ich.workerlogs());
     this.initDateCtrls();
   },
 
@@ -514,13 +523,13 @@ BughunterWorkerView = BughunterLogsViewBase.extend({
   },
 
   refreshDetails: function() {
-    this.el.html('');
     var workerConfig = { hash: '#admin/worker/' + this.model.model.get('id') };
     var worker = this.model.model.toJSON();
     for (var attr in worker) {
       workerConfig[attr] = worker[attr];
     }
-    this.el.append(ich.workerdetails(workerConfig));
+    this.el.html(ich.workerdetails(workerConfig));
+    this.el.append(ich.datecontrols());
     this.el.append(ich.workerlogs());
     this.initDateCtrls();
     
@@ -547,17 +556,24 @@ BughunterWorkerView = BughunterLogsViewBase.extend({
 });
 
 
-BughunterCrashSummaryView = Backbone.View.extend({
+BughunterCrashSummaryView = BughunterDateControlsViewBase.extend({
   initialize: function() {
     this.menuBarView = null;
     this.collectionView = null;
+    this.hashBase = 'crashes/date';
     this.header = {
       title: 'crashes'
     };
   },
 
   render: function() {
-    this.el.html(ich.standardtable());
+    this.el.html(ich.datecontrols());
+    this.el.find('.extracontrols').append(ich.newonlycontrols({ entitytype: 'crashes' }));
+    this.el.append(ich.standardtable());
+    this.initDateCtrls();
+    if (this.model.collection.options.newonly) {
+      $('#newonly').attr('checked', 'checked');
+    }
     this.collectionView = new CrashSummaryCollectionView({ el: $('#main table'),
       collection: this.model.collection });
     this.collectionView.createTable();
@@ -568,6 +584,13 @@ BughunterCrashSummaryView = Backbone.View.extend({
     if (this.collectionView) {
       this.collectionView.destroy();
     }
+  },
+
+  extraParms: function() {
+    if ($('#newonly').attr('checked')) {
+      return ['newonly'];
+    }
+    return [];
   }
 });
 

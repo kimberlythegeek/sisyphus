@@ -128,6 +128,9 @@ var BughunterAuth = BughunterUtils.Base.extend({
  * Main app logic.
  */
 var BughunterAppRouter = Backbone.Router.extend({
+  // FIXME: We should have a generic parameter handler, e.g. for start/end
+  // dates, using "splat" parts (or consider switching to sugarskull routing
+  // if easier).
   routes: {
     'login': 'login',
     'logout': 'logout',
@@ -142,6 +145,7 @@ var BughunterAppRouter = Backbone.Router.extend({
     'crashes/date': 'crashes_by_date',
     'crashes/date/:start': 'crashes_by_date',
     'crashes/date/:start/:end': 'crashes_by_date',
+    'crashes/date/:start/:end/:newonly': 'crashes_by_date',
     '': 'default'
   },
 
@@ -185,11 +189,14 @@ var BughunterAppRouter = Backbone.Router.extend({
     document.location.hash = '';
   },
 
-  crashes_by_date: function(start, end) {
+  crashes_by_date: function(start, end, newonly) {
     var modelOpts = {
       start: start,
-      end: end
+      end: end,
     };
+    if (newonly == 'newonly') {
+      modelOpts.newonly = true;
+    }
     this.normalizeTimes(modelOpts);
     this.loadPage(BughunterCrashSummaryModel, BughunterCrashSummaryView,
                   modelOpts, false);

@@ -156,12 +156,19 @@ div.workerlogs {
   padding: 10px;
 }
 
-div.logtimes {
-  text-align: center;
+div.datecontrols {
+  position: relative;
   width: 50%;
   margin-left: auto;
   margin-right: auto;
   padding: 10px;
+  margin-bottom: 10px;
+}
+
+div.datecontrolssubmit {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
 }
 
 td.logdate {

@@ -153,12 +153,12 @@ def worker_log_api(request, worker_id, start, end):
     if end != '-':
         logs = logs.filter(datetime__lte=end)
     logs = logs.order_by('datetime').all()
+    response = '[]'
     if request.method == 'GET':
-        json = serializers.serialize("json", logs)
-        return HttpResponse(json, mimetype=APP_JS)
-    if request.method == 'DELETE':
+        response = serializers.serialize("json", logs)
+    elif request.method == 'DELETE':
         logs.delete()
-    return []
+    return HttpResponse(response, mimetype=APP_JS)
 
 @login_required
 def all_workers_log_api(request, start, end):
@@ -288,22 +288,35 @@ def workers_api(request):
     json = serializers.serialize('json', models.Worker.objects.order_by('hostname').all())
     return HttpResponse(json, mimetype=APP_JS)
 
-def crashes_by_date(request, start, end):
-    cursor = connection.cursor()
-    end_clause = ''
-    if end and end != '-':
-        end_clause = 'AND SiteTestRun.datetime < %s' % end
-
-    cursor.execute("""
-SELECT Crash.signature, fatal_message, SiteTestRun.branch, SiteTestRun.os_name, SiteTestRun.os_version, SiteTestRun.cpu_name, count( * )
+def crashes_by_date(request, start, end, other_parms):
+    other_parms_list = filter(lambda x: x, other_parms.split('/'))
+    sql = """SELECT Crash.signature, fatal_message, SiteTestRun.branch, SiteTestRun.os_name, SiteTestRun.os_version, SiteTestRun.cpu_name, count( * )
 FROM SocorroRecord, Crash, SiteTestCrash, SiteTestRun
 WHERE Crash.id = SiteTestCrash.crash_id
 AND SiteTestRun.id = SiteTestCrash.testrun_id
 AND SocorroRecord.id = SiteTestRun.socorro_id
-AND SiteTestRun.datetime >= %s
-%s
+AND SiteTestRun.datetime >= %s"""
+    sql_parms = [start]
+
+    if end and end != '-':
+        sql += '\nAND SiteTestRun.datetime < %s'
+        sql_parms.append(end)
+    if 'newonly' in other_parms_list:
+        sql += """
+AND Crash.id NOT
+IN (
+SELECT Crash.id
+FROM Crash, SiteTestCrash
+WHERE Crash.id = SiteTestCrash.crash_id
+AND SiteTestCrash.datetime < %s
+)"""
+        sql_parms.append(start)
+
+    sql += """
 GROUP BY Crash.signature, fatal_message, SiteTestRun.branch, SiteTestRun.os_name, SiteTestRun.os_version, SiteTestRun.cpu_name
-ORDER BY `SiteTestRun`.`fatal_message` DESC , Crash.signature ASC""", [start, end_clause])
+ORDER BY `SiteTestRun`.`fatal_message` DESC , Crash.signature ASC"""
+    cursor = connection.cursor()
+    cursor.execute(sql, sql_parms)
 
     # results are data[signature][fatal message][branch][platform] = <count>
     data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int))))

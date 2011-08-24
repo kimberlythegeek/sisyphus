@@ -116,6 +116,10 @@ var DatedCollectionBase = BughunterCollection.extend({
     } else {
       u += '-/';
     }
+    var extraParms = this.extraParms();
+    for (var i = 0; i < extraParms.length; i++) {
+      u += extraParms[i] + '/';
+    }
     return u;
   },
   checkDates: function() {
@@ -131,6 +135,9 @@ var DatedCollectionBase = BughunterCollection.extend({
       changed = true;
     }
     return changed;
+  },
+  extraParms: function() {
+    return [];
   }
 });
 
@@ -151,6 +158,12 @@ var CrashSummaryCollection = DatedCollectionBase.extend({
     // We only want the functionality from DatedCollectionBase.
     // FIXME: sort out some sort of multiple inheritance.
     return response;
+  },
+  extraParms: function() {
+    if (this.options.newonly) {
+      return ['newonly'];
+    }
+    return [];
   }
 });
 
@@ -308,6 +321,7 @@ var BughunterCrashSummaryModel = BughunterModel.extend({
     this.collection = new CrashSummaryCollection([], {
       start: options.start,
       end: options.end,
+      newonly: options.newonly
     });
   },
   fetch: function(options) {

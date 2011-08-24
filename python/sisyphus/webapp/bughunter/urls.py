@@ -1,6 +1,7 @@
 from django.conf.urls.defaults import *
 from sisyphus.webapp.bughunter import views
 
+# FIXME: We should have a generic parameter handler, e.g. for start/end dates
 urlpatterns = patterns('',
                        (r'^$', views.home),
                        (r'^crashtests/$', views.crashtests),
@@ -14,5 +15,5 @@ urlpatterns = patterns('',
                        (r'^api/admin/workers/(\d*)/log/([^/]*)/([^/]*)/$',
                         views.worker_log_api),
                        (r'^post_files/$', views.post_files),
-                       (r'^api/crashes_by_date/([^/]*)/([^/]*)/$', views.crashes_by_date),
+                       (r'^api/crashes_by_date/([^/]*)/([^/]*)/(.*)$', views.crashes_by_date),
 )

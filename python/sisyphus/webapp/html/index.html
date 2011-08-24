@@ -92,13 +92,25 @@
   </div>
 </script>
 
-<script id="datecontrols" type="text/html" class="partial">
-  <div class="ui-widget ui-widget-content ui-corner-all logtimes">
+<script id="newonlycontrols" type="text/html">
+  <div>
+    <input type="checkbox" name="newonly" id="newonly" /> New {{ entitytype }} only
+  </div>
+</script>
+
+<script id="datecontrols" type="text/html">
+  <div class="datecontrols ui-widget ui-widget-content ui-corner-all">
     <form id="datecontrolsform" name="datecontrolsform">
-      Start: <input type="text" size="15" id="logstart" pattern="[\d]{4}-[\d]{2}-[\d]{2}(T[\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter start date in the form <YYYY>-<MM>-<DD>[T<HH>:<MM>[:<SS>], or blank for beginning of logs"> PT&nbsp;&nbsp;
-      End: <input type="text" size="15" id="logend" pattern="[\d]{4}-[\d]{2}-[\d]{2}(T[\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter end date in the form <YYYY>-<MM>-<DD>[T<HH>:<MM>[:<SS>], or blank for end of logs"> PT
-      &nbsp;&nbsp;<input type="submit" value="refresh" id="refreshlog" class="ui-state-default ui-corner-all ui-button-text-only" />
-   </form>
+      <div>
+        Start: <input type="text" size="15" id="logstart" pattern="[\d]{4}-[\d]{2}-[\d]{2}(T[\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter start date in the form <YYYY>-<MM>-<DD>[T<HH>:<MM>[:<SS>], or blank for beginning of logs"> PT&nbsp;&nbsp;
+        End: <input type="text" size="15" id="logend" pattern="[\d]{4}-[\d]{2}-[\d]{2}(T[\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter end date in the form <YYYY>-<MM>-<DD>[T<HH>:<MM>[:<SS>], or blank for end of logs"> PT
+        <div class="extracontrols">
+        </div>
+      </div>
+      <div class="datecontrolssubmit">
+        <input type="submit" value="refresh" id="refreshlog" class="ui-state-default ui-corner-all ui-button-text-only" />
+      </div>
+    </form>
   </div>
 </script>
 
@@ -125,15 +137,13 @@
 </script>
 
 <script id="workerlogs" type="text/html">
-    <div class="workerlogs ui-widget ui-widget-content ui-corner-all">
-      {{>datecontrols}}
-    
-      <button id="clearlog" class="ui-state-default ui-corner-all ui-button-text-only hidden">clear</button>
-      <div class="loading">Loading logs...</div>
-      <div class="hidden nologs">No logs in specified period.</div>
-      <table class="logs display displaylinks">
-      </table>
-    </div>
+  <div class="workerlogs ui-widget ui-widget-content ui-corner-all">
+    <button id="clearlog" class="ui-state-default ui-corner-all ui-button-text-only hidden">clear</button>
+    <div class="loading">Loading logs...</div>
+    <div class="hidden nologs">No logs in specified period.</div>
+    <table class="logs display displaylinks">
+    </table>
+  </div>
 </script>
 
 <script id="workerlogentry" type="text/html">
