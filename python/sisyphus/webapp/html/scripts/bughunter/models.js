@@ -297,6 +297,9 @@ var BughunterWorkerModel = BughunterModel.extend({
     this.model = new Worker({ id: options.id });
   },
   fetch: function(options) {
+    // as this is an implied reset, we want 'change' to fire even if we
+    // have the latest data
+    this.model.clear({silent: true});
     this.model.fetch(options);
     // collection is fetched after, by view
   }

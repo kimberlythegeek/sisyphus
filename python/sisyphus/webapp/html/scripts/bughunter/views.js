@@ -309,8 +309,8 @@ HeaderView = Backbone.View.extend({
     this.el.html(ich.toolbar({username: window.auth.username}));
     $('#menubar').buttonset();
     $("input:radio[name='menuradio']").change(function() {
-      document.location.hash = 'admin/' + 
-                               $('input:radio[name=menuradio]:checked').val();
+      app.navigate('admin/' + $('input:radio[name=menuradio]:checked').val(), 
+                   true);
     });
   },
 
@@ -428,7 +428,13 @@ BughunterDateControlsViewBase = Backbone.View.extend({
       for (var i = 0; i < extraParms.length; i++) {
         hash += '/' + extraParms[i];
       }
-      document.location.hash = hash;
+      // FIXME: this won't work if we switch to pushState
+      if (document.location.hash == '#' + hash) {
+        this.render();
+        this.model.fetch();
+      } else {
+        app.navigate(hash, true);
+      }
       return false;
     }, this));
   },
