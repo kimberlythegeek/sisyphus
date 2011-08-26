@@ -136,25 +136,38 @@
   </div>
 </script>
 
+<script id="workerlogstable" type="text/html">
+  <table class="logs display displaylinks">
+    <col width="15%">
+    <col width="85%">
+  </table>
+</script>
+
+<script id="combinedworkerlogstable" type="text/html">
+  <table class="logs display displaylinks">
+    <col width="15%">
+    <col width="12%">
+    <col width="73%">
+  </table>
+</script>
+
 <script id="workerlogs" type="text/html">
   <div class="workerlogs ui-widget ui-widget-content ui-corner-all">
     <button id="clearlog" class="ui-state-default ui-corner-all ui-button-text-only hidden">clear</button>
     <div class="loading">Loading logs...</div>
     <div class="hidden nologs">No logs in specified period.</div>
-    <table class="logs display displaylinks">
-    </table>
   </div>
 </script>
 
 <script id="workerlogentry" type="text/html">
   <tr class="{{rowclass}}">
-    <td class="logdate" width="15%">{{ datetime }}</td><td class="logmessage">{{ message }}</td>
+    <td class="logdate" width="15%">{{ datetime }}</td><td class="logmessage"><div><pre>{{{message}}}</pre></div></td>
   </tr>
 </script>
 
 <script id="workercombinedlogentry" type="text/html">
   <tr class="{{rowclass}}">
-    <td class="logdate">{{ datetime }}</td><td class="logmachine"><a href="#admin/worker/{{worker_id}}/{{start}}/{{end}}">{{ hostname }}</a></td><td class="logmessage">{{ message }}</td>
+    <td class="logdate">{{ datetime }}</td><td class="logmachine"><a href="#admin/worker/{{worker_id}}/{{start}}/{{end}}">{{ hostname }}</a></td><td class="logmessage"><div><pre>{{{message}}}</pre></div></td>
   </tr>
 </script>
 

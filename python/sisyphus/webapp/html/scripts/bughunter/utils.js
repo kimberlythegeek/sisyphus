@@ -70,3 +70,7 @@
     BughunterUtils.Base = function () {};
     BughunterUtils.Base.extend = extendThis;
 })();
+
+function escapeHtml(text) {
+  return $('<span></span>').text(text).html();
+}

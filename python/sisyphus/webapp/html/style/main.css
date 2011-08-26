@@ -151,6 +151,14 @@ div.workerdetails table {
   width: 100%;
 }
 
+table.logs {
+  table-layout: fixed;
+}
+
+table.logs div {
+  overflow: auto;
+}
+
 div.workerlogs {
   margin-bottom: 10px;
   padding: 10px;

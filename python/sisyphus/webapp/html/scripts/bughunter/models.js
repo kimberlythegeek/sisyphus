@@ -1,4 +1,24 @@
-var BughunterModel = Backbone.Model.extend({
+var EscapedHtmlModel = Backbone.Model.extend({
+  get: function(attribute) {
+    var value = Backbone.Model.prototype.get.call(this, attribute);
+    if (_.isString(value)) {
+      value = escapeHtml(value);
+    }
+    return value;
+  },
+  toJSON: function() {
+    var data = Backbone.Model.prototype.toJSON.call(this);
+    for (var key in data) {
+      if (_.isString(data[key])) {
+        data[key] = escapeHtml(data[key]);
+      }
+    }
+    return data;
+  }
+});
+
+
+var BughunterModel = EscapedHtmlModel.extend({
   // Do some translation from django's standard way of indexing objects.
   parse: function(response) {
     if (_.isArray(response)) {
@@ -57,7 +77,7 @@ var WorkerCollection = BughunterCollection.extend({
 });
 
 
-var WorkerSummary = Backbone.Model.extend({
+var WorkerSummary = EscapedHtmlModel.extend({
   'id': '',
   'builder_active': 0,
   'builder_total': 0,
@@ -90,11 +110,11 @@ var WorkerLogMessage = BughunterModel.extend({
   'datetime': '',
   'message': '',
   'machinename': '',
-  'worker_id': '',
+  'worker_id': ''
 });
 
 
-var CrashSummary = Backbone.Model.extend({
+var CrashSummary = EscapedHtmlModel.extend({
   'signature': '',
   'fatal_message': '',
   'branches': {}

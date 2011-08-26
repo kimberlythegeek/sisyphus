@@ -265,7 +265,7 @@ WorkerSummaryCollectionView = DataTableCollectionView.extend({
 CrashSummaryCollectionView = DataTableCollectionView.extend({
   initialize: function() {
     this.init('crashesbydate', [
-      { sTitle: 'Signature' },
+      { sTitle: 'Signature', sType: 'string' },
       { sTitle: 'Fatal Message' },
       { sTitle: 'Total&nbsp;Count', sType: 'numeric' },
       { sTitle: 'Counts Broken Down', bSortable: false }
@@ -295,8 +295,8 @@ CrashSummaryCollectionView = DataTableCollectionView.extend({
     if (!fatal_message) {
       fatal_message = '<i>none</i>';
     }
-    return [model.get('signature'), fatal_message, totalCount,
-            breakDown];
+    var signature = model.get('signature');
+    return [signature, fatal_message, totalCount, breakDown];
   }
 });
 
@@ -495,6 +495,7 @@ BughunterLogsView = BughunterLogsViewBase.extend({
   render: function() {
     this.el.html(ich.datecontrols());
     this.el.append(ich.workerlogs());
+    this.el.find('.workerlogs').append(ich.combinedworkerlogstable());
     this.initDateCtrls();
   },
 
@@ -537,6 +538,7 @@ BughunterWorkerView = BughunterLogsViewBase.extend({
     this.el.html(ich.workerdetails(workerConfig));
     this.el.append(ich.datecontrols());
     this.el.append(ich.workerlogs());
+    this.el.find('.workerlogs').append(ich.workerlogstable());
     this.initDateCtrls();
     
     // Details only loaded once; otherwise, we might want to change this
