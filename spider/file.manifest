@@ -28,5 +28,3 @@
 ./components/spider-cmdline.js
 ./install.js
 ./install.rdf
-./Makefile
-

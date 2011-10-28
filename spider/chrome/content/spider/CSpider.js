@@ -106,7 +106,6 @@ function CSpider(/* String */ aUrl,
   this.mRestrictUrl = aRestrictUrl;
   this.mDepth  = aDepth;
   this.mPageLoader = aPageLoader;
-  this.mCallWrapperOnLoadPageTimeout = null;
   this.mOnLoadTimeoutInterval = (aOnLoadTimeoutInterval || 60) * 1000;
   this.mExtraPrivileges = aExtraPrivileges || false;
   this.mRespectRobotRules = aRespectRobotRules || false;
@@ -184,7 +183,7 @@ CSpider.prototype.pause =
 
   dlog('CSpider.pause ' + this.mState);
 
-  if (this.mCallWrapperOnLoadPageTimeout)
+  if (this.mPageLoader.ontimeout_ccallwrapper)
   {
     this.mState = 'pausing';
   }
@@ -207,7 +206,7 @@ CSpider.prototype.stop =
 
   dlog('CSpider.stop ' + this.mState);
 
-  if (this.mCallWrapperOnLoadPageTimeout)
+  if (this.mPageLoader.ontimeout_ccallwrapper)
   {
     this.mState = 'stopping';
   }
@@ -424,11 +423,6 @@ CSpider.prototype.loadPage =
     return;
   }
 
-  dlog('CSpider.loadPage setting up onLoadPageTimeout');
-  this.mCallWrapperOnLoadPageTimeout =
-    new CCallWrapper(this, this.mOnLoadTimeoutInterval, 'onLoadPageTimeout');
-  CCallWrapper.asyncExecute(this.mCallWrapperOnLoadPageTimeout);
-
   dlog('CSpider.loadPage setting mPageLoader location=' +
        this.mCurrentUrl.mUrl);
   this.mPageLoader.load(this.mCurrentUrl.mUrl, this.mCurrentUrl.mReferer);
@@ -455,8 +449,6 @@ CSpider.prototype.onLoadPageTimeout =
       dlog(e);
     }
   }
-
-  this.mCallWrapperOnLoadPageTimeout = null;
 
   // call mOnPageTimeout prior to the mPageLoader.cancel
   // so that the timeout handler has access to the document
@@ -506,10 +498,9 @@ CSpider.prototype.onLoadPage =
     }
   }
 
-  if (this.mCallWrapperOnLoadPageTimeout)
+  if (this.mPageLoader.ontimeout_ccallwrapper)
   {
-    this.mCallWrapperOnLoadPageTimeout.cancel();
-    this.mCallWrapperOnLoadPageTimeout = null;
+    this.mPageLoader.cancel();
   }
 
   this.mDocument = this.mPageLoader.getDocument();
@@ -621,11 +612,6 @@ CSpider.prototype.cancelLoadPage =
 {
   dlog('CSpider.cancelLoadPage ' + this.mState);
 
-  if (this.mCallWrapperOnLoadPageTimeout)
-  {
-    this.mCallWrapperOnLoadPageTimeout.cancel();
-    this.mCallWrapperOnloadPageTimeout = null;
-  }
   this.mPageLoader.cancel();
   if (this.mCurrentUrl)
   {
