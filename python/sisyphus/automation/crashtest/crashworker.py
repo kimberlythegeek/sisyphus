@@ -139,7 +139,6 @@ class CrashTestWorker(worker.Worker):
 
         self.debugMessage("testing firefox %s %s %s" % (self.branch, self.buildtype, self.testrun_row.socorro.url))
         self.state        = "testing"
-        self.datetime     = utils.getTimestamp()
         self.save()
 
         # kill any test processes still running.
@@ -163,10 +162,7 @@ class CrashTestWorker(worker.Worker):
             self.save()
             return
 
-        timestamp = utils.getTimestamp()
-
         self.testrun_row.changeset = self.build_row.changeset
-        self.testrun_row.datetime  = timestamp
         self.testrun_row.extra_test_args = extra_test_args
         self.testrun_row.save()
 
@@ -294,9 +290,9 @@ class CrashTestWorker(worker.Worker):
                 # new page being loaded.
                 match = reSpiderBegin.match(line)
                 if match:
-                    self.process_assertions(timestamp, assertion_dict, page, "crashtest", extra_test_args)
+                    self.process_assertions(assertion_dict, page, "crashtest", extra_test_args)
                     valgrind_list = self.parse_valgrind(valgrind_text)
-                    self.process_valgrind(timestamp, valgrind_list, page, "crashtest", extra_test_args)
+                    self.process_valgrind(valgrind_list, page, "crashtest", extra_test_args)
 
                     assertion_dict   = {}
                     valgrind_text    = ""
@@ -388,7 +384,7 @@ class CrashTestWorker(worker.Worker):
 
             symbolsPath = os.path.join(executablepath, 'crashreporter-symbols')
 
-            self.process_dump_files(timestamp, profilename, page, symbolsPath, dmpuploadpath)
+            self.process_dump_files(profilename, page, symbolsPath, dmpuploadpath)
 
 
         hung_process = False
@@ -502,7 +498,6 @@ class CrashTestWorker(worker.Worker):
                             worker            = None,
                             socorro           = new_socorro_row,
                             changeset         = None,
-                            datetime          = utils.getTimestamp(),
                             major_version     = branch_row.major_version,
                             bug_list          = None,
                             crashed           = False,
@@ -526,9 +521,9 @@ class CrashTestWorker(worker.Worker):
                 self.logMessage('runTest: unable to duplicate signature %s for reproduction: %s' % (self.testrun_row, errorMessage))
 
         # process any remaining assertion or valgrind messages.
-        self.process_assertions(timestamp, assertion_dict, page, "crashtest", extra_test_args)
+        self.process_assertions(assertion_dict, page, "crashtest", extra_test_args)
         valgrind_list = self.parse_valgrind(valgrind_text)
-        self.process_valgrind(timestamp, valgrind_list, page, "crashtest", extra_test_args)
+        self.process_valgrind(valgrind_list, page, "crashtest", extra_test_args)
 
         # A resource was forbidden. Rather than continuing to attempt
         # to load a forbidden url, remove all waiting jobs for it.
@@ -555,7 +550,6 @@ class CrashTestWorker(worker.Worker):
 
         if self.testrun_row:
             self.testrun_row.state = 'waiting'
-            self.testrun_row.datetime = utils.getTimestamp()
             self.testrun_row.worker = None
             self.testrun_row.save()
             self.testrun_row = None
@@ -572,11 +566,9 @@ class CrashTestWorker(worker.Worker):
             self.debugMessage("freeOrphanJobs: lock timed out")
         else:
             try:
-                timestamp = utils.getTimestamp()
-                #sitetestrun_rows = models.SiteTestRun.objects.filter(state__exact = 'executing', worker__state__in ('waiting', 'dead', 'zombie', 'disabled')).update(worker = None, state = 'waiting', datetime = timestamp)
                 sitetestrun_rows = models.SiteTestRun.objects.filter(state__exact = 'executing')
                 sitetestrun_rows = sitetestrun_rows.filter(worker__state__in = ('waiting', 'dead', 'zombie', 'disabled'))
-                sitetestrun_rows.update(worker = None, state = 'waiting', datetime = timestamp)
+                sitetestrun_rows.update(worker = None, state = 'waiting')
             except:
                 raise
             finally:
@@ -672,7 +664,6 @@ class CrashTestWorker(worker.Worker):
                 branch        = None
                 waittime      = 900
                 self.state    = "waiting"
-                self.datetime = utils.getTimestamp()
                 self.save()
                 continue
 
@@ -694,7 +685,6 @@ class CrashTestWorker(worker.Worker):
                     self.testrun_row.state   = 'waiting'
                     self.testrun_row.save()
                     self.state           = 'waiting'
-                    self.datetime        = utils.getTimestamp()
                     self.testrun_row = None
                     self.save()
                     waittime = 300

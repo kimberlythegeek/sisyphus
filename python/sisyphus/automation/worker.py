@@ -226,7 +226,6 @@ class Worker(object):
                         cpu_name       = self.cpu_name,
                         worker         = self.worker_row,
                         state          = "initializing",
-                        datetime       = utils.getTimestamp(),
                         builddate      = None,
                         buildavailable = None,
                         buildsuccess   = None,
@@ -294,7 +293,7 @@ class Worker(object):
                 if self.worker_row.state != worker_row.state:
                     messages.append('state memory: %s, database: %s' % (self.worker_row.state,
                                                                         worker_row.state))
-                if self.worker_row.datetime != worker_row.datetime:
+                if self.worker_row.datetime - worker_row.datetime > datetime.timedelta(seconds=1):
                     messages.append('datetime memory: %s, database: %s' % (self.worker_row.datetime,
                                                                            worker_row.datetime))
                 if messages:
@@ -307,7 +306,6 @@ class Worker(object):
             self.worker_row.cpu_name    = self.cpu_name
             self.worker_row.build_cpu_name = self.build_cpu_name
             self.worker_row.state       = self.state
-            self.worker_row.datetime    = self.datetime = utils.getTimestamp()
             self.worker_row.save()
 
         finally:
@@ -321,8 +319,7 @@ class Worker(object):
     def logMessage(self, msg):
 
         if self.worker_row and self.worker_row.id:
-            log_row = models.Log(datetime = utils.getTimestamp(hiresolution=True),
-                                 worker   = self.worker_row,
+            log_row = models.Log(worker   = self.worker_row,
                                  message  = utils.makeUnicodeString(msg))
             log_row.save()
 
@@ -432,7 +429,7 @@ class Worker(object):
         url_set.difference_update(exclude_urls_set)
         return list(url_set)
 
-    def process_assertions(self, timestamp, assertion_dict, page, test, extra_test_args):
+    def process_assertions(self, assertion_dict, page, test, extra_test_args):
 
         os_name              = self.os_name
         os_version           = self.os_version
@@ -474,7 +471,6 @@ class Worker(object):
 
             testassertion_row = self.model_test_assertion(
                 url                 = page,
-                datetime            = timestamp,
                 stack               = assertionstack,
                 count               = assertioncount,
                 testrun             = self.testrun_row,
@@ -555,7 +551,7 @@ class Worker(object):
 
         return valgrind_dict
 
-    def process_valgrind(self, timestamp, valgrind_text, page, test, extra_test_args):
+    def process_valgrind(self, valgrind_text, page, test, extra_test_args):
 
         valgrind_dict = self.parse_valgrind(valgrind_text)
 
@@ -599,7 +595,6 @@ class Worker(object):
 
             testvalgrind_row = self.model_test_valgrind(
                 url                 = page,
-                datetime            = timestamp,
                 stack               = valgrind_stack,
                 count               = valgrind_count,
                 testrun             = self.testrun_row,
@@ -608,7 +603,7 @@ class Worker(object):
             testvalgrind_row.save()
 
 
-    def process_dump_files(self, timestamp, profilename, page, symbolsPath, uploadpath):
+    def process_dump_files(self, profilename, page, symbolsPath, uploadpath):
         """
         process_dump_files looks for any minidumps that may have been written, parses them,
         then creates the necessary Crash, SiteTestCrash, SiteTestCrashDumpMetaData or
@@ -810,7 +805,6 @@ class Worker(object):
 
             testcrash_row = self.model_test_crash(
                 url            = page,
-                datetime       = timestamp,
                 exploitability  = exploitability,
                 reason         = reason,
                 address        = address,
@@ -856,7 +850,7 @@ class Worker(object):
                 self.logMessage('killZombies: failed to lock crash workers. better luck next time.')
                 return
 
-            zombie_timestamp = utils.convertTimeToString(datetime.datetime.now() - datetime.timedelta(hours=self.zombie_time))
+            zombie_timestamp = datetime.datetime.now() - datetime.timedelta(hours=self.zombie_time)
             worker_rows      = models.Worker.objects.filter(worker_type__exact = self.worker_type)
             worker_rows      = models.Worker.objects.filter(datetime__lt = zombie_timestamp)
             worker_rows      = worker_rows.filter(state__in = ('waiting',
@@ -866,7 +860,7 @@ class Worker(object):
                                                                'testing',
                                                                'completed'))
             worker_rows      = worker_rows.exclude(pk = self.worker_row.id)
-            zombie_count     = worker_rows.update(state = 'zombie', datetime = utils.getTimestamp())
+            zombie_count     = worker_rows.update(state = 'zombie')
             if zombie_count > 0:
                 self.logMessage("killZombies: worker %s zombied %d workers" % (self.hostname, zombie_count))
 
@@ -891,7 +885,6 @@ class Worker(object):
         if not self.isBuilder:
             raise Exception('WorkerNotBuilder')
 
-        self.build_row.datetime = utils.getTimestamp(),
         self.build_row.save()
 
     def installBuild(self):
@@ -1025,15 +1018,15 @@ class Worker(object):
             if self.build_row.state == "error":
                 return True # Most recent attempt to build and upload to database failed
 
-            if utils.convertTimestamp(self.build_date).day != datetime.date.today().day:
+            if self.build_date.day != datetime.date.today().day:
                 return True # Local build is too old
 
-            if utils.convertTimestamp(self.build_row.builddate).day != datetime.date.today().day:
+            if self.build_row.builddate.day != datetime.date.today().day:
                 return True # Uploaded build is too old
 
             if self.build_row.state == "building":
                 # someone else is building it.
-                if datetime.datetime.now() - utils.convertTimestamp(self.build_row.datetime) > build_checkup_interval:
+                if datetime.datetime.now() - self.build_row.datetime > build_checkup_interval:
                     return True # the build has been "in process" for too long. Consider it dead.
 
             return False
@@ -1053,7 +1046,7 @@ class Worker(object):
         buildsuccess    = True
         checkoutlogpath = ''
         buildlogpath    = ''
-        builddate       = utils.getTimestamp()
+        builddate       = datetime.datetime.now()
         executablepath  = ''
 
         self.state = "building"
@@ -1062,7 +1055,6 @@ class Worker(object):
         # and to determine freshness of the uploaded build
         self.save()
 
-        self.build_row.datetime = utils.getTimestamp()
         self.build_row.state = "building"
         self.build_row.save()
 
@@ -1354,7 +1346,6 @@ class Worker(object):
         self.build_row.buildavailable = uploadsuccess
         self.build_row.state          = "complete"
         self.build_row.worker         = self.worker_row
-        self.build_row.datetime       = utils.getTimestamp()
         self.build_row.save()
 
     def publishNewBuild(self):

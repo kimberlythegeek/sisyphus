@@ -96,7 +96,7 @@ def worker_summary(request):
             if worker_row.state not in ('dead', 'zombie'):
                 worker_data[worker_key][worker_row.worker_type]['active'] += 1
 
-    last_hour_timestamp = utils.convertTimeToString(datetime.datetime.now() - datetime.timedelta(hours=1))
+    last_hour_timestamp = datetime.datetime.now() - datetime.timedelta(hours=1)
 
 
     build_rows = models.Build.objects.filter(state = 'complete',
@@ -142,7 +142,7 @@ def worker_api(request, worker_id):
     # to provide the server's local time to the client so it can provide
     # sensible defaults (e.g. for the last day's worth of logs).
     # We could also just return UTC offset...
-    response['Sisyphus-Localtime'] = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
+    response['Sisyphus-Localtime'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
     return response
 
 @login_required

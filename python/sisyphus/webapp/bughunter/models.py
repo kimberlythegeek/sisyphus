@@ -18,7 +18,7 @@ class Worker(AbstractWorker):
     """ An abstract base class that encapsulates the information related to a worker."""
 
     hostname          = models.CharField(max_length=64, db_index=True)
-    datetime          = models.CharField(max_length=19, db_index=True)
+    datetime          = models.DateTimeField(auto_now=True, auto_now_add=True)
     state             = models.CharField(max_length=10, db_index=True)
     worker_type       = models.CharField(max_length=16, db_index=True)
 
@@ -33,7 +33,7 @@ class WorkerForm(ModelForm):
         model = Worker
 
 class Log(models.Model):
-    datetime          = models.CharField(max_length=26, db_index=True) # log datetimes have higher resolutions: 2011-03-21T15:37:01.764375
+    datetime          = models.DateTimeField(auto_now=True, auto_now_add=True)
     worker            = models.ForeignKey(Worker)
     message           = models.TextField()
 
@@ -75,12 +75,12 @@ class Build(AbstractProduct):
     builds that have been uploaded to the database. """
 
     build_id           = models.CharField(max_length=255, primary_key = True) # CouchDB: <product>_<branch>_<buildtype>_<os_name>_<cpu_name>
-    builddate          = models.CharField(max_length=19, null = True, blank = True)
+    builddate          = models.DateTimeField(null = True)
     changeset          = models.CharField(max_length=16, null = True, blank = True)
     worker             = models.ForeignKey(Worker) # CouchDB change: couchdb field is worker_id, but use django style for foreign key names
     buildavailable     = models.NullBooleanField()
     state              = models.CharField(max_length=64)
-    datetime           = models.CharField(max_length=19)
+    datetime           = models.DateTimeField(auto_now=True, auto_now_add=True)
     buildsuccess       = models.NullBooleanField()
     packagesuccess     = models.NullBooleanField()
     clobbersuccess     = models.NullBooleanField()
@@ -122,8 +122,8 @@ class Crash(AbstractProduct):
     specific information.
     """
 
-    signature         = models.TextField(null = True, blank = True) # CouchDB: This is a ' '.join(of the stack list below)
-    bugs              = models.TextField(null = True, blank = True) # comma delimited list of bug numbers
+    signature         = models.CharField(max_length=3000, null = True, blank = True)
+    bugs              = models.CharField(max_length=3000, null = True, blank = True) # comma delimited list of bug numbers
 
     def __unicode__(self):
         return '%s %s %s' % (self.reason, self.address, self.crash)
@@ -140,7 +140,7 @@ class AbstractCrash(models.Model): #AbstractCrash(AbstractProduct):
     actual crash during a test."""
 
     url               = models.CharField(max_length=1000, db_index=True)
-    datetime          = models.CharField(max_length=19, db_index=True)
+    datetime          = models.DateTimeField(auto_now=True, auto_now_add=True)
     minidump          = models.CharField(max_length=256, null = True, blank = True) # breakpad minidump
     extradump         = models.CharField(max_length=256, null = True, blank = True)
     msdump            = models.CharField(max_length=256, null = True, blank = True) # optional (new) ms dump file
@@ -192,7 +192,7 @@ class AbstractAssertion(models.Model): #AbstractAssertion(AbstractProduct):
     actual assertion during a test."""
 
     url               = models.CharField(null = True, max_length=1000, db_index=True)
-    datetime          = models.CharField(max_length=19, db_index=True)
+    datetime          = models.DateTimeField(auto_now=True, auto_now_add=True)
     stack             = models.TextField(null = True, blank = True) # New field. 256 is too small, but I don't know what to use yet.
     count             = models.IntegerField(null = True)
 
@@ -236,7 +236,7 @@ class AbstractValgrind(models.Model): #AbstractValgrind(AbstractProduct):
     actual valgrind message during a test."""
 
     url               = models.CharField(max_length=1000, db_index=True)
-    datetime          = models.CharField(max_length=19, db_index=True)
+    datetime          = models.DateTimeField(auto_now=True, auto_now_add=True)
     stack             = models.TextField() # CouchDB: This is a block of text with newlines and raw addresses that contains the valgrind message/stack.
     count             = models.IntegerField()
 
@@ -272,7 +272,7 @@ class UnitTestRun(AbstractProduct):
     worker            = models.ForeignKey(Worker, null = True, blank = True)
     unittestbranch    = models.ForeignKey(UnitTestBranch, null = True, blank = True)
     changeset         = models.CharField(max_length=16, null = True, blank = True)
-    datetime          = models.CharField(max_length=19, db_index=True)
+    datetime          = models.DateTimeField(auto_now=True, auto_now_add=True)
     major_version     = models.CharField(max_length=4, null = True, blank = True)
     crashed           = models.NullBooleanField()
     extra_test_args   = models.CharField(max_length=256, null = True, blank = True)
@@ -362,8 +362,8 @@ class SocorroRecord(models.Model):
     signature         = models.CharField(max_length=255, null=True, db_index=True)
     url               = models.CharField(max_length=1000, blank=True, null=True, db_index=True) # could just exclude those records when uploading.
     uuid              = models.CharField(max_length=36)
-    client_crash_date = models.CharField(max_length=12, db_index=True)
-    date_processed    = models.CharField(max_length=12)
+    client_crash_date = models.DateTimeField(null=True, blank=True)
+    date_processed    = models.DateTimeField(null=True, blank=True)
     last_crash        = models.IntegerField(null=True)
     product           = models.CharField(max_length=8, db_index=True)
     version           = models.CharField(max_length=16, db_index=True)
@@ -375,7 +375,7 @@ class SocorroRecord(models.Model):
     cpu_info          = models.CharField(max_length=54,   null = True, blank = True, db_index=True)
     cpu_name          = models.CharField(max_length=16,   null = True, blank = True, db_index=True)
     address           = models.CharField(max_length=18,   null = True, blank = True)
-    bug_list          = models.CharField(max_length=128,  null = True, blank = True)
+    bug_list          = models.CharField(max_length=3000,  null = True, blank = True)
     user_comments     = models.TextField(null = True, blank = True)
     uptime_seconds    = models.IntegerField(null = True)
     adu_count         = models.IntegerField(null = True)
@@ -404,7 +404,7 @@ class SiteTestRun(AbstractProduct):
     worker            = models.ForeignKey(Worker,         null = True, blank = True)
     socorro           = models.ForeignKey(SocorroRecord)
     changeset         = models.CharField(max_length=16,   null = True, blank = True)
-    datetime          = models.CharField(max_length=19, db_index=True)
+    datetime          = models.DateTimeField(auto_now=True, auto_now_add=True)
     major_version     = models.CharField(max_length=4)
     bug_list          = models.CharField(max_length=256,  null = True, blank = True)
     crashed           = models.NullBooleanField()

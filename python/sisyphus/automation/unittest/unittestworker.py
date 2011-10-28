@@ -102,8 +102,6 @@ class UnitTestWorker(worker.Worker):
                 self.logMessage('runTest: test process running before test: pid: %s : %s' % (test_process, test_process_dict[test_process]))
             self.killTest()
 
-        timestamp = utils.getTimestamp()
-
         # The test frameworks do not bracket test results within begin/end
         # blocks (with the exception of the jstests). Instead they run the
         # test and then emit a test result line after the test has
@@ -223,7 +221,6 @@ class UnitTestWorker(worker.Worker):
                 current_time = datetime.datetime.now()
 
                 if current_time - last_update_time > update_interval:
-                    self.datetime = utils.getTimestamp()
                     self.save()
                     last_update_time = datetime.datetime.now()
 
@@ -308,8 +305,8 @@ class UnitTestWorker(worker.Worker):
                                                     unittest_message = match.group(3)
 
                 if process_messages:
-                    self.process_assertions(timestamp, assertion_dict, unittest_id, self.testrun_row.unittestbranch.test, extra_test_args)
-                    self.process_valgrind(timestamp, valgrind_text, unittest_id, self.testrun_row.unittestbranch.test,  extra_test_args)
+                    self.process_assertions(assertion_dict, unittest_id, self.testrun_row.unittestbranch.test, extra_test_args)
+                    self.process_valgrind(valgrind_text, unittest_id, self.testrun_row.unittestbranch.test,  extra_test_args)
                     assertion_dist   = {}
                     valgrind_text    = ""
                     unittest_id = next_unittest_id
@@ -398,7 +395,7 @@ class UnitTestWorker(worker.Worker):
 
         if executablepath:
             symbolsPath = os.path.join(executablepath, 'crashreporter-symbols')
-            self.process_dump_files(timestamp, profilename, unittest_id, symbolsPath, dmpuploadpath)
+            self.process_dump_files(profilename, unittest_id, symbolsPath, dmpuploadpath)
 
         try:
             self.testrun_row.save()
@@ -410,8 +407,8 @@ class UnitTestWorker(worker.Worker):
                             (self.product, self.branch, self.testrun_row.unittestbranch.test, errorMessage))
 
         # process any valgrind messages not associated with a test.
-        self.process_assertions(timestamp, assertion_dict, "shutdown", self.testrun_row.unittestbranch.test, extra_test_args)
-        self.process_valgrind(timestamp, valgrind_text, "shutdown", self.testrun_row.unittestbranch.test, extra_test_args)
+        self.process_assertions(assertion_dict, "shutdown", self.testrun_row.unittestbranch.test, extra_test_args)
+        self.process_valgrind(valgrind_text, "shutdown", self.testrun_row.unittestbranch.test, extra_test_args)
 
     def getJob(self):
 
@@ -483,7 +480,6 @@ class UnitTestWorker(worker.Worker):
                         worker          = None,
                         unittestbranch  = unittestbranch_row,
                         changeset       = None,
-                        datetime        = utils.getTimestamp(),
                         major_version   = None, # XXX remove major version?
                         crashed         = False,
                         extra_test_args = chunk_options, # XXX
@@ -504,7 +500,6 @@ class UnitTestWorker(worker.Worker):
                     worker          = None,
                     unittestbranch  = unittestbranch_row,
                     changeset       = None,
-                    datetime        = utils.getTimestamp(),
                     major_version   = None, # XXX remove major version?
                     crashed         = False,
                     extra_test_args = extra_test_args, # XXX
@@ -560,7 +555,6 @@ class UnitTestWorker(worker.Worker):
                 branch        = None
                 waittime      = 0
                 self.state    = "waiting"
-                self.datetime = utils.getTimestamp()
                 self.save()
                 self.createJobs()
                 continue
@@ -583,7 +577,6 @@ class UnitTestWorker(worker.Worker):
                     self.testrun_row.state   = 'waiting'
                     self.testrun_row.save()
                     self.state           = 'waiting'
-                    self.datetime        = utils.getTimestamp()
                     self.testrun_row = None
                     self.save()
                     waittime = 300
