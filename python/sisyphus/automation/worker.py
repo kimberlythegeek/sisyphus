@@ -952,34 +952,38 @@ class Worker(object):
                             (self.product, self.branch, self.buildtype, stdout))
             return False
 
-        if utils.downloadFile(symbolsuri, '/tmp/' + symbolsfilename):
-            # use command line since ZipFile.extractall isn't available until Python 2.6
-            # unzip -d /objdir/dist/crashreporter-symbols /tmp/symbolsfilename
-            os.mkdir(objdir + '/dist/crashreporter-symbols')
-            cmd = ["unzip", "-d", objdir + "/dist/crashreporter-symbols", "/tmp/" + symbolsfilename]
-            proc = subprocess.Popen(cmd,
-                                    preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.STDOUT)
-            try:
-                stdout = proc.communicate()[0]
-            except KeyboardInterrupt, SystemExit:
-                raise
-            except:
-                exceptionType, exceptionValue, errorMessage = utils.formatException()
-                self.logMessage('installBuild: exception: %s, %s' % (exceptionValue, errorMessage))
+        if not utils.downloadFile(symbolsuri, '/tmp/' + symbolsfilename):
+            self.logMessage('installBuild:  %s %s %s failed to download symbols %s' %
+                            (self.product, self.branch, self.buildtype, symbolsfilename))
+            return False
 
-                if errorMessage.find('filedescriptor out of range') != -1:
-                    self.logMessage('filedescriptors %d out of range. Restarting.' %
-                                    utils.openFileDescriptorCount())
-                    # Closing file descriptors and trying again does not
-                    # fix the issue on Windows. Just restart the program.
-                    self.reloadProgram()
+        # use command line since ZipFile.extractall isn't available until Python 2.6
+        # unzip -d /objdir/dist/crashreporter-symbols /tmp/symbolsfilename
+        os.mkdir(objdir + '/dist/crashreporter-symbols')
+        cmd = ["unzip", "-d", objdir + "/dist/crashreporter-symbols", "/tmp/" + symbolsfilename]
+        proc = subprocess.Popen(cmd,
+                                preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT)
+        try:
+            stdout = proc.communicate()[0]
+        except KeyboardInterrupt, SystemExit:
+            raise
+        except:
+            exceptionType, exceptionValue, errorMessage = utils.formatException()
+            self.logMessage('installBuild: exception: %s, %s' % (exceptionValue, errorMessage))
 
-            if proc.returncode != 0:
-                self.logMessage('installBuild: unzip crashreporter-symbols.zip %s %s %s failed: %s' %
-                                (self.product, self.branch, self.buildtype, stdout))
-                return False
+            if errorMessage.find('filedescriptor out of range') != -1:
+                self.logMessage('filedescriptors %d out of range. Restarting.' %
+                                utils.openFileDescriptorCount())
+                # Closing file descriptors and trying again does not
+                # fix the issue on Windows. Just restart the program.
+                self.reloadProgram()
+
+        if proc.returncode != 0:
+            self.logMessage('installBuild: unzip crashreporter-symbols.zip %s %s %s failed: %s' %
+                            (self.product, self.branch, self.buildtype, stdout))
+            return False
 
         self.logMessage("success installing %s %s %s" % (self.product, self.branch, self.buildtype))
 
