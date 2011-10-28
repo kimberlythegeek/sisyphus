@@ -221,11 +221,10 @@ def load_crashdata(crashlogfile):
             continue
 
         try:
-            urlParseResult = urlparse.urlparse(url)
-            #if urlParseResult.port:
-            #    continue # skip non default ports
-        except:
-            # catch malformed url errors
+            url = utils.encodeUrl(url)
+        except Exception, e:
+            exceptionType, exceptionValue, errorMessage = utils.formatException()
+            print '%s, %s: url: %s' % (exceptionValue, errorMessage, url)
             continue
 
         skipit = False

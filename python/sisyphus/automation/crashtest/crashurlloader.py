@@ -148,11 +148,10 @@ def main():
             continue # skip private networks
 
         try:
-            urlParseResult = urlparse.urlparse(url)
-            #if urlParseResult.port:
-            #    continue # skip non default ports
-        except:
-            # catch malformed url errors
+            url = sisyphus.automation.utils.encodeUrl(url)
+        except Exception, e:
+            exceptionType, exceptionValue, errorMessage = sisyphus.automation.utils.formatException()
+            print '%s, %s: url: %s' % (exceptionValue, errorMessage, url)
             continue
 
         for skipurl in skipurls:

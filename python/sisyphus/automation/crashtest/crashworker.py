@@ -151,7 +151,17 @@ class CrashTestWorker(worker.Worker):
 
         socorro_row = self.testrun_row.socorro
 
-        url = utils.encodeUrl(socorro_row.url)
+        try:
+            url = utils.encodeUrl(socorro_row.url)
+        except Exception, e:
+            exceptionType, exceptionValue, errorMessage = utils.formatException()
+            self.logMessage('runTest: exception: %s, %s: url: %s' % (exceptionValue, errorMessage, url))
+            self.testrun_row.state = 'completed'
+            self.state             = 'completed'
+            self.testrun_row.save()
+            self.testrun_row  = None
+            self.save()
+            return
 
         timestamp = utils.getTimestamp()
 
@@ -293,6 +303,12 @@ class CrashTestWorker(worker.Worker):
                     valgrind_list    = None
                     if match:
                         page = match.group(1).strip()
+                        try:
+                            page = utils.encodeUrl(page)
+                        except Exception, e:
+                            exceptionType, exceptionValue, errorMessage = utils.formatException()
+                            self.logMessage('runTest: exception: %s, %s: page: %s' % (exceptionValue, errorMessage, page))
+                            page = None
                     continue
 
                 match = reHTTP403.match(line)

@@ -146,12 +146,16 @@ def timedReadLine(filehandle, timeout = None):
     return line
 
 def encodeUrl(url):
-    # encode the url
-    url            = makeUnicodeString(url)
-    urlParseObject = urlparse.urlparse(url)
-    urlPieces      = [urllib.quote(urlpiece, "/=:") for urlpiece in urlParseObject]
-    url            = urlparse.urlunparse(urlPieces)
+    # encode the url.
+    # Unquote the url to replace %dd encoded characters with
+    # their raw values, then encode the result. This will help
+    # protect against unsafe characters as well as prevent
+    # encoding already encoded characters.
 
+    url            = makeUnicodeString(urllib.unquote(url))
+    urlParseObject = urlparse.urlparse(url)
+    urlPieces      = [urllib.quote(urlpiece.encode('utf-8'), "/=:") for urlpiece in urlParseObject]
+    url            = urlparse.urlunparse(urlPieces)
     return url
 
 def downloadFile(url, destination, credentials = None, timeout = None):
