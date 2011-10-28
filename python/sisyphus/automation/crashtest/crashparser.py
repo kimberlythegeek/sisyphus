@@ -73,43 +73,62 @@ from sisyphus.webapp.bughunter import models
 
 rePrivateNetworks = re.compile(r'https?://(localhost|127\.0\.0\.1|192\.168\.[0-9]+\.[0-9]+|172\.16\.[0-9]+\.[0-9]+|10\.[0-9]+\.[0-9]+\.[0-9]+)')
 
-options                 = None
-skipurls                = []
+options              = None
+skipurls             = []
+supported_products   = {}
+supported_versions   = {}
+supported_branches   = {}
+supported_buildtypes = {}
+operating_systems    = {}
 
-def ordered_ffversion(versionstring):
-     versionstring = re.sub('[a-z].*$', '', versionstring)
-     version = ''
-     versionparts = re.split('[.]*', versionstring)
-     for i in range(0,len(versionparts)):
-         try:
-             version += ( '00' +  versionparts[i] )[-2:]
-         except:
-             break # ignore and terminate
+def load_supported_products():
+    """Load Product data from the Branch table.
 
-     return version
+    The Branch table (id, product, branch, major_version, buildtype)
+    maps Product versions to branches and supported buildtypes. For
+    example, as of today,
 
-def load_crashdata(crashlogfile):
+    id     product     branch  major_version buildtype
+    14     firefox     1.9.2   0306          debug
+    13     firefox     beta    0600          debug
+    10     firefox     beta    0700          debug
+    11     firefox     aurora  0800          debug
+    12     firefox     nightly 0900          debug
 
+    The branch for SiteTestRun rows for an incoming SocorroRecord is
+    determined by retrieving the branch corresponding to the
+    SocorroRecord's major_version. Since the major_version to branch
+    mapping is many-one, we use the convention that the major_version
+    corresponding to a particual branch is the largest value for that
+    branch.
+
+    In our example, Firefox versions 6 and 7 are tested using the beta
+    branch.  The version of the beta branch, at the time of this
+    table, corresponds to the highest major_value for the beta branch
+    which is 0700.
+    """
     branches_rows = models.Branch.objects.all()
 
     if len(branches_rows) == 0:
         raise Exception('Branch table is empty.')
 
-    supported_products   = {}
-    supported_versions   = {}
-    supported_buildtypes = {}
     for branch_row in branches_rows:
         product = branch_row.product
         supported_products[product] = 1
-        if product not in supported_versions:
-            supported_versions[product] = {}
         if product not in supported_buildtypes:
             supported_buildtypes[product] = {}
-        supported_versions[product][branch_row.major_version] = branch_row.branch
+        if product not in supported_versions:
+            supported_versions[product] = {}
+        if product not in supported_branches:
+            supported_branches[product] = {}
         supported_buildtypes[product][branch_row.buildtype] = 1
+        supported_versions[product][branch_row.major_version] = branch_row.branch
+        if branch_row.branch not in supported_branches[product]:
+            supported_branches[product][branch_row.branch] = branch_row.major_version
+        elif branch_row.major_version > supported_branches[product][branch_row.branch]:
+            supported_branches[product][branch_row.branch] = branch_row.major_version
 
-    operating_systems = {}
-
+def load_operating_systems():
     matching_worker_rows  = models.Worker.objects.filter(worker_type__exact = 'crashtest')
 
     if len(matching_worker_rows) == 0:
@@ -131,6 +150,56 @@ def load_crashdata(crashlogfile):
 
         if cpu_name not in operating_systems[os_name][os_version]:
             operating_systems[os_name][os_version][cpu_name] = 1
+
+
+def ordered_ffversion(versionstring):
+     versionstring = re.sub('[a-z].*$', '', versionstring)
+     version = ''
+     versionparts = re.split('[.]*', versionstring)
+     for i in range(0,len(versionparts)):
+         try:
+             version += ( '00' +  versionparts[i] )[-2:]
+         except:
+             break # ignore and terminate
+
+     return version
+
+
+def load_waiting_testruns():
+
+    waiting_testruns = {}
+
+    cursor = connection.cursor()
+    if cursor.execute("SELECT SocorroRecord.url, " +
+                      "SiteTestRun.os_name, " +
+                      "SiteTestRun.os_version, " +
+                      "SiteTestRun.cpu_name, " +
+                      "SiteTestRun.branch, " +
+                      "SiteTestRun.product, " +
+                      "SiteTestRun.buildtype " +
+                      "FROM SocorroRecord, SiteTestRun WHERE " +
+                      "SiteTestRun.socorro_id = SocorroRecord.id AND " +
+                      "SiteTestRun.state = 'waiting'"):
+        row = cursor.fetchone()
+        while row is not None:
+            key = "%s:%s:%s:%s:%s:%s:%s" % (
+                row[0], # url
+                row[1], # os_name
+                row[2], # os_version
+                row[3], # cpu_name
+                row[4], # branch
+                row[5], # product
+                row[6], # buildtype
+                )
+
+            waiting_testruns[key] = 1
+            row = cursor.fetchone()
+
+    return waiting_testruns
+
+def load_crashdata(crashlogfile):
+
+    pending_socorro = {}
 
     crashlogfilehandle = gzip.GzipFile(crashlogfile)
 
@@ -165,7 +234,7 @@ def load_crashdata(crashlogfile):
             try:
                 fields[field_list[ifield]] = values[ifield]
             except IndexError:
-                print "IndexError: ifield = %d, len(field_list) = %d, len(values) = %d, field_list=%s, values=%s" % (ifield, len(field_list), len(values), field_list, values)
+                #print "IndexError: ifield = %d, len(field_list) = %d, len(values) = %d, field_list=%s, values=%s" % (ifield, len(field_list), len(values), field_list, values)
                 # assume last field has extra tabs and append to it.
                 fields[field_list[-1]] += '\t' + values[ifield]
 
@@ -286,8 +355,31 @@ def load_crashdata(crashlogfile):
             app_notes               = utils.crash_report_field2string(unicode(app_notes, errors='ignore')),
             )
 
-        # delay saving the socorro record until we know
-        # if we are skipping duplicate urls
+        key = "%s:%s:%s:%s:%s:%s" % (
+            socorro_row.url,
+            socorro_row.os_name,
+            socorro_row.os_version,
+            socorro_row.cpu_name,
+            socorro_row.branch,
+            socorro_row.product
+            )
+
+        if key not in pending_socorro:
+            pending_socorro[key] = socorro_row
+
+    crashlogfilehandle.close()
+
+    return pending_socorro
+
+def create_socorro_rows(pending_socorro, waiting_testruns):
+
+    keys = [key for key in pending_socorro]
+
+    for key in keys:
+
+        socorro_row = pending_socorro[key]
+
+        del pending_socorro[key]
 
         # Instead of making the workers determine the best possible
         # match for a job, we will now create the jobs to match the
@@ -295,6 +387,13 @@ def load_crashdata(crashlogfile):
         # will cover each unknown by the full set of possible worker
         # types. NOTE: This requires a representative sample of
         # workers be available when the jobs are loaded.
+
+        product       = socorro_row.product
+        os_name       = socorro_row.os_name
+        os_version    = socorro_row.os_version
+        cpu_name      = socorro_row.cpu_name
+        branch        = socorro_row.branch
+        major_version = supported_branches[product][branch]
 
         sitetestrun_operating_systems = {}
         if os_name in operating_systems:
@@ -320,67 +419,81 @@ def load_crashdata(crashlogfile):
             # create jobs for each of the available operating systems, versions and cpus
             sitetestrun_operating_systems = dict(operating_systems)
 
+        # Only save the SocorroRecord if the corresponding SiteTestRun
+        # is saved. Therefore wait until we save the SiteTestRun to
+        # save the SocorroRow.
         socorro_row_saved = False
 
         for sitetestrun_os_name in sitetestrun_operating_systems:
             for sitetestrun_os_version in sitetestrun_operating_systems[sitetestrun_os_name]:
                 for sitetestrun_cpu_name in sitetestrun_operating_systems[sitetestrun_os_name][sitetestrun_os_version]:
+                    for buildtype in supported_buildtypes[product]:
 
-                    if options.skipduplicateurls:
-                        cursor = connection.cursor()
-                        if cursor.execute("SELECT SocorroRecord.url FROM SocorroRecord, SiteTestRun WHERE " +
-                                          "SiteTestRun.socorro_id = SocorroRecord.id AND " +
-                                          "SocorroRecord.url = %s AND " +
-                                          "SiteTestRun.os_name = %s AND " +
-                                          "SiteTestRun.os_version = %s AND " +
-                                          "SiteTestRun.cpu_name = %s AND " +
-                                          "SiteTestRun.branch = %s AND " +
-                                          "SiteTestRun.state = 'waiting'" +
-                                          "limit 1",
-                            [socorro_row.url, sitetestrun_os_name, sitetestrun_os_version, sitetestrun_cpu_name, branch]):
+                        sitetestrun_key = "%s:%s:%s:%s:%s:%s:%s" % (
+                            socorro_row.url,
+                            sitetestrun_os_name,
+                            sitetestrun_os_version,
+                            sitetestrun_cpu_name,
+                            branch,
+                            product,
+                            buildtype
+                            )
+
+                        if sitetestrun_key in waiting_testruns:
                             continue
 
-                    if not socorro_row_saved:
                         try:
-                            socorro_row.save()
-                            socorro_row_saved = True
-                            for buildtype in supported_buildtypes[product]:
-                                test_run = models.SiteTestRun(
-                                    os_name           = sitetestrun_os_name,
-                                    os_version        = sitetestrun_os_version,
-                                    cpu_name          = sitetestrun_cpu_name,
-                                    product           = product,
-                                    branch            = branch,
-                                    buildtype         = buildtype,
-                                    build_cpu_name    = None,
-                                    worker            = None,
-                                    socorro           = socorro_row,
-                                    changeset         = None,
-                                    datetime          = utils.getTimestamp(),
-                                    major_version     = major_version,
-                                    bug_list          = None,
-                                    crashed           = False,
-                                    extra_test_args   = None,
-                                    steps             = '',
-                                    fatal_message     = None,
-                                    exitstatus        = None,
-                                    log               = None,
-                                    priority          = '3',
-                                    state             = 'waiting',
-                                    )
+                            if not socorro_row_saved:
+                                socorro_row.save()
+                                socorro_row_saved = True
+
+                            test_run = models.SiteTestRun(
+                                os_name           = sitetestrun_os_name,
+                                os_version        = sitetestrun_os_version,
+                                cpu_name          = sitetestrun_cpu_name,
+                                product           = product,
+                                branch            = branch,
+                                buildtype         = buildtype,
+                                build_cpu_name    = None,
+                                worker            = None,
+                                socorro           = socorro_row,
+                                changeset         = None,
+                                datetime          = utils.getTimestamp(),
+                                major_version     = major_version,
+                                bug_list          = None,
+                                crashed           = False,
+                                extra_test_args   = None,
+                                steps             = '',
+                                fatal_message     = None,
+                                exitstatus        = None,
+                                log               = None,
+                                priority          = '3',
+                                state             = 'waiting',
+                                )
                             try:
                                 test_run.save()
+                                waiting_testruns[sitetestrun_key] = 1
                             except Exception, e:
-                                print "%s saving test run: %s for line: %s" % (e, test_run, line)
-                                dump_fields()
+                                print "%s saving SiteTestRun: %s, %s : %s : %s : %s : %s" % (
+                                    e,
+                                    socorro_row.url,
+                                    test_run.os_name,
+                                    test_run.os_version,
+                                    test_run.cpu_name,
+                                    test_run.branch,
+                                    test_run.product
+                                    )
 
                         except Exception, e:
-                            print "%s saving socorro_row: %s for line: %s" % (e, socorro_row, line)
-                            dump_fields()
-
-
-    crashlogfilehandle.close()
-
+                            print "%s saving SoccoroRecord: %s, %s : %s : %s : %s : %s" % (
+                                e,
+                                socorro_row.url,
+                                socorro_row.os_name,
+                                socorro_row.os_version,
+                                socorro_row.cpu_name,
+                                socorro_row.branch,
+                                socorro_row.product
+                                )
 
 def main():
     global options
@@ -397,11 +510,6 @@ Example:
                       default=None,
                       help='file containing url patterns to skip when uploading.')
 
-    parser.add_option('--skip-duplicate-urls', action='store_true',
-                      dest='skipduplicateurls',
-                      default=False,
-                      help='Skip duplicate urls.')
-
     (options, args) = parser.parse_args()
 
     if len(args) != 1:
@@ -417,7 +525,11 @@ Example:
             skipurls.append(skipurl)
         skipurlsfilehandle.close()
 
-    load_crashdata(crashlogfile)
+    load_supported_products()
+    load_operating_systems()
+    waiting_testruns = load_waiting_testruns()
+    pending_socorro = load_crashdata(crashlogfile)
+    create_socorro_rows(pending_socorro, waiting_testruns)
 
 if __name__ == '__main__':
     main()
