@@ -28,3 +28,4 @@ user_pref("browser.cache.check_doc_frequency", 1);
 user_pref("extensions.checkCompatibility", false);
 user_pref("extensions.checkUpdateSecurity", false);
 user_pref("browser.EULA.override", true);
+user_pref("extensions.autoDisableScopes", 10);

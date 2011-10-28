@@ -30,3 +30,4 @@ user_pref("browser.warnOnQuit", false);
 user_pref("extensions.checkCompatibility", false);
 user_pref("extensions.checkUpdateSecurity", false);
 user_pref("browser.EULA.override", true);
+user_pref("extensions.autoDisableScopes", 10);
