@@ -96,10 +96,15 @@ if echo $profilename | egrep -qiv '[a-z0-9_]'; then
     error "profile name must consist of letters, digits or _" $LINENO
 fi
 
-echo "get_executable"
-executable=`get_executable $product $branch $executablepath`
+echo "get executable"
+if ! executable=`get_executable $product $branch $executablepath 2>&1`; then
+    error "get_executable: $executable" $LINENO
+fi
+
 echo "get extensiondir"
-executableextensiondir=`dirname $executable`/extensions
+if ! executableextensiondir=`dirname $executable 2>&1`/extensions; then
+    error "get extensiondir: $executableextensiondir" $LINENO
+fi
 
 # create directory to contain installed extensions
 if [[ ! -d /tmp/sisyphus/extensions ]]; then

@@ -92,7 +92,7 @@ if [[ `whoami` == "root" ]]; then
     error "can not be run as root" $LINENO
 fi
 
-echo get the cannonical directory name
+echo "get the canonical directory name for $directory"
 
 tries=1
 while ! mkdir -p "$directory"; do
@@ -103,25 +103,35 @@ while ! mkdir -p "$directory"; do
     sleep 30
 done
 
-if ! pushd "$directory" > /dev/null ; then 
+if ! pushd "$directory" ; then 
     error "$directory is not accessible" $LINENO
 fi
 
 directory=`pwd`
-popd > /dev/null
+popd
+
+echo "canonical directory name is $directory"
 
 if [[ "$directory" == "/" ]]; then
     error "directory $directory can not be root" $LINENO
 fi
 
 parent=`dirname "$directory"`
+echo "parent directory is $parent"
+
 grandparent=`dirname "$parent"`
+echo "grandparent directory is $grandparent"
 
 if [[ "$parent" != "/tmp" && ( "$parent" == "/" || "$grandparent" == "/" ) ]]; then
     error "directory $directory can not be a subdirectory of $parent" $LINENO
 fi
 
-
 # clean the directory if requested
-rm -fR $rmopt $directory
-mkdir -p "$directory"
+tries=1
+while ! (rm -fR $rmopt $directory && mkdir -p "$directory"); do
+    let tries=tries+1
+    if [[ "$tries" -gt $TEST_STARTUP_TRIES ]]; then
+        error "Failed to rm -fR $rmopt $directory && mkdir -p $directory" $LINENO
+    fi
+    sleep 30
+done

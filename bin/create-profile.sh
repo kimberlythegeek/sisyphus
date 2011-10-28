@@ -95,9 +95,10 @@ fi
 
 checkProductBranch $product $branch
 
-echo "get_executable"
-
-executable=`get_executable $product $branch $executablepath`
+echo "get executable"
+if ! executable=`get_executable $product $branch $executablepath 2>&1`; then
+    error "get_executable: $executable" $LINENO
+fi
 
 $TEST_DIR/bin/create-directory.sh -d "$directory" -n
 
