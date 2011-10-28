@@ -140,18 +140,29 @@ class Worker(object):
         else:
             raise Exception("invalid os_name: %s" % (os_name))
 
-        bits = platform.architecture()[0]
-        if self.cpu_name == "i386" or self.cpu_name == "i686":
-            if bits == "32bit":
-                self.cpu_name = "x86"
-            elif bits == "64bit":
+        if self.os_name == "Windows NT":
+            if "PROCESSOR_ARCHITEW6432" in os.environ and os.environ["PROCESSOR_ARCHITEW6432"]:
                 self.cpu_name = "x86_64"
-        elif self.cpu_name == 'Power Macintosh':
-            self.cpu_name = 'ppc'
+            else:
+                self.cpu_name = "x86"
+        else:
+            bits = platform.architecture()[0]
+            if self.cpu_name == "i386" or self.cpu_name == "i686":
+                if bits == "32bit":
+                    self.cpu_name = "x86"
+                elif bits == "64bit":
+                    self.cpu_name = "x86_64"
+            elif self.cpu_name == 'Power Macintosh':
+                self.cpu_name = 'ppc'
 
         # self.build_cpu_name is the cpu type where the builds that are to be run were created.
-        if self.cpu_name == "x86_64" and self.os_name == "Windows NT":
-            self.build_cpu_name = "x86"
+        if options.processor_type:
+            if options.processor_type == 'intel32' or options.processor_type == 'amd32':
+                self.build_cpu_name = 'x86'
+            elif options.processor_type == 'intel64' or options.processor_type == 'amd64':
+                self.build_cpu_name = 'x86_64'
+            else:
+                self.build_cpu_name = options.processor_type
         else:
             self.build_cpu_name = self.cpu_name
 
@@ -209,7 +220,7 @@ class Worker(object):
                         product        = self.product,
                         branch         = self.branch,
                         buildtype      = self.buildtype,
-                        build_cpu_name = self.cpu_name,
+                        build_cpu_name = self.build_cpu_name,
                         os_name        = self.os_name,
                         os_version     = self.os_version,
                         cpu_name       = self.cpu_name,
@@ -294,6 +305,7 @@ class Worker(object):
             self.worker_row.os_name     = self.os_name
             self.worker_row.os_version  = self.os_version
             self.worker_row.cpu_name    = self.cpu_name
+            self.worker_row.build_cpu_name = self.build_cpu_name
             self.worker_row.state       = self.state
             self.worker_row.datetime    = self.datetime = utils.getTimestamp()
             self.worker_row.save()

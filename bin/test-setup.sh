@@ -37,12 +37,10 @@
 #
 # ***** END LICENSE BLOCK *****
 
-source $TEST_DIR/bin/library.sh
-
 #
 # options processing
 #
-options="p:b:u:f:c:B:T:x:N:D:L:U:E:d:"
+options="p:b:u:f:c:B:T:x:N:D:L:U:E:d:X:"
 function usage()
 {
     cat<<EOF
@@ -92,6 +90,7 @@ variable            description
                     be installed.
 -d datafiles        optional. one or more filenames of files containing
                     environment variable definitions to be included.
+-X processortype    processor type: intel32, intel64, amd32, amd64, ppc
 
 note that the environment variables should have the same
 names as in the "variable" column.
@@ -125,8 +124,17 @@ while getopts $options optname ;
       E) extensiondir="$OPTARG";;
 
       d) datafiles="$OPTARG";;
+
+      X) processortype="$OPTARG";;
+
   esac
 done
+
+if [[ -n "$processortype" ]]; then
+    export TEST_PROCESSORTYPE="$processortype"
+fi
+
+source $TEST_DIR/bin/library.sh
 
 # include environment variables
 loaddata $datafiles

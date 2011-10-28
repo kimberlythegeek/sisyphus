@@ -37,8 +37,6 @@
 #
 # ***** END LICENSE BLOCK *****
 
-source $TEST_DIR/bin/library.sh
-
 args=$@
 script=`basename $0`
 
@@ -88,6 +86,8 @@ while getopts $options optname ;
       d) datafiles=$OPTARG;;
   esac
 done
+
+source $TEST_DIR/bin/library.sh
 
 # include environment variables
 loaddata $datafiles

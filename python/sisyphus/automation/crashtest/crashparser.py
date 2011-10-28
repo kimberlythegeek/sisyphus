@@ -141,6 +141,7 @@ def load_operating_systems():
         os_name    = worker_row.os_name
         os_version = worker_row.os_version
         cpu_name   = worker_row.cpu_name
+        build_cpu_name = worker_row.build_cpu_name
 
         if os_name not in operating_systems:
             operating_systems[os_name] = {}
@@ -149,7 +150,10 @@ def load_operating_systems():
             operating_systems[os_name][os_version] = {}
 
         if cpu_name not in operating_systems[os_name][os_version]:
-            operating_systems[os_name][os_version][cpu_name] = 1
+            operating_systems[os_name][os_version][cpu_name] = {}
+
+        if build_cpu_name not in operating_systems[os_name][os_version][cpu_name]:
+            operating_systems[os_name][os_version][cpu_name][build_cpu_name] = 1
 
 
 def ordered_ffversion(versionstring):
@@ -174,6 +178,7 @@ def load_waiting_testruns():
                       "SiteTestRun.os_name, " +
                       "SiteTestRun.os_version, " +
                       "SiteTestRun.cpu_name, " +
+                      "SiteTestRun.build_cpu_name, " +
                       "SiteTestRun.branch, " +
                       "SiteTestRun.product, " +
                       "SiteTestRun.buildtype " +
@@ -182,14 +187,15 @@ def load_waiting_testruns():
                       "SiteTestRun.state = 'waiting'"):
         row = cursor.fetchone()
         while row is not None:
-            key = "%s:%s:%s:%s:%s:%s:%s" % (
+            key = "%s:%s:%s:%s:%s:%s:%s:%s" % (
                 row[0], # url
                 row[1], # os_name
                 row[2], # os_version
                 row[3], # cpu_name
-                row[4], # branch
-                row[5], # product
-                row[6], # buildtype
+                row[4], # build_cpu_name
+                row[5], # branch
+                row[6], # product
+                row[7], # buildtype
                 )
 
             waiting_testruns[key] = 1
@@ -325,6 +331,15 @@ def load_crashdata(crashlogfile):
         if match:
             cpu_name = match.group(1)
 
+        # We currently do not have AMD processors so we will map them
+        # to Intel processors. This also takes care of the case where 
+        # we misreport Intel 64 bit processors as AMD.
+        match = re.match(r'.*amd(32|64)', cpu_name)
+        if match:
+            cpu_name = 'x86'
+            if match.group(1) == '64':
+                cpu_name += '_64'
+
         socorro_row = models.SocorroRecord(
             signature               = utils.crash_report_field2string(signature),
             url                     = url,
@@ -401,9 +416,14 @@ def create_socorro_rows(pending_socorro, waiting_testruns):
                 sitetestrun_operating_systems[os_name] = {}
                 sitetestrun_operating_systems[os_name][os_version] = {}
                 if cpu_name in operating_systems[os_name][os_version]:
-                    # We have an exact match, create a single job for the operating system,
-                    # version and cpu.
-                    sitetestrun_operating_systems[os_name][os_version] = {cpu_name : 1}
+                    # We have an exact match on os_name, os_version and cpu_name,
+                    # however the reported cpu_name in Socorro is the cpu_name of
+                    # the build (build_cpu_name) and not necessarily the cpu_name
+                    # of the physical machine. We need to create a job for the
+                    # operating system, version and each possible physical cpu/build cpu
+                    # represented by our workers.
+                    sitetestrun_operating_systems[os_name][os_version] = {}
+                    sitetestrun_operating_systems[os_name][os_version][cpu_name] = dict(operating_systems[os_name][os_version][cpu_name])
                 else:
                     # We have a match on the operating system and version but not the cpu,
                     # create jobs for this operating system and version and for each
@@ -427,73 +447,83 @@ def create_socorro_rows(pending_socorro, waiting_testruns):
         for sitetestrun_os_name in sitetestrun_operating_systems:
             for sitetestrun_os_version in sitetestrun_operating_systems[sitetestrun_os_name]:
                 for sitetestrun_cpu_name in sitetestrun_operating_systems[sitetestrun_os_name][sitetestrun_os_version]:
-                    for buildtype in supported_buildtypes[product]:
+                    for sitetestrun_build_cpu_name in sitetestrun_operating_systems[sitetestrun_os_name][sitetestrun_os_version][sitetestrun_cpu_name]:
+                        for buildtype in supported_buildtypes[product]:
 
-                        sitetestrun_key = "%s:%s:%s:%s:%s:%s:%s" % (
-                            socorro_row.url,
-                            sitetestrun_os_name,
-                            sitetestrun_os_version,
-                            sitetestrun_cpu_name,
-                            branch,
-                            product,
-                            buildtype
-                            )
-
-                        if sitetestrun_key in waiting_testruns:
-                            continue
-
-                        try:
-                            if not socorro_row_saved:
-                                socorro_row.save()
-                                socorro_row_saved = True
-
-                            test_run = models.SiteTestRun(
-                                os_name           = sitetestrun_os_name,
-                                os_version        = sitetestrun_os_version,
-                                cpu_name          = sitetestrun_cpu_name,
-                                product           = product,
-                                branch            = branch,
-                                buildtype         = buildtype,
-                                build_cpu_name    = None,
-                                worker            = None,
-                                socorro           = socorro_row,
-                                changeset         = None,
-                                datetime          = utils.getTimestamp(),
-                                major_version     = major_version,
-                                bug_list          = None,
-                                crashed           = False,
-                                extra_test_args   = None,
-                                steps             = '',
-                                fatal_message     = None,
-                                exitstatus        = None,
-                                log               = None,
-                                priority          = '3',
-                                state             = 'waiting',
+                            sitetestrun_key = "%s:%s:%s:%s:%s:%s:%s:%s" % (
+                                socorro_row.url,
+                                sitetestrun_os_name,
+                                sitetestrun_os_version,
+                                sitetestrun_cpu_name,
+                                sitetestrun_build_cpu_name,
+                                branch,
+                                product,
+                                buildtype
                                 )
+
+                            if sitetestrun_key in waiting_testruns:
+                                continue
+
+                            # 64 bit builds are not fully supported for 1.9.2 on Mac OS X 10.6
+                            if (branch == "1.9.2" and
+                                sitetestrun_os_name == "Mac OS X" and
+                                sitetestrun_os_version == "10.6" and
+                                sitetestrun_build_cpu_name == "x86_64"):
+                                continue
+
                             try:
-                                test_run.save()
-                                waiting_testruns[sitetestrun_key] = 1
+                                if not socorro_row_saved:
+                                    socorro_row.save()
+                                    socorro_row_saved = True
+
+                                test_run = models.SiteTestRun(
+                                    os_name           = sitetestrun_os_name,
+                                    os_version        = sitetestrun_os_version,
+                                    cpu_name          = sitetestrun_cpu_name,
+                                    product           = product,
+                                    branch            = branch,
+                                    buildtype         = buildtype,
+                                    build_cpu_name    = sitetestrun_build_cpu_name,
+                                    worker            = None,
+                                    socorro           = socorro_row,
+                                    changeset         = None,
+                                    datetime          = utils.getTimestamp(),
+                                    major_version     = major_version,
+                                    bug_list          = None,
+                                    crashed           = False,
+                                    extra_test_args   = None,
+                                    steps             = '',
+                                    fatal_message     = None,
+                                    exitstatus        = None,
+                                    log               = None,
+                                    priority          = '3',
+                                    state             = 'waiting',
+                                    )
+                                try:
+                                    test_run.save()
+                                    waiting_testruns[sitetestrun_key] = 1
+                                except Exception, e:
+                                    print "%s saving SiteTestRun: %s, %s : %s : %s : %s : %s : %s" % (
+                                        e,
+                                        socorro_row.url,
+                                        test_run.os_name,
+                                        test_run.os_version,
+                                        test_run.cpu_name,
+                                        test_run.build_cpu_name,
+                                        test_run.branch,
+                                        test_run.product
+                                        )
+
                             except Exception, e:
-                                print "%s saving SiteTestRun: %s, %s : %s : %s : %s : %s" % (
+                                print "%s saving SoccoroRecord: %s, %s : %s : %s : %s : %s" % (
                                     e,
                                     socorro_row.url,
-                                    test_run.os_name,
-                                    test_run.os_version,
-                                    test_run.cpu_name,
-                                    test_run.branch,
-                                    test_run.product
+                                    socorro_row.os_name,
+                                    socorro_row.os_version,
+                                    socorro_row.cpu_name,
+                                    socorro_row.branch,
+                                    socorro_row.product
                                     )
-
-                        except Exception, e:
-                            print "%s saving SoccoroRecord: %s, %s : %s : %s : %s : %s" % (
-                                e,
-                                socorro_row.url,
-                                socorro_row.os_name,
-                                socorro_row.os_version,
-                                socorro_row.cpu_name,
-                                socorro_row.branch,
-                                socorro_row.product
-                                )
 
 def main():
     global options

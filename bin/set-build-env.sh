@@ -37,10 +37,6 @@
 #
 # ***** END LICENSE BLOCK *****
 
-if [[ -z "$LIBRARYSH" ]]; then
-    source $TEST_DIR/bin/library.sh
-fi
-
 export MOZ_CVS_FLAGS="-z3 -q"
 export MOZILLA_OFFICIAL=1
 export BUILD_OFFICIAL=1
@@ -57,7 +53,7 @@ fi
 #
 # options processing
 #
-options="p:b:T:e:c:"
+options="p:b:T:e:c:X:"
 usage()
 {
     cat <<EOF
@@ -68,6 +64,7 @@ usage: set-build-env.sh -p product -b branch -T buildtype [-e extra]
 -b branch       one of supported branches. see library.sh
 -T buildtype    one of opt debug
 -e extra        extra qualifier to pick mozconfig and tree
+-X processortype processor type: intel32, intel64, amd32, amd64, ppc
 -c commands     quoted text string containing options commands to be
                 executed using the build environment's shell.
 EOF
@@ -99,8 +96,17 @@ for step in step1; do # dummy loop for handling exits
           T) buildtype=$OPTARG;;
           e) extra="-$OPTARG";;
           c) commands="$OPTARG";;
+          X) processortype="$OPTARG";;
       esac
     done
+
+    if [[ -n "$processortype" ]]; then
+        export TEST_PROCESSORTYPE="$processortype"
+    fi
+
+    if [[ -z "$LIBRARYSH" ]]; then
+        source $TEST_DIR/bin/library.sh
+    fi
 
     # include environment variables
     datafiles=$TEST_DIR/data/$product,$branch$extra,$buildtype.data
@@ -234,7 +240,14 @@ for step in step1; do # dummy loop for handling exits
             # msvc8 official, vc7.1, (2003), vc9 (2009) supported
             # for 1.9.0 and later
             if [[ -n "$VC8DIR" ]]; then
-                startbat=start-msvc8.bat
+                case "$TEST_PROCESSORTYPE" in
+                    *32)
+                        startbat=start-msvc8.bat
+                        ;;
+                    *64)
+                        startbat=start-msvc8-x64.bat
+                        ;;
+                esac
                 # set VCINSTALLDIR for use in detecting the MS CRT
                 # source when building jemalloc.
                 VCINSTALLDIR=$VC8DIR
@@ -243,16 +256,33 @@ for step in step1; do # dummy loop for handling exits
             elif [[ -n "$VC71DIR" ]]; then
                 startbat=start-msvc71.bat
             elif [[ -n "$VC9DIR" || -n "$VC9EXPRESSDIR" ]]; then
-                startbat=start-msvc9.bat
+                case "$TEST_PROCESSORTYPE" in
+                    *32)
+                        startbat=start-msvc9.bat
+                        ;;
+                    *64)
+                        startbat=start-msvc9-x64.bat
+                        ;;
+                esac
             elif [[ -n "$VC10DIR" ]]; then
-                startbat=start-msvc10.bat
+                case "$TEST_PROCESSORTYPE" in
+                    *32)
+                        startbat=start-msvc10.bat
+                        ;;
+                    *64)
+                        startbat=start-msvc10-x64.bat
+                        ;;
+                esac
             fi
 
             if [[ -z "$startbat" ]]; then
-                myexit 2
+                error "startbat is not defined"
             fi
 
             startbat="$mozillabuild/$startbat"
+            if [[ ! -e "$startbat" ]]; then
+                error "startbat $startbat does not exist"
+            fi
 
             # The start batch file changes directory and starts an msys bash shell
             # which will block its execution. Create a working copy without the
@@ -348,6 +378,9 @@ for step in step1; do # dummy loop for handling exits
         export MOZCONFIG=${MOZCONFIG:-"$TEST_DIR/mozconfig/$branch$extra/mozconfig-firefox-$OSID-$TEST_PROCESSORTYPE-$buildtype"}
     fi
 
+    if [[ ! -e "$MOZCONFIG" ]]; then
+        error "mozconfig $MOZCONFIG does not exist"
+    fi
     echo "mozconfig: $MOZCONFIG"
     cat $MOZCONFIG | sed 's/^/mozconfig: /'
 
@@ -419,7 +452,7 @@ for step in step1; do # dummy loop for handling exits
                     error "executing commands: $commands"
                 fi
                 ;;
-            esac
+        esac
     fi
 
 done

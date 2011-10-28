@@ -37,7 +37,6 @@
 #
 # ***** END LICENSE BLOCK *****
 
-source $TEST_DIR/bin/library.sh
 source $TEST_DIR/bin/set-build-env.sh $@
 
 case $product in

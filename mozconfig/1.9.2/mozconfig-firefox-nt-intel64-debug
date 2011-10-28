@@ -1,0 +1,34 @@
+export WANT_AUTOCONF=2.1
+
+#CPU=$NUMBER_OF_PROCESSORS
+CPU=0
+
+let J=$CPU+1
+if [[ $J -gt 4 ]]; then let J=4; fi
+
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/firefox-debug
+mk_add_options MOZ_MAKE_FLAGS=-j${J}
+mk_add_options MOZ_CO_PROJECT=browser
+
+ac_add_options --target=x86_64-pc-mingw32
+ac_add_options --host=x86_64-pc-mingw32
+ac_add_options --enable-application=browser
+ac_add_options --enable-debug
+ac_add_options --disable-optimize
+ac_add_options --disable-jemalloc
+# libxul required for packaging.
+ac_add_options --enable-libxul
+# do not strip symbols in packaged builds
+ac_add_options --disable-install-strip
+
+ac_add_options --enable-tests
+#ac_add_options --enable-logrefcnt
+
+ac_add_options --disable-installer
+ac_add_options --enable-official-branding
+
+# For NSS symbols
+export MOZ_DEBUG_SYMBOLS=1
+
+# Needed to enable breakpad in application.ini
+export MOZILLA_OFFICIAL=1

@@ -428,10 +428,11 @@ class CrashTestWorker(worker.Worker):
                     if (worker_row.hostname   != self.hostname and
                         worker_row.os_name    == self.os_name and
                         worker_row.cpu_name   == self.cpu_name and
+                        worker_row.build_cpu_name == self.build_cpu_name and
                         worker_row.os_version == self.os_version):
                         continue
 
-                    worker_os_cpu_key = worker_row.os_name + worker_row.cpu_name + worker_row.os_version
+                    worker_os_cpu_key = worker_row.os_name + worker_row.cpu_name + worker_row.build_cpu_name + worker_row.os_version
                     if worker_os_cpu_key in os_cpu_hash:
                         # we've already emitted a signature for this os/cpu.
                         continue
@@ -444,6 +445,13 @@ class CrashTestWorker(worker.Worker):
 
                         # PowerPC is not supported after Firefox 3.6
                         if branch_row.major_version > '0306' and worker_row.cpu_name == 'ppc':
+                            continue
+
+                        # 64 bit builds are not fully supported for 1.9.2 on Mac OS X 10.6
+                        if (branch_row.branch == "1.9.2" and
+                            worker_row.os_name == "Mac OS X" and
+                            worker_row.os_version == "10.6" and
+                            worker_row.build_cpu_name == "x86_64"):
                             continue
 
                         old_test_run = self.testrun_row
@@ -487,7 +495,7 @@ class CrashTestWorker(worker.Worker):
                             product           = self.product,
                             branch            = branch_row.branch,
                             buildtype         = branch_row.buildtype,
-                            build_cpu_name    = None,
+                            build_cpu_name    = worker_row.build_cpu_name,
                             worker            = None,
                             socorro           = new_socorro_row,
                             changeset         = None,
@@ -590,15 +598,16 @@ class CrashTestWorker(worker.Worker):
                         state__exact = "waiting",
                         os_name__exact = self.os_name,
                         os_version__exact = self.os_version,
-                        cpu_name__exact = self.build_cpu_name).order_by(
+                        cpu_name__exact = self.cpu_name,
+                        build_cpu_name__exact = self.build_cpu_name).order_by(
                         'state',
                         'os_name',
                         'os_version',
                         'cpu_name',
+                        'build_cpu_name',
                         'priority')[0])
                 sitetestrun_row.worker = self.worker_row
                 sitetestrun_row.state = 'executing'
-                sitetestrun_row.build_cpu_name = self.build_cpu_name
                 sitetestrun_row.save()
 
             except IndexError:
@@ -745,6 +754,11 @@ def main():
     parser.add_option('--debug', action='store_true',
                       dest='debug',
                       help='turn on debug messages')
+
+    parser.add_option('--processor-type', action='store', type='string',
+                       dest='processor_type',
+                       help='Override default processor type: intel32, intel64, amd32, amd64',
+                       default=None)
 
     try:
         (options, args) = parser.parse_args()

@@ -50,17 +50,21 @@ def buildProduct(db, product, branch, buildtype):
 
     db.logMessage('begin building %s %s %s' % (product, branch, buildtype))
 
-    proc = subprocess.Popen(
-        [
+    builder_command_list = [
             sisyphus_dir + "/bin/builder.sh",
             "-p", product,
             "-b", branch,
             "-T", buildtype,
             "-B", buildsteps
-            ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        close_fds=True)
+            ]
+
+    if self.cpu_name != self.build_cpu_name:
+        builder_command_list.extend(["-X", self.build_cpu_name])
+
+    proc = subprocess.Popen(builder_command_list,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            close_fds=True)
 
     stdout, stderr = proc.communicate()
 

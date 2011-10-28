@@ -37,8 +37,6 @@
 #
 # ***** END LICENSE BLOCK *****
 
-source $TEST_DIR/bin/library.sh
-
 #
 # options processing
 #
@@ -77,6 +75,8 @@ do
         d) datafiles=$OPTARG;;
     esac
 done
+
+source $TEST_DIR/bin/library.sh
 
 # include environment variables
 loaddata $datafiles

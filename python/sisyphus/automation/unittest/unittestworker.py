@@ -660,6 +660,11 @@ Example:
                       default=False,
                       help='turn on debug messages')
 
+    parser.add_option('--processor-type', action='store', type='string',
+                       dest='processor_type',
+                       help='Override default processor type: intel32, intel64, amd32, amd64',
+                       default=None)
+
     (options, args) = parser.parse_args()
 
     if options.debugger_args and not options.debugger:

@@ -37,14 +37,10 @@
 #
 # ***** END LICENSE BLOCK *****
 
-source $TEST_DIR/bin/library.sh
-
-TEST_LOG=/dev/null
-
 #
 # options processing
 #
-options="p:b:B:T:e:d:v"
+options="p:b:B:T:e:d:X:v"
 function usage()
 {
     cat<<EOF
@@ -82,8 +78,17 @@ while getopts $options optname ;
           extraflag="-e $OPTARG";;
       d) datafiles=$OPTARG;;
       v) verbose=1;;
+      X) processortype="$OPTARG";;
   esac
 done
+
+if [[ -n "$processortype" ]]; then
+    export TEST_PROCESSORTYPE="$processortype"
+fi
+
+source $TEST_DIR/bin/library.sh
+
+TEST_LOG=/dev/null
 
 # include environment variables
 loaddata $datafiles

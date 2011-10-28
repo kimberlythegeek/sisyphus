@@ -37,14 +37,10 @@
 #
 # ***** END LICENSE BLOCK *****
 
-source $TEST_DIR/bin/library.sh
-
-TEST_LOG=/dev/null
-
 #
 # options processing
 #
-options="p:b:e:T:t:v"
+options="p:b:e:T:t:X:v"
 function usage()
 {
     cat<<EOF
@@ -54,6 +50,7 @@ $SCRIPT -t testscript [-v ] datalist1 [datalist2 [datalist3 [datalist4]]]
 variable            description
 ===============     ===========================================================
 -t testscript       required. quoted test script with required arguments.
+-X processortype    processor type: intel32, intel64, amd32, amd64, ppc
 -v                  optional. verbose - copies log file output to stdout.
 
 executes the testscript using the input data files in 
@@ -84,6 +81,8 @@ while getopts $options optname ;
       v) verbose=1
           let shiftargs=$shiftargs+1
           ;;
+      X) processortype="$OPTARG";;
+
   esac
 done
 
@@ -92,6 +91,10 @@ if [[ -z "$testscript" ]]; then
 fi
 
 shift $shiftargs
+
+source $TEST_DIR/bin/library.sh
+
+TEST_LOG=/dev/null
 
 datalist=`combo.sh "$@"`
 

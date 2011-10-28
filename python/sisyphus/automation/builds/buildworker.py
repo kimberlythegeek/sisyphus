@@ -144,13 +144,21 @@ def main():
     usage = '''usage: %prog [options]'''
 
     parser = OptionParser(usage=usage)
+
     parser.add_option('--nodebug', action='store_false',
                       dest='debug',
                       default=False,
                       help='default - no debug messages')
+
     parser.add_option('--debug', action='store_true',
                       dest='debug',
                       help='turn on debug messages')
+
+    parser.add_option('--processor-type', action='store', type='string',
+                       dest='processor_type',
+                       help='Override default processor type: intel32, intel64, amd32, amd64',
+                       default=None)
+
     (options, args) = parser.parse_args()
 
     exception_counter = 0

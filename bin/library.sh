@@ -107,6 +107,11 @@ error()
     exit 2
 }
 
+# convert a.b.c to 100*a + 10*b + c for numeric comparisons.
+tonumber() (IFS='. ';let v=0; m=100;digits="$1";for d in $digits; do let v=v+d*m; let m=m/10; done; echo $v)
+# compare two numbers
+lessthan() (if [[ `tonumber $1` -lt `tonumber $2` ]]; then return 0; else return 1; fi )
+
 
 if [[ -z "$LIBRARYSH" ]]; then
     # skip remainder of script if it has already included
@@ -399,53 +404,99 @@ if [[ -z "$LIBRARYSH" ]]; then
         OSID=linux
         EXE_EXT=
         TEST_KERNEL=`uname -r | sed 's|\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\).*|\1.\2.\3|'`
-        TEST_PROCESSORTYPE=`cat /proc/cpuinfo | grep vendor | uniq | sed 's|vendor.* : \(.*\)|\1|'`
         TIMECOMMAND='/usr/bin/time -f "Elapsed time %e seconds, User %U seconds, System %S seconds, CPU %P, Memory: %M"'
 
-        if echo $TEST_PROCESSORTYPE | grep -q 'Intel'; then
-            TEST_PROCESSORTYPE=intel
-        elif echo $TEST_PROCESSORTYPE | grep -q 'AMD'; then
-            TEST_PROCESSORTYPE=amd
-        fi
-
-        if uname -p | grep -q '64$'; then
-            TEST_PROCESSORTYPE=${TEST_PROCESSORTYPE}64
+        if [[ -n "$TEST_PROCESSORTYPE" ]]; then
+            # Allow processor type to be overridden by environment variable.
+            # intel32, intel64, amd32, amd64
+            case "$TEST_PROCESSORTYPE" in
+                intel32|intel64|amd32|amd64)
+                    ;;
+                *)
+                    error "Unsupported processor type $TEST_PROCESSORTYPE"
+                    ;;
+            esac
         else
-            TEST_PROCESSORTYPE=${TEST_PROCESSORTYPE}32
-        fi
+            TEST_PROCESSORTYPE=`cat /proc/cpuinfo | grep vendor | uniq | sed 's|vendor.* : \(.*\)|\1|'`
+            if echo $TEST_PROCESSORTYPE | grep -q 'Intel'; then
+                TEST_PROCESSORTYPE=intel
+            elif echo $TEST_PROCESSORTYPE | grep -q 'AMD'; then
+                TEST_PROCESSORTYPE=amd
+            else
+                error "Unsupported processor type $TEST_PROCESSORTYPE"
+            fi
 
+            if uname -p | grep -q '64$'; then
+                TEST_PROCESSORTYPE=${TEST_PROCESSORTYPE}64
+            else
+                TEST_PROCESSORTYPE=${TEST_PROCESSORTYPE}32
+            fi
+        fi
     elif [[ $kernel_name == 'Darwin' ]]; then
         OSID=darwin
         EXE_EXT=
         TEST_KERNEL=`uname -r`
-        TEST_PROCESSORTYPE=`uname -p`
         TIMEFORMAT="Elapsed time %E seconds, User %U seconds, System %S seconds, CPU %P%"
         TIMECOMMAND=time
 
-        if [[ $TEST_PROCESSORTYPE == "i386" ]]; then
-            TEST_PROCESSORTYPE=intel
-        fi
+        if [[ -n "$TEST_PROCESSORTYPE" ]]; then
+            # Allow processor type to be overridden by environment variable.
+            # intel32, intel64
+            case "$TEST_PROCESSORTYPE" in
+                intel32|intel64)
+                    ;;
+                *)
+                    error "Unsupported processor type $TEST_PROCESSORTYPE"
+                    ;;
+            esac
+        else
+            TEST_PROCESSORTYPE=`uname -p`
+            if [[ $TEST_PROCESSORTYPE == "i386" ]]; then
+                TEST_PROCESSORTYPE=intel
+            else
+                error "Unsupported processor type $TEST_PROCESSORTYPE"
+            fi
 
-        # assume 32bit for now...
-        TEST_PROCESSORTYPE=${TEST_PROCESSORTYPE}32
+            if lessthan $TEST_KERNEL 9.8.0; then
+                error "Unsupported kernel $TEST_KERNEL"
+            elif lessthan $TEST_KERNEL 10.8.0; then
+                # Mac OS X 10.5 (9.8.0) only supports 32 bit builds
+                TEST_PROCESSORTYPE=${TEST_PROCESSORTYPE}32
+            else
+                # Default Mac OS X 10.6 and later to 64 bit builds
+                TEST_PROCESSORTYPE=${TEST_PROCESSORTYPE}64
+            fi
+        fi
 
     elif echo $kernel_name | grep -q CYGWIN; then
         OSID=nt
         EXE_EXT=".exe"
         TEST_KERNEL=`echo $kernel_name | sed 's|[^.0-9]*\([.0-9]*\).*|\1|'`
-        TEST_PROCESSORTYPE=`cat /proc/cpuinfo | grep vendor | uniq | sed 's|vendor.* : \(.*\)|\1|'`
         TIMECOMMAND='/usr/bin/time -f "Elapsed time %e seconds, User %U seconds, System %S seconds, CPU %P, Memory: %M"'
 
-        if echo $TEST_PROCESSORTYPE | grep -q 'Intel'; then
-            TEST_PROCESSORTYPE=intel
-        elif echo $TEST_PROCESSORTYPE | grep -q 'AMD'; then
-            TEST_PROCESSORTYPE=amd
-        fi
-
-        if uname -p | grep -q '64$'; then
-            TEST_PROCESSORTYPE=${TEST_PROCESSORTYPE}64
+        if [[ -n "$TEST_PROCESSORTYPE" ]]; then
+            # Allow processor type to be overridden by environment variable.
+            # intel32, intel64, amd32, amd64
+            case "$TEST_PROCESSORTYPE" in
+                intel32|intel64|amd32|amd64)
+                    ;;
+                *)
+                    error "Unsupported processor type $TEST_PROCESSORTYPE"
+                    ;;
+            esac
         else
-            TEST_PROCESSORTYPE=${TEST_PROCESSORTYPE}32
+            TEST_PROCESSORTYPE=`cat /proc/cpuinfo | grep vendor | uniq | sed 's|vendor.* : \(.*\)|\1|'`
+            if echo $TEST_PROCESSORTYPE | grep -q 'Intel'; then
+                TEST_PROCESSORTYPE=intel
+            elif echo $TEST_PROCESSORTYPE | grep -q 'AMD'; then
+                TEST_PROCESSORTYPE=amd
+            fi
+
+            if uname | grep -q '64$'; then
+                TEST_PROCESSORTYPE=${TEST_PROCESSORTYPE}64
+            else
+                TEST_PROCESSORTYPE=${TEST_PROCESSORTYPE}32
+            fi
         fi
 
     else

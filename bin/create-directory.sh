@@ -37,8 +37,6 @@
 #
 # ***** END LICENSE BLOCK *****
 
-source $TEST_DIR/bin/library.sh
-
 #
 # options processing
 #
@@ -87,6 +85,8 @@ if [[ -z $directory ]]
     then
     usage
 fi
+
+source $TEST_DIR/bin/library.sh
 
 if [[ `whoami` == "root" ]]; then
     error "can not be run as root" $LINENO
