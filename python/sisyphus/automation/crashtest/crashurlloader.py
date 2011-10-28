@@ -40,6 +40,8 @@ import os
 import sys
 import re
 import urlparse
+import datetime
+import time
 
 sisyphus_dir     = os.environ["TEST_DIR"]
 tempdir          = os.path.join(sisyphus_dir, 'python')
@@ -58,7 +60,7 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
 
 from django.db import connection
 
-import sisyphus.automation.utils
+from sisyphus.automation import utils
 import sisyphus.webapp.settings
 from sisyphus.webapp.bughunter import models
 
@@ -83,11 +85,6 @@ def main():
                       default=None,
                       help='set the signature document\'s signature' +
                       'property to allow tracking of this set of urls.')
-
-    parser.add_option('--skip-duplicate-urls', action='store_true',
-                      dest='skipduplicateurls',
-                      default=False,
-                      help='Skip duplicate urls.')
 
     (options, args) = parser.parse_args()
 
@@ -119,7 +116,7 @@ def main():
         exit(1)
 
     for worker_row in matching_worker_rows:
-        if worker_row.state == 'disabled' or worker_row.state == 'zombie':
+        if worker_row.state == 'disabled':
             continue
 
         os_name    = worker_row.os_name
@@ -141,127 +138,166 @@ def main():
 
     rePrivateNetworks = re.compile(r'https?://(localhost|127\.0\.0\.1|192\.168\.[0-9]+\.[0-9]+|172\.16\.[0-9]+\.[0-9]+|10\.[0-9]+\.[0-9]+\.[0-9]+)')
 
+    starttime = datetime.datetime.now()
+    url_counter = 0
+    nonhttp_counter = 0
+    private_counter = 0
+    badurl_counter = 0
+    skip_counter = 0
+    unsupported_counter = 0
+    socorro_counter = 0
+    testrun_counter = 0
+    locktimeout = 300
+    waittime = 30
+    locktime = datetime.timedelta(seconds=30)
+
+    # lock the table to prevent contention with running workers.
+    while not utils.getLock('sisyphus.bughunter.sitetestrun', locktimeout):
+        continue
+    lasttime = datetime.datetime.now()
+
     urlsfilehandle = open(options.urlsfile, 'r')
-    for url in urlsfilehandle:
-        url = url.rstrip('\n')
-        if url.find('http') != 0:
-            continue # skip non-http urls
+    try:
+        for url in urlsfilehandle:
 
-        match = rePrivateNetworks.match(url)
-        if match:
-            continue # skip private networks
+            url_counter += 1
 
-        try:
-            url = sisyphus.automation.utils.encodeUrl(url)
-        except Exception, e:
-            exceptionType, exceptionValue, errorMessage = sisyphus.automation.utils.formatException()
-            print '%s, %s: url: %s' % (exceptionValue, errorMessage, url)
-            continue
+            # temporarily unlock the table to allow workers processing time.
+            if datetime.datetime.now() - lasttime > locktime:
+                utils.releaseLock('sisyphus.bughunter.sitetestrun')
+                time.sleep(waittime)
+                while not utils.getLock('sisyphus.bughunter.sitetestrun', locktimeout):
+                    continue
+                lasttime = datetime.datetime.now()
 
-        for skipurl in skipurls:
-            if re.search(skipurl, url):
+            url = url.rstrip('\n')
+            if url.find('http') != 0:
+                nonhttp_counter += 1
+                continue # skip non-http urls
+
+            match = rePrivateNetworks.match(url)
+            if match:
+                private_counter += 1
+                continue # skip private networks
+
+            try:
+                url = utils.encodeUrl(url)
+            except Exception, e:
+                exceptionType, exceptionValue, errorMessage = utils.formatException()
+                print '%s, %s: url: %s' % (exceptionValue, errorMessage, url)
+                badurl_counter += 1
                 continue
 
-        for branch_row in branches_rows:
-            product       = branch_row.product
-            branch        = branch_row.branch
-            major_version = branch_row.major_version
-            buildtype     = branch_row.buildtype
+            for skipurl in skipurls:
+                if re.search(skipurl, url):
+                    skip_counter += 1
+                    continue
 
-            for os_name in operating_systems:
-                for os_version in operating_systems[os_name]:
-                    for cpu_name in operating_systems[os_name][os_version]:
+            for branch_row in branches_rows:
+                product       = branch_row.product
+                branch        = branch_row.branch
+                major_version = branch_row.major_version
+                buildtype     = branch_row.buildtype
 
-                        # PowerPC is not supported after Firefox 3.6
-                        if major_version > '0306' and cpu_name == 'ppc':
-                            continue
+                for os_name in operating_systems:
+                    for os_version in operating_systems[os_name]:
+                        for cpu_name in operating_systems[os_name][os_version]:
 
-                        for build_cpu_name in operating_systems[os_name][os_version][cpu_name]:
-                            # 64 bit builds are not fully supported for
-                            # 1.9.2 on Mac OS X 10.6
-
-                            if (branch == "1.9.2" and
-                                os_name == "Mac OS X" and
-                                os_version == "10.6" and
-                                build_cpu_name == "x86_64"):
+                            # PowerPC is not supported after Firefox 3.6
+                            if major_version > '0306' and cpu_name == 'ppc':
+                                unsupported_counter += 1
                                 continue
 
-                            if options.skipduplicateurls:
-                                cursor = connection.cursor()
-                                if cursor.execute("SELECT SocorroRecord.url FROM SocorroRecord, SiteTestRun WHERE " +
-                                                  "SiteTestRun.socorro_id = SocorroRecord.id AND " +
-                                                  "SocorroRecord.url = %s AND " +
-                                                  "SiteTestRun.os_name = %s AND " +
-                                                  "SiteTestRun.os_version = %s AND " +
-                                                  "SiteTestRun.cpu_name = %s AND " +
-                                                  "SiteTestRun.branch = %s AND " +
-                                                  "SiteTestRun.state = 'waiting'" +
-                                                  "limit 1",
-                                    [url, os_name, os_version, cpu_name, branch]):
+                            for build_cpu_name in operating_systems[os_name][os_version][cpu_name]:
+                                # 64 bit builds are not fully supported for
+                                # 1.9.2 on Mac OS X 10.6
+
+                                if (branch == "1.9.2" and
+                                    os_name == "Mac OS X" and
+                                    os_version == "10.6" and
+                                    build_cpu_name == "x86_64"):
+                                    unsupported_counter += 1
                                     continue
 
-
-                            socorro_row = models.SocorroRecord(
-                                signature           = options.signature,
-                                url                 = url,
-                                uuid                = '',
-                                client_crash_date   = '',
-                                date_processed      = '',
-                                last_crash          = None,
-                                product             = branch_row.product,
-                                version             = '',
-                                build               = '',
-                                branch              = branch_row.branch,
-                                os_name             = os_name,
-                                os_full_version     = os_version,
-                                os_version          = os_version,
-                                cpu_info            = cpu_name,
-                                cpu_name            = cpu_name,
-                                address             = '',
-                                bug_list            = '',
-                                user_comments       = '',
-                                uptime_seconds      = None,
-                                adu_count           = None,
-                                topmost_filenames   = '',
-                                addons_checked      = '',
-                                flash_version       = '',
-                                hangid              = '',
-                                reason              = '',
-                                process_type        = '',
-                                app_notes           = '',
-                                )
-
-                            try:
-                                socorro_row.save()
-                                test_run = models.SiteTestRun(
-                                    os_name           = os_name,
-                                    os_version        = os_version,
-                                    cpu_name          = cpu_name,
-                                    product           = product,
-                                    branch            = branch,
-                                    buildtype         = buildtype,
-                                    build_cpu_name    = build_cpu_name,
-                                    worker            = None,
-                                    socorro           = socorro_row,
-                                    changeset         = None,
-                                    datetime          = sisyphus.automation.utils.getTimestamp(),
-                                    major_version     = major_version,
-                                    bug_list          = None,
-                                    crashed           = False,
-                                    extra_test_args   = None,
-                                    steps             = '',
-                                    fatal_message     = None,
-                                    exitstatus        = None,
-                                    log               = None,
-                                    priority          = '1',
-                                    state             = 'waiting',
+                                socorro_row = models.SocorroRecord(
+                                    signature           = options.signature,
+                                    url                 = url,
+                                    uuid                = '',
+                                    client_crash_date   = '',
+                                    date_processed      = '',
+                                    last_crash          = None,
+                                    product             = branch_row.product,
+                                    version             = '',
+                                    build               = '',
+                                    branch              = branch_row.branch,
+                                    os_name             = os_name,
+                                    os_full_version     = os_version,
+                                    os_version          = os_version,
+                                    cpu_info            = cpu_name,
+                                    cpu_name            = cpu_name,
+                                    address             = '',
+                                    bug_list            = '',
+                                    user_comments       = '',
+                                    uptime_seconds      = None,
+                                    adu_count           = None,
+                                    topmost_filenames   = '',
+                                    addons_checked      = '',
+                                    flash_version       = '',
+                                    hangid              = '',
+                                    reason              = '',
+                                    process_type        = '',
+                                    app_notes           = '',
                                     )
 
-                                test_run.save()
-                            except Exception, e:
-                                print "Exception: %s, url: %s" % (e, url)
-                                pass
-
+                                try:
+                                    socorro_row.save()
+                                    socorro_counter += 1
+                                    test_run = models.SiteTestRun(
+                                        os_name           = os_name,
+                                        os_version        = os_version,
+                                        cpu_name          = cpu_name,
+                                        product           = product,
+                                        branch            = branch,
+                                        buildtype         = buildtype,
+                                        build_cpu_name    = build_cpu_name,
+                                        worker            = None,
+                                        socorro           = socorro_row,
+                                        changeset         = None,
+                                        datetime          = utils.getTimestamp(),
+                                        major_version     = major_version,
+                                        bug_list          = None,
+                                        crashed           = False,
+                                        extra_test_args   = None,
+                                        steps             = '',
+                                        fatal_message     = None,
+                                        exitstatus        = None,
+                                        log               = None,
+                                        priority          = '1',
+                                        state             = 'waiting',
+                                        )
+                                    test_run.save()
+                                    testrun_counter += 1
+                                except Exception, e:
+                                    print "Exception: %s, url: %s" % (e, url)
+    finally:
+        try:
+            lockDuration = utils.releaseLock('sisyphus.bughunter.sitetestrun')
+            print(("loaded %d urls; eliminated %d unsupported records, %d non http urls, " +
+                   "%d private urls, %d bad urls, %d skipped urls; uploaded %d socorro records, " +
+                   "%d testruns in %s") %
+                  ( url_counter,
+                    unsupported_counter,
+                    nonhttp_counter,
+                    private_counter,
+                    badurl_counter,
+                    skip_counter,
+                    socorro_counter,
+                    testrun_counter,
+                    datetime.datetime.now() - starttime
+                    ))
+        except:
+            exceptionType, exceptionValue, errorMessage = utils.formatException()
+            print '%s, %s' % (exceptionValue, errorMessage)
 
     urlsfilehandle.close()
 
