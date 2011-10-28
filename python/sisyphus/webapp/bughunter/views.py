@@ -178,11 +178,15 @@ def all_workers_log_api(request, start, end):
 @csrf_exempt
 def post_files(request):
 
-    if request.method != 'POST':
-        # http://docs.djangoproject.com/en/1.2/ref/request-response/#django.http.HttpResponseNotAllowed
-        return HttpResponseNotAllowed(['POST'])
-
     try:
+        if request.method != 'POST':
+            # http://docs.djangoproject.com/en/1.2/ref/request-response/#django.http.HttpResponseNotAllowed
+            return HttpResponseNotAllowed(['POST'])
+
+        logprefix = ("%s %s:" % (
+                datetime.datetime.now().isoformat(),
+                request.META["REMOTE_ADDR"]))
+
         # pass Model name, primary key, path, and a set of files via POST and save them
         # in the media/<path>/ directory. Each "file" field in the row contains
         # a full path to the uploaded file if it exists.
@@ -215,17 +219,19 @@ def post_files(request):
                 else:
                     dest_dir = os.path.join(settings.MEDIA_ROOT, dest_path)
                     if not os.path.exists(dest_dir):
-                        viewslog = open('/tmp/views.log', 'ab+')
-                        viewslog.write("creating %s\n" % dest_dir)
-                        os.mkdir(dest_dir)
-                        viewslog.write("created %s\n" % dest_dir)
-                        viewslog.close()
+                        try:
+                            os.mkdir(dest_dir)
+                        except Exception, e:
+                            exceptionType, exceptionValue, errorMessage  = utils.formatException()
+                            viewslog = open('/tmp/views.log', 'ab+')
+                            viewslog.write("%s Exception: %s creating %s\n" % (logprefix, errorMessage, dest_dir))
+                            viewslog.close()
         if not request.FILES:
             error_list.append('Missing file content')
 
         if error_list:
             viewslog = open('/tmp/views.log', 'ab+')
-            viewslog.write('Bad Request: %s.\n' % ','.join(error_list))
+            viewslog.write('%s Bad Request: %s.\n' % (logprefix, ','.join(error_list)))
             viewslog.close()
             return HttpResponseBadRequest('Bad Request: %s.' % ','.join(error_list))
 
@@ -238,27 +244,24 @@ def post_files(request):
 
         rfile = re.compile(r'^[\w,.-]*$')
 
-        viewslog = open('/tmp/views.log', 'ab+')
         for fieldname, uploadedfile in request.FILES.items():
 
             filename    = uploadedfile.name
-            viewslog.write("%s: fieldname: %s, filename: %s\n" % (datetime.datetime.now().isoformat(), fieldname, filename))
 
             if not rfile.match(filename):
+                viewslog = open('/tmp/views.log', 'ab+')
+                viewslog.write("%s bad filename: %s\n" % (logprefix, filename))
+                viewslog.close()
                 return HttpResponseBadRequest('Bad Request: filename %s' % filename)
 
             oldfilepath = eval('row.' + fieldname)
-            viewslog.write("%s: oldfilepath: %s\n" % (datetime.datetime.now().isoformat(), oldfilepath))
             newfilepath = os.path.join(dest_dir, filename).encode('utf-8')
-            viewslog.write("%s: newfilepath: %s\n" % (datetime.datetime.now().isoformat(), newfilepath))
 
             if oldfilepath:
                 # If the current field value points to an existing file, unlink it.
                 # We must do this prior to writing the new file since the old and
                 # new may have the same file names.
-                viewslog.write("%s: checking oldfilepath: %s\n" % (datetime.datetime.now().isoformat(), oldfilepath))
                 if os.path.exists(oldfilepath):
-                    viewslog.write("%s: unlinking oldfilepath: %s\n" % (datetime.datetime.now().isoformat(), oldfilepath))
                     os.unlink(oldfilepath)
 
             row.__setattr__(fieldname, newfilepath)
@@ -270,14 +273,13 @@ def post_files(request):
 
             output.close()
 
-        viewslog.close()
         row.save()
         response = HttpResponseRedirect('/bughunter/media/')
 
     except:
         exceptionType, exceptionValue, errorMessage  = utils.formatException()
         viewslog = open('/tmp/views.log', 'wb+')
-        viewslog.write("%s: %s" % (datetime.datetime.now().isoformat(), errorMessage))
+        viewslog.write("%s Exception: %s" % (logprefix, errorMessage))
         viewslog.close()
         response = HttpResponseServerError("ERROR: %s" % errorMessage)
 
