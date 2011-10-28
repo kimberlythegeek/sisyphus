@@ -413,7 +413,10 @@ class CrashTestWorker(worker.Worker):
             # was not a priority 0 or priority 1 (user submitted).
 
             try:
-                worker_rows   = models.Worker.objects.filter(worker_type__exact = self.worker_type)
+                worker_rows   = (models.Worker.objects.
+                                 filter(worker_type__exact = self.worker_type).
+                                 exclude(state__exact = 'disabled').
+                                 exclude(state__exact = 'dead'))
                 branches_rows = models.Branch.objects.all()
 
                 # record each worker's os, and cpu information in a hash
