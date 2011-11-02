@@ -276,10 +276,8 @@ var BHViewAdapter = new Class({
                if(mediaFound){
                   for(var m in this.mediaColumns){
                      if(dataObject[i][m] != undefined){
-                        var mediaHref = "http://qp-bughunter/bughunter/media" + dataObject[i][m].replace(/^.*media/, '');
-                        dataObject[i][m] = '<a target="_blank" href="' + mediaHref +
-                                           '">' + mediaHref + 
-                                           '</>';
+                        var mediaHref = "/bughunter/media" + dataObject[i][m].replace(/^.*media/, '').replace(/\.gz$/, '');
+                        dataObject[i][m] = '<a target="_blank" href="' + mediaHref + '">view</a>';
                      }
                   }
                }
