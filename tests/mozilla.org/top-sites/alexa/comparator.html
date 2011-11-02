@@ -1,0 +1,115 @@
+<html>
+<head>
+<script type="text/javascript">
+  ;
+var scriptname;
+var scriptnumber;
+var scriptnumber_prev;
+var scriptnumber_next;
+
+var qs = document.location.search;
+var captures = /\?(.*)-([0-9]+)\.js/.exec(qs);
+
+if (captures) {
+  scriptname = captures[1];
+  scriptnumber = captures[2];
+  document.write('<script src="' +
+                 scriptname + '-' + scriptnumber +
+                 '.js"><\/script>');
+  scriptnumber = parseInt(scriptnumber, 10);
+  scriptnumber_prev = (scriptnumber > 0 ? scriptnumber - 1 : 0) + '';
+  scriptnumber_next = (scriptnumber + 1) + '';
+}
+</script>
+<script type="text/javascript">
+  var comparison;
+
+document.write(
+  '<div>' + 
+  '<a href="' +
+  document.location.pathname + '?' + scriptname + '-' + scriptnumber_prev + '.js">prev</a> ' +
+  '<a href="' +
+  document.location.pathname + '?' + scriptname + '-' + scriptnumber_next + '.js">next</a> ' +
+  '</div>'
+);
+for (var idata = 0; idata < comparisons.length; idata++) {
+  var data =  comparisons[idata];
+  var completed = true;
+  for each (var useragent in ['firefox_09', 'firefox_10']) {
+    for each (var run in ['run1', 'run2']) {
+      if (data[useragent][run].state != 'loaded') {
+        completed = false;
+      }
+    }
+  }
+  if (!completed) {
+    document.write('<h2><a href=\'' + data.url + '\'>' + data.url + '</a> not completed</h2>');
+    document.write('<table>');
+    for each (var useragent in ['firefox_09', 'firefox_10']) {
+      for each (var run in ['run1', 'run2']) {
+        document.write('<tr><td>' + useragent + '</td><td>' + run + '</td><td>' + data[useragent][run].state + '</td></tr>');
+      }
+    }
+    document.write('</table>');
+  }
+  else {
+    if (!data.comparison.images_differ) {
+      document.write('<h2><a href=\'' + data.url + '\'>' + data.url + '</a> Firefox 9 and 10 images identical</h2>');
+    }
+    else {
+      document.write('<h2><a href=\'' + data.url + '\'</a>' + data.url + '</a> Firefox 9 and 10 images different.</h2>');
+      document.write('<table border="1">');
+      for each (var useragent in ['firefox_09', 'firefox_10']) {
+        for each (var run in ['run1', 'run2']) {
+          document.write(
+            '<tr>' +
+              '<td>' + useragent + ' ' + run + '</td>' +
+              '<td><img src=\'' + data[useragent][run].image_url + '\'></td>' +
+              '</tr>'
+          );
+        }
+        if (!data[useragent].images_differ) {
+        document.write(
+          '<tr>' +
+            '<td>' + useragent + ' run1 vs. run2  difference</td>' +
+            '<td>images identical</td>' +
+            '</tr>'
+        );
+        }
+        else {
+        document.write(
+          '<tr>' +
+            '<td>' + useragent + ' run1 vs. run2  difference</td>' +
+            '<td><img src=\'' + data[useragent].image_diff_url  + '\'></td>' +
+            '</tr>'
+        );
+        }
+      }
+      document.write(
+        '<tr>' +
+          '<td>Firefox 9 to Firefox 10 difference</td>' +
+          '<td>' +
+          '<img src=\'' + data.comparison.image_diff_url  + '\'>' +
+          '</td>' +
+          '</tr>'
+      );
+      document.write('</table>');
+    }
+  }
+  data = comparisons[idata] = null;
+}
+
+document.write(
+  '<div>' + 
+  '<a href="' +
+  document.location.pathname + '?' + scriptname + '-' + scriptnumber_prev + '.js">prev</a> ' +
+  '<a href="' +
+  document.location.pathname + '?' + scriptname + '-' + scriptnumber_next + '.js">next</a> ' +
+  '</div>'
+);
+
+</script>
+</head>
+<body>
+</body>
+</html>
