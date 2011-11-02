@@ -20,7 +20,11 @@ SISYPHUS_URL               = os.environ["SISYPHUS_URL"]
 ROOT = os.path.dirname(os.path.abspath(__file__))
 path = lambda *a: os.path.join(ROOT, *a)
 
-DEBUG = False
+try:
+    DEBUG = os.environ["SISYPHUS_DEBUG"] is not None
+except KeyError:
+    DEBUG = False
+
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (

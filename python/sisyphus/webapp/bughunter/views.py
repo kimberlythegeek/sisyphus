@@ -28,11 +28,12 @@ from sisyphus.automation import utils
 APP_JS = 'application/json'
 
 #######
-#Uncomment the following lines to redirect stdout to a log file for debugging
+#Enable DEBUG to redirect stdout to a log file for debugging
 ######
-#saveout = sys.stdout
-#log_out = open('/var/log/django/sisyphus.error.log', 'w')
-#sys.stdout = log_out
+if settings.DEBUG:
+    saveout = sys.stdout
+    log_out = open('/var/log/django/sisyphus.error.log', 'w')
+    sys.stdout = log_out
 
 def doParseDate(datestring):
     """Given a date string, try to parse it as an ISO 8601 date.
@@ -567,7 +568,7 @@ def get_bhview(request, **kwargs):
       ####
       # Uncomment this line to see fully assembled
       # SQL in the server log.  Useful for debugging.
-      #exec_args['debug_show'] = True
+      exec_args['debug_show'] = settings.DEBUG
       json = settings.DHUB.execute(**exec_args)
    
    return HttpResponse(json, mimetype=APP_JS)
@@ -591,7 +592,7 @@ def _get_new_crashes(proc_path, proc_name, full_proc_path, placeholders, replace
 
    json = settings.DHUB.execute(proc=full_proc_path,
                                 replace=[ rep0 ],
-                                #debug_show=True,
+                                debug_show=settings.DEBUG,
                                 return_type='tuple_json')
 
    return json
@@ -621,7 +622,7 @@ def _get_site_test_crash(proc_path, proc_name, full_proc_path, placeholders, rep
 
    json = settings.DHUB.execute(proc=full_proc_path,
                                 replace=[ rep0 ],
-                                #debug_show=True,
+                                debug_show=settings.DEBUG,
                                 return_type='tuple_json')
 
    return json
@@ -648,7 +649,7 @@ def _get_socorro_record(proc_path, proc_name, full_proc_path, placeholders, repl
 
    json = settings.DHUB.execute(proc=full_proc_path,
                                 replace=[ rep0 ],
-                                #debug_show=True,
+                                debug_show=settings.DEBUG,
                                 return_type='tuple_json')
 
    return json
@@ -670,7 +671,7 @@ def _get_crash_detail(proc_path, proc_name, full_proc_path, placeholders, replac
 
    json = settings.DHUB.execute(proc=full_proc_path,
                                 replace=[ date_only, rep_dict['full_where'] ],
-                                #debug_show=True,
+                                debug_show=settings.DEBUG,
                                 return_type='tuple_json')
 
    return json
@@ -697,7 +698,7 @@ def _get_crashes(proc_path, proc_name, full_proc_path, placeholders, replacement
    rep0 = rp.sub('', rep0, count=1)
 
    json = settings.DHUB.execute(proc=full_proc_path,
-                                #debug_show=True,
+                                debug_show=settings.DEBUG,
                                 replace=[ rep0 ],
                                 return_type='tuple_json')
 
@@ -724,7 +725,7 @@ def _get_urls(proc_path, proc_name, full_proc_path, placeholders, replacements, 
    rep0 = rp.sub('', rep0, count=1)
 
    json = settings.DHUB.execute(proc=full_proc_path,
-                                #debug_show=True,
+                                debug_show=settings.DEBUG,
                                 replace=[ rep0 ],
                                 return_type='tuple_json')
 
@@ -753,7 +754,7 @@ def _get_fmurls(proc_path, proc_name, full_proc_path, placeholders, replacements
    #Run the select on the temporary table
    ####
    json = settings.DHUB.execute(proc="%s%s" % (proc_path, 'urls_fm'),
-                                #debug_show=True,
+                                debug_show=settings.DEBUG,
                                 replace=[rep0],
                                 return_type='tuple_json')
 
