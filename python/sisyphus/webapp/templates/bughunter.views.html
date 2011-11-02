@@ -1,0 +1,208 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!--<html xmlns="http://www.w3.org/1999/xhtml">-->
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>Bughunter</title>
+
+    <link rel="stylesheet" href="/css/Aristo/jquery-ui-1.8.7.custom.css" type="text/css"/>
+    <link rel="stylesheet" href="/css/datatables.css" type="text/css"/>
+    <link rel="stylesheet" href="/css/fg.menu.css" type="text/css"/>
+    <link rel="stylesheet" href="/css/bughunter.css" type="text/css"/>
+
+    <script src="/scripts/jquery-1.6.3.min.js"></script>
+    <script src="/scripts/jquery-ui-1.8.13.custom.min.js"></script>
+    <script src="/scripts/jquery.url.js"></script>
+    <script src="/scripts/underscore-min.js"></script>
+
+    <!-- Gives core mootools class functionality to jQuery -->
+    <script src="/scripts/mootools-core-1.4.0.js"></script>
+    <script src="/scripts/moo4q/Source/Class.Mutators.jQuery.js"></script>
+
+    <!--<script src="/media/js/datatables/jquery.dataTables.min.js"></script>-->
+    <script src="/scripts/datatables/jquery.dataTables.js"></script>
+    <script src="/scripts/datatables/ColVis.js"></script>
+
+    <link rel="stylesheet" href="/css/ColVisAlt.css" type="text/css"/>
+
+    <!-- This version of fg.menu.js has been heavily modified to work in bughunter -->
+    <script src="/scripts/fg.menu.js"></script>
+    <script src="/scripts/json2.js"></script>
+
+    <!-- Bughunter classes-->
+    <script src="/scripts/views/Bases.js"></script>
+    <script src="/scripts/views/ConnectionsComponent.js"></script>
+    <script src="/scripts/views/DataAdapterCollection.js"></script>
+    <script src="/scripts/views/BHViewComponent.js"></script>
+    <script src="/scripts/views/BHViewCollection.js"></script>
+    <script src="/scripts/views/BughunterPage.js"></script>
+
+</head>
+
+<body>
+
+<input id="bh_start_date" type="hidden" value="{{ start_date|date:"c" }}" />
+<input id="bh_end_date" type="hidden" value="{{ end_date|date:"c" }}" />
+{% for signal in signals %}
+<input id="bh_post_{{ signal.name }}" type="hidden" value="{{ signal.value|safe }}" />
+{% endfor %}
+
+<!--This is required by django to place the csrf token in the cookie-->
+<form id="ajax_form" style="display:none;">{% csrf_token %}</form>
+
+<!-- Nav JSON datastructure -->
+{% include 'bughunter.navlookup.html' %}
+
+<!--button for cell context menu-->
+<span class="bh-cell-contextanchor hidden">
+   <a title="Open Link Options" href="#cellmenu" class="fg-button fg-button-icon-right ui-widget ui-state-default ui-corner-all css-right bh-cell-menu-toggle" style="background:#FFFFFF">
+      <span class="ui-icon ui-icon-triangle-2-n-s css-right"></span>
+   </a>
+</span>
+<!-- Cell Context Menu -->
+<div class="bh-cell-contextmenu hidden">
+   <div class="ui-widget ui-corner-all ui-helper-clearfix" style="font-size:12px;">
+      <div class="ui-widget">
+         <div class="ui-state-highlight ui-corner-all" style="margin-top:5px; padding:0.5em;"> 
+            <p><strong>Note:</strong> The default action when clicking a link is to send signals to receiver views in the page. The options below open links in new pages.
+            </p>
+         </div>
+      </div>
+      <div class="ui-widget">
+         <div class="ui-state-highlight ui-corner-all" style="margin-top:5px; padding:0.5em;"> 
+            <p>
+               <strong>Open Link In:</strong>
+               <select class="bh-signal-views">
+               </select>
+               <button class="ui-button ui-widget ui-corner-all ui-button-text-only ui-state-hover bh-open-bhpage-link" style="color:#000080; margin-left:5px; padding:0.3em;">Open</button>
+            </p>
+         </div>
+      </div>
+      <div class="ui-widget bh-url-cell-menu-panel">
+         <div class="ui-state-error ui-corner-all" style="margin-top:5px; margin-bottom:5px; padding:0.5em;"> 
+            <p>
+               <div>
+                  <span class="ui-icon ui-icon-alert" style="float:left; margin-right:.3em;"></span>
+                  <strong>WARNING:</strong> Page may contain disturbing content! Shut the door, cover your eyes, use caution...
+               </div>
+               <div style="margin-top:10px; margin-bottom:8px;">
+                  <strong>Open Link In:</strong><button class="ui-button ui-widget ui-button-text-only ui-corner-all ui-state-hover bh-open-page-link" style="margin-left:5px; color:#CD0000; padding:0.3em;">New page</button> 
+               </div>
+            </p>
+         </div>
+      </div>
+   </div>
+</div>
+<!--End -->
+
+<!-- Connections Modal -->
+<div class="bh-connections-modal ui-widget ui-corner-top hidden" title="Configure Connections">
+   <ul>
+      <li><a href="#bh_open_new_view_tab">Open New View</a></li>
+      <li><a href="#bh_manage_connections_tab">Manage Connections</a></li>
+   </ul>
+   <div id="bh_manage_connections_tab">
+      <hr class="bh-horz-line"></hr>
+      <div>Allow View To:</div>
+      <div class="bh-modal-element">
+         <input class="bh-connections" type="radio" name="view_type" value="send" checked />
+         Send Signals
+         <input class="bh-connections" type="radio" name="view_type" value="receive" />
+         Receive Signals
+      </div>
+      <hr class="bh-horz-line"></hr>
+      <div class="bh-modal-element">Note: Clicking on a link in the view table sends a signal.</div>
+      <hr class="bh-horz-line"></hr>
+   </div>
+   <div id="bh_open_new_view_tab">
+      <div class="bh-modal-element">Open in: 
+         <input class="bh-page-newpane" type="radio" name="open" value="open_page" />
+         Page
+         <input class="bh-page-newpane" type="radio" name="open" value="open_newpane" checked/>
+         New Pane
+      </div>
+      <hr class="bh-horz-line"></hr>
+      <div class="bh-modal-element">Choose A View:
+         <select id="bh_view_list" size="6">
+         <select>
+      </div>
+   </div>
+</div>
+<!-- END Modal -->
+
+<h1 class="bh-dino"></h1>
+
+<!-- Top bughunter panel -->
+<div class="ui-widget ui-widget-header ui-corner-top bh-toolbar-base bh-toppanel">
+   <div id="userinfo"> logged in as {{ username }} [<a href="/bughunter/logout/">log out</a>] </div>
+   <div class="bh-title">
+      <span class="bh-redtext">Bug</span>hunter
+   </div>
+</div>
+
+<!-- Border on bottom of top panel -->
+<div class="ui-widget ui-widget-header ui-corner-bottom bh-toolbar-base bh-toolbar-border"></div>
+
+<!-- Main attachment site for all bh views -->
+<div id="bh_view_container"></div>
+
+<!-- END VISIBLE BODY -->
+
+<!--Cloned Elements-->
+<div id="bh_view_wrapper_c" class="ui-helper-clearfix hidden">
+
+   <div id="bh_spinner_c" class="bh-spinner ui-widget"></div>
+
+   <div id="bh_view_c" class="ui-helper-clearfix hidden">
+      <!-- View Container -->
+      <div id="bh_topbar_c" class="ui-widget ui-toobar ui-corner-all bh-toolbar-base bh-toolpanel ui-helper-clearfix hidden">
+         <!-- View Top Menu Bar -->
+         <div class="fg-toolbar ui-toolbar ui-widget-header ui-corner-top bh-viewtext ui-helper-clearfix">
+
+            <a id="bh_closetable_bt_c" class="css-right bh-viewbutton fg-button ui-state-default fg-button-icon-left ui-corner-all" href="#closetable" title="Close Table">
+               <span class="css-right ui-icon ui-icon-closethick"></span>
+            </a>
+            <a id="bh_refresh_bt_c" class="css-right bh-viewbutton fg-button ui-state-default fg-button-icon-left ui-corner-all" href="#refresh" title="Refresh">
+               <span class="css-right ui-icon ui-icon-refresh"></span>
+            </a>
+            <a id="bh_help_bt_c" class="css-right bh-viewbutton fg-button ui-state-default fg-button-icon-left ui-corner-all" href="#help" title="Help">
+               <span class="css-right ui-icon ui-icon-help"></span>
+            </a>
+            <a id="bh_openwindow_bt_c" class="css-right bh-viewbutton fg-button ui-state-default fg-button-icon-left ui-corner-all" href="#openwindow" title="Open In New Connections Window">
+               <span class="css-right ui-icon ui-icon-newwin"></span>
+            </a>
+            <a id="bh_increasesize_bt_c" class="css-right bh-viewbutton fg-button ui-state-default fg-button-icon-left ui-corner-all" href="#increasesize" title="Increase View Panel Size">
+               <span class="css-right ui-icon ui-icon-circle-plus"></span>
+            </a>
+            <a id="bh_decreasesize_bt_c" class="css-right bh-viewbutton fg-button ui-state-default fg-button-icon-left ui-corner-all" href="#decreasesize" title="Decrease View Panel Size">
+               <span class="css-right ui-icon ui-icon-circle-minus"></span>
+            </a>
+
+            <a id="bh_visualization_c" tabindex="0" href="#" class="fg-button fg-button-icon-right ui-widget ui-state-default ui-corner-all css-right bh-flatmenu" style="background:#FFFFFF">
+               <span class="">Visualization</span><span class="ui-icon ui-icon-triangle-2-n-s css-right"></span>
+            </a>
+            <ul id="bh_vis_menu_c" class=" hidden">
+               <li style="display:none;"><a href="#" class=""></a></li>
+            </ul>
+
+            <a id="bh_nav_menu_c" tabindex="0" href="#" class="fg-button fg-button-icon-right ui-widget ui-state-default ui-corner-all css-left" style="background:#FFFFFF;">
+               <span class="">View Navigation</span><span class="ui-icon ui-icon-triangle-2-n-s css-right"></span>
+            </a>
+
+            <a id="bh_control_panel_c" tabindex="0" href="#" class="fg-button fg-button-icon-right ui-widget ui-state-default ui-corner-all  css-left" style="background:#FFFFFF;">
+               <span class="">Control Panel</span><span class="ui-icon ui-icon-triangle-2-n-s css-right"></span>
+            </a>
+
+            <span class="fg-toolbar css-left " style="margin-left:20px;">Displaying <span id="bh_view_title_c"></span></span>
+         
+         </div>
+        
+         <div id="bh_table_nodata_c" class="bh-nodata hidden">No data available.</div>
+         <div id="bh_table_spinner_c" class="bh-spinner ui-widget"></div>
+         <table id="bh_tview_c" cellpadding="0" cellspacing="0" border="0" class="display"></table>
+   </div>
+   <div style="margin-bottom:350px;"></div>
+</div>
+
+</body>
+</html>

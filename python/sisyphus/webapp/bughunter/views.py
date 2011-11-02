@@ -13,12 +13,26 @@ from django.core import serializers
 from django.http import HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, HttpResponseServerError, HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import render_to_response
 from django.views.decorators.csrf import csrf_exempt
+from django.middleware.csrf import get_token
+
+from django.conf import settings
+
+from django.utils.encoding import iri_to_uri, smart_str, smart_unicode, force_unicode
+from django.utils.http import urlquote
+import urllib
 
 from sisyphus.webapp.bughunter import models
 from sisyphus.webapp import settings
 from sisyphus.automation import utils
 
 APP_JS = 'application/json'
+
+#######
+#Uncomment the following lines to redirect stdout to a log file for debugging
+######
+saveout = sys.stdout
+log_out = open('/var/log/django/sisyphus.error.log', 'w')
+sys.stdout = log_out
 
 def doParseDate(datestring):
     """Given a date string, try to parse it as an ISO 8601 date.
@@ -43,9 +57,16 @@ def doParseDate(datestring):
 def login_required(func):
     def wrap(request, *a, **kw):
         if not request.user.is_authenticated():
-            return HttpResponseForbidden()
+            #######
+            #If it's an HTML page redirect to login
+            #######
+            if func.__name__ in VIEW_PAGES:
+               return HttpResponseRedirect(settings.VIEW_LOGIN_PAGE)
+            else:
+               return HttpResponseForbidden()
         return func(request, *a, **kw)
     return wrap
+
 
 @csrf_exempt
 def log_in(request):
@@ -67,6 +88,7 @@ def log_out(request):
     logout(request)
     return HttpResponse('{}', mimetype=APP_JS)
 
+
 def crashtests(request):
     return render_to_response('bughunter.crashtests.html', {})
 
@@ -78,6 +100,7 @@ def home(request):
 
 @login_required
 def worker_summary(request):
+
     worker_types = ['builder', 'crashtest', 'unittest']
     worker_data  = {}
 
@@ -337,3 +360,481 @@ ORDER BY `SiteTestRun`.`fatal_message` DESC , Crash.signature ASC"""
 
     return HttpResponse(simplejson.dumps(response_data), mimetype=APP_JS)
         
+
+
+
+
+
+
+
+
+"""
+Bughunter View Service Methods
+"""
+def bhview_setup(func):
+   """
+   This decorator initializes common data for VIEW_ADAPTERS.
+   """
+   def wrap(request, *a, **kw):
+      ##Name of proc in json file##
+      proc_name = os.path.basename(request.path)
+      ##Base path to proc in json file##
+      proc_path = "bughunter.views."
+      ##Full proc name including base path in json file##
+      full_proc_path = "%s%s" % (proc_path, proc_name)
+
+      ##Get any placeholders##
+      placeholders = []
+      if 'p' in request.GET:
+         placeholders = request.GET['p'].split(',')
+
+      ##Get any replacements##
+      replace_type = None
+      replacements = []
+      if 'r' in request.GET:
+         replace_type = 'replace'
+         replacements = request.GET['r'].split(',')
+
+      ##Set replace_quote##
+      if 'rq' in request.GET:
+         replace_type = 'replace_quote'
+         replacements = request.GET['rq'].split(',')
+
+      ##Get any named fields##
+      nfields = {} 
+      for f in NAMED_FIELDS:
+         if f in request.POST:
+            if f == 'url':
+               """
+               NOTE: This is a hack to enable matching url's from the database that are utf-8 
+                     encoded that contain non-english or non ASCII characters.  Django will encode them a 
+                     second time before loading request.GET or request.POST and the browser 
+                     also encodes them a second time when executing an HTTP GET using the XMLRequestObject.  
+                     Once the url has been utf-8 encoded twice it cannot be accurately decoded
+                     and will fail to match the single encoded url's stored in the database.
+                       Switching the web service to use HTTP POST instead of GET ressolves 
+                     the browser XMLRequestObject encoding problem and accessing the raw untreated
+                     POST data through django's request.raw_post_data allows us to bypass having 
+                     to use the corrupted url data in request.GET and request.POST.
+                       This enables access to the url byte string which can be used to match the 
+                     url stored in the database.  Pain and suffering... Jeads  
+               """
+               match = re.search('%s=(http.*?$)' % (f), request.raw_post_data)
+               if match:
+                  ###
+                  # urllib.unquote_plus unquotes javascript's encodeURIComponent()
+                  # DHUB.escapeString escapes strings for mysql which will prevent 
+                  # SQL injection
+                  ###
+                  nfields[f] = settings.DHUB.escapeString( urllib.unquote_plus(match.group(1)) )
+            else:
+               if request.POST[f]:
+                  nfields[f] = settings.DHUB.escapeString( urllib.unquote_plus(request.POST[f]) )
+
+      kwargs = dict( proc_name=proc_name,
+                     proc_path=proc_path,
+                     full_proc_path=full_proc_path,
+                     placeholders=placeholders,
+                     replacements=replacements,
+                     replace_type=replace_type,
+                     named_fields=nfields )
+
+      return func(request, **kwargs)
+
+   return wrap
+
+@csrf_exempt
+def view_login(request):
+
+    if request.method != 'POST':
+        ##User loads page##  
+        return render_to_response('bughunter.login.html', {})
+
+    username = request.POST['username']
+    password = request.POST['password']
+
+    user = authenticate(username=username, password=password)
+
+    if not user or not user.is_active:
+        m = {'error_message':'incorrect username or password'}
+        return render_to_response('bughunter.login.html', m)
+    else:
+        login(request, user)
+        return HttpResponseRedirect(settings.VIEW_LANDING_PAGE)
+
+def view_logout(request):
+    logout(request)
+    return HttpResponseRedirect(settings.VIEW_LOGIN_PAGE)
+
+@csrf_exempt
+@login_required
+def bhview(request, target=settings.VIEW_LOGIN_PAGE):
+
+    get_token(request)
+    request.META["CSRF_COOKIE_USED"] = True
+
+    signals = []
+    for f in NAMED_FIELDS:
+      if f in request.POST:
+         signals.append( { 'value':request.POST[f], 'name':f } )
+
+    start_date, end_date = _get_date_range()
+
+    data = { 'username':request.user.username,
+             'start_date':start_date,
+             'end_date':end_date,
+             'signals':signals }
+
+    return render_to_response('bughunter.views.html', data)
+
+@bhview_setup
+@login_required
+def get_bhview(request, **kwargs):
+   """
+   The goal of the get_bhview webservice is to be able to add
+   new service methods by simply adding a new sql view to 
+   the data proc file bughunter.json.  It works off of the 
+   following url structure:   
+
+   /views/viewname?p=PLACEHOLDERS&r=REPLACE&rq=REPLACE_QUOTE&named_field=VALUE
+
+   viewname - Could be a data hub proc name or a key in 
+              VIEW_ADAPTERS.  VIEW_ADAPTERS is a dictionary that maps
+              viewnames requiring special handling to function 
+              references that can handle them.  This allows 
+              adapters to call multiple procs if required or
+              do something more extravagant.  When no adapter 
+              is available for a view name it's assumed that the 
+              viewname will be found in proc_path = "bughunter.views."
+              in the data hub proc json file.
+
+   The arguments p, r, rq, and named_field are optional, if set 
+   they translate to options for settings.DHUB.execute():
+
+   See the datasource README for more documentation
+
+   p=placeholders
+   r=replace
+   rq=replace_quote
+   named_field= The named_fields other than p,r,rq require a
+                view_adapter to manage their incorporation into
+                an arguments to execute().
+
+   settings.DHUB.execute( proc=viewname,
+                          placeholders=PLACEHOLDERS,
+                          replace|replace_quote=REPLACE|REPLACE_QUOTE )
+
+   To add a new service method add SQL to bughunter.json and you're
+   done unless you require named fields.  If you cannot get what you 
+   want with a single SQL statement add an adapter function reference 
+   to VIEW_ADAPTERS and do something awesome.
+   """
+   ##Populated by bhview_decorator##
+   proc_name = kwargs['proc_name']
+   proc_path = kwargs['proc_path']
+   full_proc_path = kwargs['full_proc_path']
+   placeholders = kwargs['placeholders']
+   replacements = kwargs['replacements']
+   replace_type = kwargs['replace_type']
+   nfields = kwargs['named_fields']
+
+   ##options for execute##
+   exec_args = dict()
+
+   if placeholders:
+      exec_args['placeholders'] = placeholders
+   if replacements:
+      exec_args[replace_type] = replacements
+
+   json = ""
+   if proc_name in VIEW_ADAPTERS:
+      ####
+      #Found a data adapter for the proc, call it
+      ####
+      json = VIEW_ADAPTERS[proc_name](proc_path, 
+                                      proc_name, 
+                                      full_proc_path, 
+                                      placeholders, 
+                                      replacements,
+                                      nfields)
+   else:
+      ####
+      #Default behavior for a view
+      ####
+      exec_args['proc'] = full_proc_path
+      exec_args['return_type'] = 'tuple_json'
+
+      ####
+      # Uncomment this line to see fully assembled
+      # SQL in the server log.  Useful for debugging.
+      #exec_args['debug_show'] = True
+      json = settings.DHUB.execute(**exec_args)
+   
+   return HttpResponse(json, mimetype=APP_JS)
+   
+def _get_urls_by_sig(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+
+   ####
+   #Create the temporary table
+   ####
+   settings.DHUB.execute(proc='%stempurls' % proc_path,
+                         placeholders=placeholders,
+                         replace_quote=replacements)
+
+   ####
+   #Run the select on the temporary table
+   ####
+   json = settings.DHUB.execute(proc=full_proc_path,
+                                placeholders=placeholders,
+                                return_type='tuple_json')
+
+   return json
+
+"""
+SQL HARD CODING NOTES:
+
+The following adapters hardcode a lot of SQL.  This is an artifact of
+not having a generic way to refer to column names that are used in
+the user interface as signals.  The solution will require modifying 
+all SQL statements to have a "AS url, AS fatal_message, AS signature"
+so the refering table column name does not force us to make unique
+names in the replacement.  Once this is done, a single method can
+be written that will build the SQL "WHERE" constraints.  It would be
+best to decide on a final set of UI Views and what their columns will 
+be before doing this.  
+
+To see the full queries being constructed uncomment debug_show
+in the arguments to execute.  The query will be written to the
+server log.
+
+QUOTING:
+
+A comprehensive quoting/sanitization method will need to be developed 
+for all named fields available in the webservice.  This should be done
+by bh_view_setup() when the parameters are pulled out of the request
+object and loaded into nfields.  To prevent SQL injection all mysql
+quote characters will need to be sanitized.
+"""
+def _get_new_crashes(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+
+   rep0 = ""
+   rep1 = ""
+   if nfields:
+      if ('start_date' in nfields) and ('end_date' in nfields):
+         if nfields['start_date'] == nfields['end_date']:
+            rep0 += " AND SiteTestRun.datetime >= '%s' " % (nfields['end_date'])
+         else:
+            rep0 += " AND SiteTestRun.datetime >= '%s' AND SiteTestRun.datetime <= '%s' " % \
+            (nfields['start_date'], nfields['end_date'])
+
+         rep1 = nfields['end_date']
+      else:
+         start, end = _get_date_range()
+         rep0 += " SiteTestRun.datetime >= '%s' " % (end) 
+         rep1 = end
+   else:
+      start, end = _get_date_range()
+      rep0 += " AND SiteTestRun.datetime >= '%s' " % (end) 
+      rep1 = end
+
+   ####
+   #Create the temporary table
+   ####
+   json = settings.DHUB.execute(proc=full_proc_path,
+                                replace=[ rep0, rep1 ],
+                                debug_show=True,
+                                return_type='tuple_json')
+
+   return json
+
+def _get_site_test_crash(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+
+   col_prefixes = { 'start_date':'stc',
+                    'end_date':'stc',
+                    'signature':'c',
+                    'url':'stc' }
+
+   rep_dict = _build_rep(nfields, col_prefixes)
+
+   #default to date_only if no fields were provided
+   rep0 = rep_dict['date_only'] 
+   if not rep0:
+      rep0 = rep_dict['full_where']
+
+   #_build_rep could produce a extra AND at the beginning of the string
+   #so remove it here.
+   rp = re.compile('^\s+AND')
+   rep0 = rp.sub('', rep0, count=1)
+
+   json = settings.DHUB.execute(proc=full_proc_path,
+                                replace=[ rep0 ],
+                                debug_show=True,
+                                return_type='tuple_json')
+
+   return json
+
+def _get_crash_detail(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+
+   col_prefixes = { 'start_date':'stc',
+                    'end_date':'stc',
+                    'signature':'c',
+                    'url':'sr',
+                    'fatal_message':'str' }
+
+   repDict = _build_rep(nfields, col_prefixes)
+
+   date_only = ""
+   if repDict['date_only']:
+      date_only = " %s %s " % ('WHERE', repDict['date_only'])
+
+   json = settings.DHUB.execute(proc=full_proc_path,
+                                replace=[ date_only, repDict['full_where'] ],
+                                debug_show=True,
+                                return_type='tuple_json')
+
+   return json
+
+def _get_crashes(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+
+   rep0 = ""
+
+   if nfields:
+      if ('start_date' in nfields) and ('end_date' in nfields):
+         rep0 += " AND SiteTestRun.datetime >= '%s' AND SiteTestRun.datetime <= '%s' " % \
+         (nfields['start_date'], nfields['end_date'])
+      if 'signature' in nfields:
+         rep0 += " AND Crash.signature='%s' " % (nfields['signature'])
+      if 'fatal_message' in nfields:
+         rep0 += " AND fatal_message='%s' " % (nfields['fatal_message'])
+      if 'url' in nfields:
+         rep0 = " AND SocorroRecord.url='%s' " % (nfields['url'])
+   else:
+      start, end = _get_date_range()
+      rep0 += " AND SiteTestRun.datetime >= '%s' AND SiteTestRun.datetime <= '%s' " % \
+      (start, end) 
+
+   json = settings.DHUB.execute(proc=full_proc_path,
+                                debug_show=True,
+                                replace=[ rep0 ],
+                                return_type='tuple_json')
+
+   return json
+
+def _get_urls(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+
+   rep0 = ""
+
+   if nfields:
+      if ('start_date' in nfields) and ('end_date' in nfields):
+         rep0 += " AND SiteTestCrash.datetime >= '%s' AND SiteTestCrash.datetime <= '%s' " % \
+         (nfields['start_date'], nfields['end_date'])
+      if 'url' in nfields:
+         rep0 = " AND url='%s' " % (nfields['url'])
+      if 'signature' in nfields:
+         rep0 += " AND Crash.signature='%s' " % (nfields['signature'])
+   else:
+      start, end = _get_date_range()
+      rep0 += " AND SiteTestCrash.datetime >= '%s' AND SiteTestCrash.datetime <= '%s' " % \
+      (start, end) 
+
+   ####
+   #Create the temporary table
+   ####
+   settings.DHUB.execute(proc='%stempurls' % proc_path,
+                         debug_show=True,
+                         replace=[ rep0 ])
+
+   json = settings.DHUB.execute(proc=full_proc_path,
+                                debug_show=True,
+                                replace=[ rep0 ],
+                                return_type='tuple_json')
+
+   return json
+
+def _get_fmurls(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+
+   rep0 = ""
+
+   if nfields:
+      if ('start_date' in nfields) and ('end_date' in nfields):
+         rep0 += " AND SiteTestCrash.datetime >= '%s' AND SiteTestCrash.datetime <= '%s' " % \
+         (nfields['start_date'], nfields['end_date'])
+      if 'url' in nfields:
+         rep0 = " AND url='%s' " % (nfields['url'])
+      if 'signature' in nfields:
+         rep0 += " AND Crash.signature='%s' " % (nfields['signature'])
+   else:
+      start, end = _get_date_range()
+      rep0 += " AND SiteTestCrash.datetime >= '%s' AND SiteTestCrash.datetime <= '%s' " % \
+      (start, end) 
+
+   settings.DHUB.execute(proc='%stempurls_fm' % proc_path,
+                         debug_show=True,
+                         replace=[rep0])
+
+   ####
+   #Run the select on the temporary table
+   ####
+   json = settings.DHUB.execute(proc="%s%s" % (proc_path, 'urls_fm'),
+                                debug_show=True,
+                                replace=[rep0],
+                                return_type='tuple_json')
+
+   return json
+
+def _build_rep(nfields, col_prefixes):
+
+   rep = {'date_only':'', 'full_where':''}
+
+   if nfields:
+      if ('start_date' in nfields) and ('end_date' in nfields):
+         rep['full_where'] += " AND (%s.datetime >= '%s' AND %s.datetime <= '%s') " % \
+         (col_prefixes['start_date'], nfields['start_date'], col_prefixes['end_date'], nfields['end_date'])
+
+         rep['date_only'] = " (%s.datetime >= '%s' AND %s.datetime <= '%s') " % \
+         (col_prefixes['start_date'], nfields['start_date'], col_prefixes['end_date'], nfields['end_date'])
+
+      for field in NAMED_FIELDS:
+         if (field == 'start_date') or (field == 'end_date'):
+            continue
+         if (field in nfields) and (field in col_prefixes):
+            rep['full_where'] += " AND %s.%s='%s' " % (col_prefixes[field], field, nfields[field])
+
+   else:
+      start, end = _get_date_range()
+      rep['date_only'] = " stc.datetime >= '%s' AND stc.datetime <= '%s' " % \
+      (start, end) 
+
+   return rep
+
+def _get_date_range():
+
+   #start_date = datetime.date.today() - datetime.timedelta(hours=48)
+   start_date = datetime.date.today() - datetime.timedelta(hours=120)
+   end_date = datetime.date.today()
+
+   return start_date, end_date
+
+####
+#VIEW_ADAPTERS maps view names to function
+#references that handle them.  All adapters
+#need to return json
+####
+VIEW_ADAPTERS = dict( crashes=_get_crashes,
+                      site_test_crash=_get_site_test_crash,
+                      urls=_get_urls,
+                      fmurls=_get_fmurls,
+                      crashdetail=_get_crash_detail,
+                      newcrashes=_get_new_crashes,
+                      socorro_record=_get_site_test_crash)
+
+NAMED_FIELDS = set( ['signature',
+                     'url',
+                     'fatal_message',
+                     'start_date',
+                     'end_date'] )
+
+VIEW_PAGES = set([ 'bhview' ])
+
+
+

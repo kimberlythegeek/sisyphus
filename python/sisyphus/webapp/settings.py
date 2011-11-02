@@ -1,6 +1,10 @@
 # Django settings for sisyphus.webapp project.
 
 import os
+from datasource.bases.BaseHub import BaseHub
+from datasource.hubs.MySQL import MySQL
+
+from bughunter.filters.templatetags.bh_unorderedlist import bh_unorderedlist
 
 # Set Database connectivity via environment
 SISYPHUS_DATABASE          = os.environ["SISYPHUS_DATABASE"]
@@ -16,7 +20,7 @@ SISYPHUS_URL               = os.environ["SISYPHUS_URL"]
 ROOT = os.path.dirname(os.path.abspath(__file__))
 path = lambda *a: os.path.join(ROOT, *a)
 
-DEBUG = False
+DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
@@ -68,6 +72,11 @@ MEDIA_ROOT = path('media')
 # Examples: "http://media.lawrence.com", "http://example.com/media/"
 MEDIA_URL = SISYPHUS_URL + '/media/'
 
+#Login/logout locations for views
+VIEW_LOGOUT = '/bughunter/logout/'
+VIEW_LOGIN_PAGE = '/bughunter/login/'
+VIEW_LANDING_PAGE = '/bughunter/views/'
+
 # URL prefix for admin media -- CSS, JavaScript and images. Make sure to use a
 # trailing slash.
 # Examples: "http://foo.com/media/", "/media/".
@@ -84,9 +93,9 @@ TEMPLATE_LOADERS = (
 )
 
 MIDDLEWARE_CLASSES = (
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
 )
@@ -108,7 +117,10 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.admin',
     'django.contrib.admindocs',
+
+    ##Bughunter related apps##
     'bughunter',
+    'bughunter.filters',
 )
 
 SERIALIZATION_MODULES = {
@@ -150,9 +162,25 @@ else:
     AUTH_LDAP_GROUP_TYPE = GroupOfNamesType()
     #AUTH_LDAP_REQUIRE_GROUP = os.environ['SISYPHUS_LDAP_RESTRICTED_GROUP']
 
-
 # Import local settings to add to/override the above
 try:
     from local_settings import *
 except ImportError:
     pass
+
+####
+#Configuration of datasource hub:
+#	1 Build the datasource struct
+# 	2 Add it to the BaseHub
+#	3 Instantiate a MySQL hub
+####
+dataSource = { SISYPHUS_DATABASE : { "hub":"MySQL",
+                                     "master_host":{"host":SISYPHUS_DATABASE_HOST,
+                                                    "user":SISYPHUS_DATABASE_USER,
+                                                    "passwd":SISYPHUS_DATABASE_PASSWORD},
+                                                    "default_db":SISYPHUS_DATABASE,
+                                     "procs": ["%s%s" % (ROOT, "/procs/bughunter.json")]
+              }
+}
+BaseHub.addDataSource(dataSource)
+DHUB = MySQL(SISYPHUS_DATABASE)

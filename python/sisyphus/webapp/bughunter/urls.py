@@ -3,9 +3,15 @@ from sisyphus.webapp.bughunter import views
 
 # FIXME: We should have a generic parameter handler, e.g. for start/end dates
 urlpatterns = patterns('',
-                       (r'^$', views.home),
+                       (r'^$', views.bhview),
                        (r'^crashtests/$', views.crashtests),
                        (r'^unittests/$', views.unittests),
+                       (r'^login/$', views.view_login),
+                       (r'^logout/$', views.view_logout),
+                       (r'^views/$', views.bhview),
+                       (r'^api/views/.*$', views.get_bhview),
+
+
                        (r'^api/login/$', views.log_in),
                        (r'^api/logout/$', views.log_out),
                        (r'^api/admin/workers/$', views.workers_api),

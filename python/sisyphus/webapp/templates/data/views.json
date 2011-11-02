@@ -1,0 +1,120 @@
+[
+   { "Crashes": [
+
+      { "name":"newcrashes",
+        "read_name":"New Crashes",
+        "signals":{ "text_filter":"1", "signature":"1" },
+        "send_only":1,
+        "control_panel":"date.html",
+        "data_adapter":"new_crashes",
+        "charts":[ { "name":"table" }, 
+                   { "name":"pie" }, 
+                   { "name":"bar" }, 
+                   { "name":"tree" } ]
+      },
+
+      { "name":"crashes",
+        "read_name":"Crashes",
+        "signals":{ "text_filter":"1", "url":"1", "signature":"1", "fatal_message":"1" },
+        "control_panel":"named_fields.html",
+        "data_adapter":"named_fields",
+        "charts":[ { "name":"table" }, 
+                   { "name":"pie" }, 
+                   { "name":"bar" }, 
+                   { "name":"tree" } ]
+      },
+   
+      { "name":"urls",
+        "read_name":"URL Summary By Signature",
+        "signals":{ "text_filter":"1", "url":"1", "signature":"1" },
+        "control_panel":"named_fields.html",
+        "data_adapter":"named_fields",
+        "charts":[ { "name":"table" }, 
+                   { "name":"pie" }, 
+                   { "name":"bar" }, 
+                   { "name":"tree" } ]
+      },
+
+      { "name":"fmurls",
+        "read_name":"URL Summary By Fatal Message",
+        "signals":{ "text_filter":"1", "url":"1", "signature":"1" },
+        "control_panel":"named_fields.html",
+        "data_adapter":"named_fields",
+        "charts":[ { "name":"table" }, 
+                   { "name":"pie" }, 
+                   { "name":"bar" }, 
+                   { "name":"tree" } ]
+      },
+
+      { "name":"crashdetail",
+        "read_name":"Crash Details",
+        "signals":{ "text_filter":"1", "url":"1", "signature":"1", "fatal_message":"1" },
+        "control_panel":"named_fields.html",
+        "data_adapter":"named_fields",
+        "charts":[ { "name":"table" }, 
+                   { "name":"pie" }, 
+                   { "name":"bar" }, 
+                   { "name":"tree"} ]
+      }
+   ] },
+
+  { "Admin": [
+
+         { "name":"workers_summary",
+           "read_name":"Worker Summary",
+           "page_target":"/HASHadmin/workersummary",
+           "control_panel":"named_fields.html",
+           "data_adapter":"named_fields",
+           "charts":[ { "name":"table" }, 
+                      { "name":"pie" }, 
+                      { "name":"bar" }, 
+                      { "name":"tree" } ]
+         },
+
+         { "name":"worker_list",
+           "read_name":"Worker List",
+           "page_target":"/HASHadmin/workers",
+           "control_panel":"named_fields.html",
+           "data_adapter":"named_fields",
+           "charts":[ { "name":"table" }, 
+                      { "name":"pie" }, 
+                      { "name":"bar" }, 
+                      { "name":"tree" } ]
+         },
+
+         { "name":"worker_logs",
+           "read_name":"Worker Log",
+           "page_target":"/HASHadmin/logs",
+           "control_panel":"named_fields.html",
+           "data_adapter":"named_fields",
+           "charts":[ { "name":"table" }, 
+                      { "name":"pie" }, 
+                      { "name":"bar" }, 
+                      { "name":"tree" } ]
+         }
+   ] },
+
+  { "Crash Tables": [
+     { "name":"site_test_crash",
+       "read_name":"Site Test Crash",
+       "signals":{ "text_filter":"1", "url":"1", "signature":"1", "fatal_message":"1" },
+       "data_adapter":"named_fields",
+       "default":1,
+       "control_panel":"date_sig_url.html",
+       "charts":[ { "name":"table" }, 
+                  { "name":"pie" }, 
+                  { "name":"bar" }, 
+                  { "name":"tree" } ]
+     },
+     { "name":"socorro_record",
+       "read_name":"Soccorro Record",
+       "signals":{ "text_filter":"1", "url":"1" },
+       "data_adapter":"named_fields",
+       "control_panel":"date_url.html",
+       "charts":[ { "name":"table" }, 
+                  { "name":"pie" }, 
+                  { "name":"bar" }, 
+                  { "name":"tree" } ]
+     }
+   ] }
+]

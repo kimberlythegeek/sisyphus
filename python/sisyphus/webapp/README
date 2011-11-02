@@ -1,0 +1,155 @@
+
+Installation
+
+   1.) update datasource
+       git clone https://github.com/jeads/datasource
+       python setup.py install
+
+       You can reach bughunter views at:
+       /bughunter/views
+
+       When changes are made to sisyphus/webapp/templates/data/views.js
+       you will need to run "python manage.py build_nav" and bounce the
+       webserver to see them.
+
+Features Not Implemented:
+
+   1.) Opening a new page from an anchor in the table.  Currently, you can only send
+       an anchor signal to other panes in the page.  This is a deviation from the 
+       functional spec.  I wanted to get feedback on the signal strategy before 
+       finishing this feature.
+
+Known BUGS:
+
+   1.) UI bug: The dropdown menu panels will sometimes open up (dropup menus!) when the
+       the firebug panel is open in the page.  This is a positioning issue in fg.menu,
+       once they open up they become unusable because the top panel is on a z-index higher
+       than the menus.  This can be fixed in a couple different ways, will start with 
+       trying to get fg.menu's positioning to never open a menu up.
+
+   2.) Control panels are not initialized with the signal data before they are opened 
+       the first time.  Once opened, they are populated correctly with all signal data.
+       I have some ideas about how to fix this but need some time.
+
+Things I Still Need To Do:
+   
+   1.) Error handling for failed queries.  Error management in the JS, currently
+       it's a bit non-existant.
+   2.) History?  All of the actions/events are href hash based so this will work
+       well with the jquery history management frameworks I've seen.  It
+       will take some time to get right.
+
+Architecture:
+
+   JS:
+      Class Structures:
+
+         Components in General:
+
+            Component:
+               Contains public interface to component.  The component will 
+               typically have instances of a View and Model class and acts
+               as a controller.
+
+               View:
+                  Manages all direct DOM interaction for the Component.
+
+               Model
+                  Manages data structures and server based data retrieval.
+
+            Page classes:
+               A class that manages top level interactions with a web page.
+
+         Bughunter
+            Bases.js
+               Contains all base classes.
+
+            BughunterPage.js
+               This is a good place to start when reading the js.  
+               
+            BHViewCollection.js
+               Manages the complete collection of bhview components.
+
+            BHViewComponent.js
+               Manages all functionality associated with a single bhview.
+
+            ConnectionsComponent.js
+               Manages all functionality associated with the modal dialog
+               allowing users to open new bhviews and set their connections.
+
+            DataAdapterCollection.js
+               Manages any idiosynctratic behavior a view might have that is
+               not generic enough to place in BHViewComponent.  This includes
+               the ControlPanel form processing and may be expanded in the 
+               future.
+
+      Support Frameworks:
+
+         http://moo4q.com/
+
+         A jquery plugin that enables mootools class structures.  This is used
+         in all the class structures for Class definitions and inheritance.
+
+         http://documentcloud.github.com/underscore/
+
+         Used for a variety of javascript data management utilities including
+         _.bind() for all function context management.
+
+   Webservice:
+         A new directory has been added under webapp/bughunter/ 
+      called management.  This contains command extensions for 
+      django's manage.py script.  The new command available is
+      build_nav.  When run it does two things: writes out the 
+      HTML ul used in the navigation menu and builds a JSON 
+      associative array that is used to lookup reference information
+      in the UI.  This JSON structure is embedded in the page
+      when it first loads and is contained in a hidden input
+      element.
+         
+Data Encode/Decode Issues:
+   There is all manner of crazy coming back in the urls and crash signatures from the db.  I've seen
+   and some characters that encodeURI fails on.  In this case I'm using explicit
+   regexes to get row wrapping to work in the table.  The built in escape() function seems
+   to work most of the time but then the info presented in the table is garbled with escape
+   chars.  I will need to do some work on this to come up with a reasonable approach.  Currently
+   I'm just escaping html/xml reserved characters in the data displayed in the table, this 
+   prevents the actual html page from breaking and then using encodeURI/decodeURI to pass 
+   the information to the server.  Sometimes this fails and when it does you will see
+   the "No data available message".
+
+Paging:
+   We will need real paging.  I've currently hardcoded limits to 5000.  I've pulled back
+   as much as 35,000 rows in a single view (Go firefox!), this will crush the database
+   if multiple users are hitting it simultaneously.  I have a few ideas for paging.  I think
+   the built in filtering in the views is pretty useful, but only if the result sets being
+   pulled back are large enough for it to be meaningfull.  Maybe we could pull back large
+   result sets, say 500, and then fake the paging buttons so new queries are only done
+   when you exceed 500 rows.  This will need to be addressed soon.
+
+Performance Notes:
+
+   There are a number of performance issues with the SQL I'm using for the views.  The SQL 
+   was pulled directly out of bc's use cases without any optimization.  A lot of it is not
+   appropriate for a production website and will require significant optimization likely
+   through denormalizing the data.  I think before we do a performance improvement pass 
+   we should come to an agreement on what the first set of views should be.  As soon as 
+   we do that I would like to hit SQL performance from all angles.
+
+   1.) MySQL is rarely able to make effective use of indexes when using temp tables/nested selects.
+       I will need to confirm with EXPLAIN but I'm pretty sure this is happening with most
+       of the queries adapted from the use cases.  We can work around this in several ways: 
+       denormalize data or push queries into the application layer. 
+
+   2.) There could be bugs in my adaptation of bc's SQL queries.  
+
+   3.) If we like the default date range strategy we should make sure all the timestamps
+       are indexed.
+
+   4.) With the way the UI is layed out we might be able to use the signal/multiple pane
+       approach to do application level joins free of performance charge.   
+
+   5.) If after doing all the optimizations possible it's still not fast enough then it's time
+       for a search index.  At the very least I think we will need a read only database if we
+       don't build a search index.  This has a number of advantages when providing a user 
+       interface to a database.
+
