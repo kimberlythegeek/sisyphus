@@ -37,7 +37,7 @@
 
       { "name":"fmurls",
         "read_name":"URL Summary By Fatal Message",
-        "signals":{ "text_filter":"1", "url":"1", "signature":"1" },
+        "signals":{ "text_filter":"1", "url":"1", "fatal_message":"1" },
         "control_panel":"named_fields.html",
         "data_adapter":"named_fields",
         "charts":[ { "name":"table" }, 

@@ -387,13 +387,13 @@ BughunterDateControlsViewBase = Backbone.View.extend({
   initDateCtrls: function() {
     if (this.model.collection.options.start &&
         this.model.collection.options.start != '-') {
-      $('#logstart').val(this.model.collection.options.start);
+      $('#logstart').val(this.model.collection.options.start.replace('T', ' '));
     }
     if (this.model.collection.options.end) {
       $('#logend').val(this.model.collection.options.end);
     }
     var pickerOpts = {
-      format: '%Y-%m-%dT%T'
+      format: '%Y-%m-%d %T'
     };
     function checkForm() {
       if ($('#datecontrolsform')[0].checkValidity()) {

@@ -30,9 +30,9 @@ APP_JS = 'application/json'
 #######
 #Uncomment the following lines to redirect stdout to a log file for debugging
 ######
-saveout = sys.stdout
-log_out = open('/var/log/django/sisyphus.error.log', 'w')
-sys.stdout = log_out
+#saveout = sys.stdout
+#log_out = open('/var/log/django/sisyphus.error.log', 'w')
+#sys.stdout = log_out
 
 def doParseDate(datestring):
     """Given a date string, try to parse it as an ISO 8601 date.
@@ -572,103 +572,83 @@ def get_bhview(request, **kwargs):
    
    return HttpResponse(json, mimetype=APP_JS)
    
-def _get_urls_by_sig(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
-
-   ####
-   #Create the temporary table
-   ####
-   settings.DHUB.execute(proc='%stempurls' % proc_path,
-                         placeholders=placeholders,
-                         replace_quote=replacements)
-
-   ####
-   #Run the select on the temporary table
-   ####
-   json = settings.DHUB.execute(proc=full_proc_path,
-                                placeholders=placeholders,
-                                return_type='tuple_json')
-
-   return json
-
-"""
-SQL HARD CODING NOTES:
-
-The following adapters hardcode a lot of SQL.  This is an artifact of
-not having a generic way to refer to column names that are used in
-the user interface as signals.  The solution will require modifying 
-all SQL statements to have a "AS url, AS fatal_message, AS signature"
-so the refering table column name does not force us to make unique
-names in the replacement.  Once this is done, a single method can
-be written that will build the SQL "WHERE" constraints.  It would be
-best to decide on a final set of UI Views and what their columns will 
-be before doing this.  
-
-To see the full queries being constructed uncomment debug_show
-in the arguments to execute.  The query will be written to the
-server log.
-
-QUOTING:
-
-A comprehensive quoting/sanitization method will need to be developed 
-for all named fields available in the webservice.  This should be done
-by bh_view_setup() when the parameters are pulled out of the request
-object and loaded into nfields.  To prevent SQL injection all mysql
-quote characters will need to be sanitized.
-"""
 def _get_new_crashes(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
 
-   rep0 = ""
-   rep1 = ""
-   if nfields:
-      if ('start_date' in nfields) and ('end_date' in nfields):
-         if nfields['start_date'] == nfields['end_date']:
-            rep0 += " AND SiteTestRun.datetime >= '%s' " % (nfields['end_date'])
-         else:
-            rep0 += " AND SiteTestRun.datetime >= '%s' AND SiteTestRun.datetime <= '%s' " % \
-            (nfields['start_date'], nfields['end_date'])
-
-         rep1 = nfields['end_date']
-      else:
-         start, end = _get_date_range()
-         rep0 += " SiteTestRun.datetime >= '%s' " % (end) 
-         rep1 = end
-   else:
-      start, end = _get_date_range()
-      rep0 += " AND SiteTestRun.datetime >= '%s' " % (end) 
-      rep1 = end
-
-   ####
-   #Create the temporary table
-   ####
-   json = settings.DHUB.execute(proc=full_proc_path,
-                                replace=[ rep0, rep1 ],
-                                debug_show=True,
-                                return_type='tuple_json')
-
-   return json
-
-def _get_site_test_crash(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
-
-   col_prefixes = { 'start_date':'stc',
-                    'end_date':'stc',
-                    'signature':'c',
-                    'url':'stc' }
+   col_prefixes = { 'start_date':'str',
+                    'end_date':'str',
+                    'date_only':'str'}
 
    rep_dict = _build_rep(nfields, col_prefixes)
 
-   #default to date_only if no fields were provided
-   rep0 = rep_dict['date_only'] 
+   rep0 = rep_dict['full_where'] 
    if not rep0:
-      rep0 = rep_dict['full_where']
+      rep0 = rep_dict['date_only']
 
-   #_build_rep could produce a extra AND at the beginning of the string
+   #_build_rep could produce an extra AND at the beginning of the string
    #so remove it here.
    rp = re.compile('^\s+AND')
    rep0 = rp.sub('', rep0, count=1)
 
    json = settings.DHUB.execute(proc=full_proc_path,
                                 replace=[ rep0 ],
-                                debug_show=True,
+                                #debug_show=True,
+                                return_type='tuple_json')
+
+   return json
+
+def _get_site_test_crash(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+
+   prefix = 'stc'
+   sig_prefix = 'c'
+
+   col_prefixes = { 'start_date':prefix,
+                    'end_date':prefix,
+                    'signature':sig_prefix,
+                    'url':prefix,
+                    'date_only':prefix }
+
+   rep_dict = _build_rep(nfields, col_prefixes)
+
+   #default to date_only if no fields were provided
+   rep0 = rep_dict['full_where'] 
+   if not rep0:
+      rep0 = rep_dict['date_only']
+
+   #_build_rep could produce an extra AND at the beginning of the string
+   #so remove it here.
+   rp = re.compile('^\s+AND')
+   rep0 = rp.sub('', rep0, count=1)
+
+   json = settings.DHUB.execute(proc=full_proc_path,
+                                replace=[ rep0 ],
+                                #debug_show=True,
+                                return_type='tuple_json')
+
+   return json
+
+def _get_socorro_record(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+
+   col_prefixes = { 'start_date':'str',
+                    'end_date':'str',
+                    'signature':'sr',
+                    'url':'sr',
+                    'date_only':'str' }
+
+   rep_dict = _build_rep(nfields, col_prefixes)
+
+   #default to date_only if no fields were provided
+   rep0 = rep_dict['full_where'] 
+   if not rep0:
+      rep0 = rep_dict['date_only']
+
+   #_build_rep could produce an extra AND at the beginning of the string
+   #so remove it here.
+   rp = re.compile('^\s+AND')
+   rep0 = rp.sub('', rep0, count=1)
+
+   json = settings.DHUB.execute(proc=full_proc_path,
+                                replace=[ rep0 ],
+                                #debug_show=True,
                                 return_type='tuple_json')
 
    return json
@@ -679,42 +659,45 @@ def _get_crash_detail(proc_path, proc_name, full_proc_path, placeholders, replac
                     'end_date':'stc',
                     'signature':'c',
                     'url':'sr',
-                    'fatal_message':'str' }
+                    'fatal_message':'str',
+                    'date_only':'stc'}
 
-   repDict = _build_rep(nfields, col_prefixes)
+   rep_dict = _build_rep(nfields, col_prefixes)
 
    date_only = ""
-   if repDict['date_only']:
-      date_only = " %s %s " % ('WHERE', repDict['date_only'])
+   if rep_dict['date_only']:
+      date_only = " %s %s " % ('WHERE', rep_dict['date_only'])
 
    json = settings.DHUB.execute(proc=full_proc_path,
-                                replace=[ date_only, repDict['full_where'] ],
-                                debug_show=True,
+                                replace=[ date_only, rep_dict['full_where'] ],
+                                #debug_show=True,
                                 return_type='tuple_json')
 
    return json
 
 def _get_crashes(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
 
-   rep0 = ""
+   col_prefixes = { 'start_date':'str',
+                    'end_date':'str',
+                    'signature':'c',
+                    'url':'sr',
+                    'fatal_message':'str',
+                    'date_only':'str'}
 
-   if nfields:
-      if ('start_date' in nfields) and ('end_date' in nfields):
-         rep0 += " AND SiteTestRun.datetime >= '%s' AND SiteTestRun.datetime <= '%s' " % \
-         (nfields['start_date'], nfields['end_date'])
-      if 'signature' in nfields:
-         rep0 += " AND Crash.signature='%s' " % (nfields['signature'])
-      if 'fatal_message' in nfields:
-         rep0 += " AND fatal_message='%s' " % (nfields['fatal_message'])
-      if 'url' in nfields:
-         rep0 = " AND SocorroRecord.url='%s' " % (nfields['url'])
-   else:
-      start, end = _get_date_range()
-      rep0 += " AND SiteTestRun.datetime >= '%s' AND SiteTestRun.datetime <= '%s' " % \
-      (start, end) 
+   rep_dict = _build_rep(nfields, col_prefixes)
+
+   #default to date_only if no fields were provided
+   rep0 = rep_dict['full_where'] 
+   if not rep0:
+      rep0 = rep_dict['date_only']
+
+   #_build_rep could produce an extra AND at the beginning of the string
+   #so remove it here.
+   rp = re.compile('^\s+AND')
+   rep0 = rp.sub('', rep0, count=1)
 
    json = settings.DHUB.execute(proc=full_proc_path,
-                                debug_show=True,
+                                #debug_show=True,
                                 replace=[ rep0 ],
                                 return_type='tuple_json')
 
@@ -722,30 +705,26 @@ def _get_crashes(proc_path, proc_name, full_proc_path, placeholders, replacement
 
 def _get_urls(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
 
-   rep0 = ""
+   col_prefixes = { 'start_date':'stc',
+                    'end_date':'stc',
+                    'signature':'c',
+                    'url':'stc',
+                    'date_only':'stc'}
 
-   if nfields:
-      if ('start_date' in nfields) and ('end_date' in nfields):
-         rep0 += " AND SiteTestCrash.datetime >= '%s' AND SiteTestCrash.datetime <= '%s' " % \
-         (nfields['start_date'], nfields['end_date'])
-      if 'url' in nfields:
-         rep0 = " AND url='%s' " % (nfields['url'])
-      if 'signature' in nfields:
-         rep0 += " AND Crash.signature='%s' " % (nfields['signature'])
-   else:
-      start, end = _get_date_range()
-      rep0 += " AND SiteTestCrash.datetime >= '%s' AND SiteTestCrash.datetime <= '%s' " % \
-      (start, end) 
+   rep_dict = _build_rep(nfields, col_prefixes)
 
-   ####
-   #Create the temporary table
-   ####
-   settings.DHUB.execute(proc='%stempurls' % proc_path,
-                         debug_show=True,
-                         replace=[ rep0 ])
+   #default to date_only if no fields were provided
+   rep0 = rep_dict['full_where'] 
+   if not rep0:
+      rep0 = rep_dict['date_only']
+
+   #_build_rep could produce an extra AND at the beginning of the string
+   #so remove it here.
+   rp = re.compile('^\s+AND')
+   rep0 = rp.sub('', rep0, count=1)
 
    json = settings.DHUB.execute(proc=full_proc_path,
-                                debug_show=True,
+                                #debug_show=True,
                                 replace=[ rep0 ],
                                 return_type='tuple_json')
 
@@ -753,30 +732,28 @@ def _get_urls(proc_path, proc_name, full_proc_path, placeholders, replacements, 
 
 def _get_fmurls(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
 
-   rep0 = ""
+   col_prefixes = { 'start_date':'str',
+                    'end_date':'str',
+                    'fatal_message':'str',
+                    'url':'stc',
+                    'date_only':'str'}
 
-   if nfields:
-      if ('start_date' in nfields) and ('end_date' in nfields):
-         rep0 += " AND SiteTestCrash.datetime >= '%s' AND SiteTestCrash.datetime <= '%s' " % \
-         (nfields['start_date'], nfields['end_date'])
-      if 'url' in nfields:
-         rep0 = " AND url='%s' " % (nfields['url'])
-      if 'signature' in nfields:
-         rep0 += " AND Crash.signature='%s' " % (nfields['signature'])
-   else:
-      start, end = _get_date_range()
-      rep0 += " AND SiteTestCrash.datetime >= '%s' AND SiteTestCrash.datetime <= '%s' " % \
-      (start, end) 
+   rep_dict = _build_rep(nfields, col_prefixes)
 
-   settings.DHUB.execute(proc='%stempurls_fm' % proc_path,
-                         debug_show=True,
-                         replace=[rep0])
+   #default to date_only if no fields were provided
+   rep0 = rep_dict['full_where'] 
+   if not rep0:
+      rep0 = rep_dict['date_only']
 
+   #_build_rep could produce an extra AND at the beginning of the string
+   #so remove it here.
+   rp = re.compile('^\s+AND')
+   rep0 = rp.sub('', rep0, count=1)
    ####
    #Run the select on the temporary table
    ####
    json = settings.DHUB.execute(proc="%s%s" % (proc_path, 'urls_fm'),
-                                debug_show=True,
+                                #debug_show=True,
                                 replace=[rep0],
                                 return_type='tuple_json')
 
@@ -791,9 +768,21 @@ def _build_rep(nfields, col_prefixes):
          rep['full_where'] += " AND (%s.datetime >= '%s' AND %s.datetime <= '%s') " % \
          (col_prefixes['start_date'], nfields['start_date'], col_prefixes['end_date'], nfields['end_date'])
 
+         ##Enables a nested query that needs the date range only##
          rep['date_only'] = " (%s.datetime >= '%s' AND %s.datetime <= '%s') " % \
          (col_prefixes['start_date'], nfields['start_date'], col_prefixes['end_date'], nfields['end_date'])
 
+      elif ('start_date' in nfields):
+         rep['full_where'] += " %s.datetime >= '%s' " % \
+         (col_prefixes['start_date'], nfields['start_date'])
+
+      elif ('end_date' in nfields):
+         ##Add a start date##
+         start, end = _get_date_range()
+         rep['full_where'] += " AND (%s.datetime >= '%s' AND %s.datetime <= '%s') " % \
+         (col_prefixes['start_date'], start, col_prefixes['end_date'], nfields['end_date'])
+
+      ##Build all other fields##
       for field in NAMED_FIELDS:
          if (field == 'start_date') or (field == 'end_date'):
             continue
@@ -801,9 +790,10 @@ def _build_rep(nfields, col_prefixes):
             rep['full_where'] += " AND %s.%s='%s' " % (col_prefixes[field], field, nfields[field])
 
    else:
+      ##Handling for no fields##
       start, end = _get_date_range()
-      rep['date_only'] = " stc.datetime >= '%s' AND stc.datetime <= '%s' " % \
-      (start, end) 
+      rep['date_only'] = " %s.datetime >= '%s' AND %s.datetime <= '%s' " % \
+      (col_prefixes['date_only'], start, col_prefixes['date_only'], end) 
 
    return rep
 
@@ -826,7 +816,7 @@ VIEW_ADAPTERS = dict( crashes=_get_crashes,
                       fmurls=_get_fmurls,
                       crashdetail=_get_crash_detail,
                       newcrashes=_get_new_crashes,
-                      socorro_record=_get_site_test_crash)
+                      socorro_record=_get_socorro_record)
 
 NAMED_FIELDS = set( ['signature',
                      'url',

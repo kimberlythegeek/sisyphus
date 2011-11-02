@@ -143,7 +143,7 @@ var DatedCollectionBase = BughunterCollection.extend({
     return u;
   },
   checkDates: function() {
-    var conv = new AnyTime.Converter({ format: '%Y-%m-%dT%T' });
+    var conv = new AnyTime.Converter({ format: '%Y-%m-%d %T' });
     var changed = false;
     if (!this.options.start) {
       var endDate = this.options.end;

@@ -85,9 +85,17 @@ var BHViewAdapter = new Class({
        *             data.data - signal data
        * *******************/
       if(!_.isEmpty(data)){
-         this.clearPanel(controlPanelDropdownEl);
+         //this.clearPanel(controlPanelDropdownEl);
          var el = $(controlPanelDropdownEl).find('[name="' + data.signal + '"]');
          $(el).attr('value', this.unescapeForUrl(data.data));
+
+         if(!_.isEmpty(data.date_range)){
+            var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
+            startInput.attr('value',  data.date_range.start_date );
+            var endInput = $(controlPanelDropdownEl).find('[name="end_date"]');
+            endInput.attr('value', data.date_range.end_date );
+         }
+
       }else {
          var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
          startInput.attr('value',  $(this.startDateSel).val() );
@@ -109,8 +117,14 @@ var BHViewAdapter = new Class({
        **************************/
       var params = "";
 
-      if(data){
-         params = data.signal + '=' + data.data; 
+      if(!_.isEmpty(data)){
+         if(!_.isEmpty(data.date_range)){
+            params = 'start_date=' + data.date_range.start_date + 
+                     '&end_date=' + data.date_range.end_date + '&' + 
+                     data.signal + '=' + data.data; 
+         }else{
+            params = data.signal + '=' + data.data; 
+         }
       }else{
 
          var inputs = $(controlPanelSel).find('input');
@@ -137,6 +151,26 @@ var BHViewAdapter = new Class({
       }
 
       return params;
+   },
+   getDateRangeParams: function(controlPanelDropdownEl){
+
+      var start = "";
+      var end = "";
+
+      if($(controlPanelDropdownEl)[0] === undefined){
+         //Menu has not been created take date range out of page
+         start = $(this.startDateSel).val();
+         end = $(this.endDateSel).val();
+         console.log([start, end]);
+      }else{
+         //Menu has been created already
+         var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
+         start = startInput.val();
+         var endInput = $(controlPanelDropdownEl).find('[name="end_date"]');
+         end = endInput.val();
+      }
+
+      return { start_date:start, end_date:end };
    },
    clearPanel: function(controlPanelSel){
       /*******************
@@ -282,21 +316,28 @@ var NewCrashesAdapter = new Class({
        * Build the default URL parameter string.  In this case
        * the date range should just be today's date which is the end date.
        * ****************/
-      var params = 'start_date=' + $(this.endDateSel).val() +
-                   '&end_date=' + $(this.endDateSel).val();
+      var params = 'start_date=' + $(this.endDateSel).val();
       return params;
    },
    setControlPanelFields: function(controlPanelDropdownEl, data){
       if(!_.isEmpty(data)){
-         this.clearPanel(controlPanelDropdownEl);
+         //this.clearPanel(controlPanelDropdownEl);
          var el = $(controlPanelDropdownEl).find('[name="' + data.signal + '"]');
          $(el).attr('value', this.unescapeForUrl(data.data));
+
+         if(!_.isEmpty(data.date_range)){
+            var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
+            startInput.attr('value',  data.date_range.start_date );
+            var endInput = $(controlPanelDropdownEl).find('[name="end_date"]');
+            endInput.attr('value', data.date_range.end_date );
+         }
+
       }else {
-         //Set both start and end inputs to the end date which is today's date
+         //Set start date only
          var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
-         startInput.attr('value',  $(this.endDateSel).val() );
-         var endInput = $(controlPanelDropdownEl).find('[name="end_date"]');
-         endInput.attr('value', $(this.endDateSel).val() );
+         if(!startInput.val()){
+            startInput.attr('value',  $(this.endDateSel).val() );
+         }
       }
    }
 });

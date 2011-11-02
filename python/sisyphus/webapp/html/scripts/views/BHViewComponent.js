@@ -403,7 +403,6 @@ var BHViewComponent = new Class({
          //Set up signal handling
          this.setDataTableSignals();
 
-
          this.tableCreated = true;
 
          var bhviewReadName = this.model.getBHViewAttribute('read_name');
@@ -498,8 +497,14 @@ var BHViewComponent = new Class({
                var adapterName = this.model.getBHViewAttribute('data_adapter');
                var a = this.dataAdapters.getAdapter(adapterName);
                var targetData = a.escapeForUrl($(event.target).text(), href);
+
+
+               var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
+                                                                     this.bhviewIndex);
+               var dateRange = a.getDateRangeParams(controlPanelDropdownSel);
                var data = { bhviewIndex:this.bhviewIndex,
                             data:targetData,
+                            date_range:dateRange,
                             signal:href };
 
                if(this.signalingType == 'send'){

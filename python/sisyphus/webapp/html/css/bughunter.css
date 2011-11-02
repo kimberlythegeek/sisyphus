@@ -84,18 +84,18 @@ div.bh-toolbar-base {
 }
 div.bh-toppanel {
   height: 50px;
-  width: 90%;
+  width: 95%;
   margin-top: 20px;
   padding-top: 10px;
 }
 div.bh-toolbar-border {
-  width: 90%;
+  width: 95%;
   height: 5px;
   background: #386196;
   margin-bottom: 10px;
 }
 div.bh-toolpanel {
-  width: 90%;
+  width: 95%;
   height:50px;
   margin-top: 10px;
   margin-bottom: 10px;
