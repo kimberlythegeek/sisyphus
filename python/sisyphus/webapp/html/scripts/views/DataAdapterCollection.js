@@ -208,7 +208,7 @@ var BHViewAdapter = new Class({
        *              can receive/send
        * ***************************/
 
-      if(dataObject.length >= 1 ){
+      if(dataObject.data.length >= 1 ){
 
          wrapFound = false;
          signalsFound = false;
@@ -216,39 +216,36 @@ var BHViewAdapter = new Class({
 
          //Build column names and test for columns that need
          //special handling.  We want to avoid iterating through
-         //dataObject if we can.
-         _.each( _.keys(dataObject[0]), _.bind(function(d){
-            if(this.wrapColumns[d]){
+         //dataObject.data if we can.
+         for(i=0; i<dataObject['columns'].length; i++){
+            var colName = dataObject['columns'][i];
+            if(this.wrapColumns[colName]){
                wrapFound = true;
             } 
-
             if(signals != undefined){
-               if(signals[d] == 1){
+               if(signals[colName] == 1){
                   signalsFound = true;
                }
             }
-
-            if(this.mediaColumns[d]){
+            if(this.mediaColumns[colName]){
                mediaFound = true;
             }
-
-            datatableObject.aoColumns.push({ "mDataProp":d, "sTitle":d });
-
-         }, this) );
+            datatableObject.aoColumns.push({ "mDataProp":colName, "sTitle":colName });
+         }
 
          if(wrapFound || signalsFound || mediaFound){
-            for(var i=0; i<dataObject.length; i++){
+            for(var i=0; i<dataObject.data.length; i++){
                if(wrapFound){
-                  //URL encoded spaces, %2, breaks wrapping in HTML table rows.
+                  //URL encoded spaces, %20, breaks wrapping in HTML table rows.
                   //Tried using decodeURI() here but it fails, not sure why...
-                  //Resorted to replaceing %2 explicitly.  Maybe a better place
+                  //Resorted to replaceing %20 explicitly.  Maybe a better place
                   //for this would be in the server side environment, so we don't 
                   //have to iterate over every row.  
                   for(var w in this.wrapColumns){
-                     if(dataObject[i][w] != undefined){
-                        var data = dataObject[i][w].replace(/\%2/g, ' ');
+                     if(dataObject.data[i][w] != undefined){
+                        var data = dataObject.data[i][w].replace(/\%20/g, ' ');
                         data = data.replace(/\n/g, ' ');
-                        dataObject[i][w] = BHPAGE.escapeHtmlEntities(data);
+                        dataObject.data[i][w] = BHPAGE.escapeHtmlEntities(data);
                      }
                   }
                }
@@ -256,28 +253,20 @@ var BHViewAdapter = new Class({
                if(signalsFound){
                   for(var s in signals){
                      var eclass = 'bh-signal-' + s;
-                     if(dataObject[i][s] != undefined){
-                        //This is a hack to exclude the 'no signature' string.
-                        //If more cases like 'no signature' are found a different
-                        //approach will be required.  Using equality in a conditional
-                        //to optimize performance, it will fail if there's any variation
-                        //in the string...
-                        if(dataObject[i][s] != '(no signature)'){
-                           var contextMenuHtml = $(this.cellAnchorClassSel).html();
-
-                           dataObject[i][s] = '<div style="display:inline;"><a class="' + eclass + 
-                                               '" href="#' + s + '">' + BHPAGE.escapeHtmlEntities(dataObject[i][s]) + 
-                                               '</a>' + contextMenuHtml + '</div>';
-                        }
+                     if(dataObject.data[i][s] != undefined){
+                        var contextMenuHtml = $(this.cellAnchorClassSel).html();
+                        dataObject.data[i][s] = '<div style="display:inline;"><a class="' + eclass + 
+                                                '" href="#' + s + '">' + BHPAGE.escapeHtmlEntities(dataObject.data[i][s]) + 
+                                                '</a>' + contextMenuHtml + '</div>';
                      }
                   }
                }
 
                if(mediaFound){
                   for(var m in this.mediaColumns){
-                     if(dataObject[i][m] != undefined){
-                        var mediaHref = "/bughunter/media" + dataObject[i][m].replace(/^.*media/, '').replace(/\.gz$/, '');
-                        dataObject[i][m] = '<a target="_blank" href="' + mediaHref + '">view</a>';
+                     if(dataObject.data[i][m] != undefined){
+                        var mediaHref = "/bughunter/media" + dataObject.data[i][m].replace(/^.*media/, '').replace(/\.gz$/, '');
+                        dataObject.data[i][m] = '<a target="_blank" href="' + mediaHref + '">view</a>';
                      }
                   }
                }
@@ -287,14 +276,14 @@ var BHViewAdapter = new Class({
    },
    escapeForUrl: function(s, signal){
       if(signal == 'url'){
-         //Return space to %2
-         s = s.replace(/ /g, '%2');
+         //Return space to %20
+         s = s.replace(/ /g, '%20');
       }
       return encodeURIComponent( BHPAGE.unescapeHtmlEntities(s) );
    },
    unescapeForUrl: function(s, signal){
       if(signal == 'url'){
-         s = s.replace(/\%2/g, ' ');
+         s = s.replace(/\%20/g, ' ');
       }
       return decodeURIComponent( BHPAGE.unescapeHtmlEntities(s) );
    }

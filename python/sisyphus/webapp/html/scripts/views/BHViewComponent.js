@@ -1364,7 +1364,7 @@ var BHViewModel = new Class({
                               xScrollInner:true,
                               iDisplayLength:100,
                               aLengthMenu:[[25, 50, 100, 500, 1000], [25, 50, 100, 500, 1000]],
-                              aaData:dataObject,
+                              aaData:dataObject.data,
                               aoColumns:[],
                               
                               oColVis:{

@@ -594,7 +594,7 @@ def _get_new_crashes(proc_path, proc_name, full_proc_path, placeholders, replace
    json = settings.DHUB.execute(proc=full_proc_path,
                                 replace=[ rep0 ],
                                 debug_show=settings.DEBUG,
-                                return_type='tuple_json')
+                                return_type='table_json')
 
    return json
 
@@ -624,7 +624,7 @@ def _get_site_test_crash(proc_path, proc_name, full_proc_path, placeholders, rep
    json = settings.DHUB.execute(proc=full_proc_path,
                                 replace=[ rep0 ],
                                 debug_show=settings.DEBUG,
-                                return_type='tuple_json')
+                                return_type='table_json')
 
    return json
 
@@ -651,7 +651,7 @@ def _get_socorro_record(proc_path, proc_name, full_proc_path, placeholders, repl
    json = settings.DHUB.execute(proc=full_proc_path,
                                 replace=[ rep0 ],
                                 debug_show=settings.DEBUG,
-                                return_type='tuple_json')
+                                return_type='table_json')
 
    return json
 
@@ -673,7 +673,7 @@ def _get_crash_detail(proc_path, proc_name, full_proc_path, placeholders, replac
    json = settings.DHUB.execute(proc=full_proc_path,
                                 replace=[ date_only, rep_dict['full_where'] ],
                                 debug_show=settings.DEBUG,
-                                return_type='tuple_json')
+                                return_type='table_json')
 
    return json
 
@@ -701,7 +701,7 @@ def _get_crashes(proc_path, proc_name, full_proc_path, placeholders, replacement
    json = settings.DHUB.execute(proc=full_proc_path,
                                 debug_show=settings.DEBUG,
                                 replace=[ rep0 ],
-                                return_type='tuple_json')
+                                return_type='table_json')
 
    return json
 
@@ -728,7 +728,7 @@ def _get_urls(proc_path, proc_name, full_proc_path, placeholders, replacements, 
    json = settings.DHUB.execute(proc=full_proc_path,
                                 debug_show=settings.DEBUG,
                                 replace=[ rep0 ],
-                                return_type='tuple_json')
+                                return_type='table_json')
 
    return json
 
@@ -757,7 +757,7 @@ def _get_fmurls(proc_path, proc_name, full_proc_path, placeholders, replacements
    json = settings.DHUB.execute(proc="%s%s" % (proc_path, 'urls_fm'),
                                 debug_show=settings.DEBUG,
                                 replace=[rep0],
-                                return_type='tuple_json')
+                                return_type='table_json')
 
    return json
 
