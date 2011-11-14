@@ -10,13 +10,17 @@ var ConnectionsComponent = new Class({
 
       this.parent(options);
 
-      var bhviewNames = BHPAGE.BHViewCollection.getAllBHViewNames();
-
-      this.view = new ConnectionsView('#ConnectionsView',{bhviewNames:bhviewNames});
+      this.view = new ConnectionsView('#ConnectionsView',{});
       this.model = new ConnectionsModel('#ConnectionsModel',{});
 
    },
-   open: function(tab, signalingType){
+   open: function(tab, signalingType, signals){
+
+      var bhviewNames = BHPAGE.BHViewCollection.getBHViewsBySignalHash(signals);
+
+      //Set up all views option menu
+      this.view.setAllViewsOptionMenu(bhviewNames);
+
       this.view.setSignalingType(signalingType);
       this.view.open(tab, signalingType);
    },
@@ -70,8 +74,6 @@ var ConnectionsView = new Class({
 
    initializeModal: function(){
 
-      //Set up all views option menu
-      this.setAllViewsOptionMenu();
       //Set up the tag selection events
       this.setTabSelections();
       //Set up the radio buttons on the open page tab
@@ -136,11 +138,15 @@ var ConnectionsView = new Class({
          }
       }
    },
-   setAllViewsOptionMenu: function(){
-      for(var i=0; i<this.bhviewNames.length; i++){
+   setAllViewsOptionMenu: function(bhviewNames){
+
+      //Clear out any existing options
+      $(this.viewListSel).empty();
+
+      for(var i=0; i<bhviewNames.length; i++){
          var optionEl = $('<option></option>');
-         $(optionEl).attr('value', this.bhviewNames[i].name);
-         $(optionEl).text(this.bhviewNames[i].read_name);
+         $(optionEl).attr('value', bhviewNames[i].name);
+         $(optionEl).text(bhviewNames[i].read_name);
          if( i == 0 ){
             $(optionEl).attr('selected', 1);
          }

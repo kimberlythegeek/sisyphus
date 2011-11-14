@@ -30,6 +30,9 @@ var BHViewCollection = new Class({
    getBHViewsBySignal: function(signal){
       return this.model.getBHViewsBySignal(signal);
    },
+   getBHViewsBySignalHash: function(signals){
+      return this.model.getBHViewsBySignalHash(signals);
+   },
    getBHViewCount: function(){
       return this.model.getBHViewCount();
    },
@@ -188,12 +191,31 @@ var BHViewCollectionModel = new Class({
       var bhviews = [];
       for( var bhviewName in  BHPAGE.navLookup ){
          if (BHPAGE.navLookup[bhviewName]['send_only'] != undefined){
-            //Some fews can only send signals not receive them, exclude from list
+            //Some views can only send signals not receive them, exclude from list
             continue;
          }
          if (BHPAGE.navLookup[bhviewName]['signals'] != undefined){
             if (BHPAGE.navLookup[bhviewName]['signals'][signal] != undefined){
                bhviews.push(BHPAGE.navLookup[bhviewName]);
+            }
+         }
+      }
+      return bhviews;
+   },
+   getBHViewsBySignalHash: function(signals){
+      var bhviews = [];
+      for( var bhviewName in  BHPAGE.navLookup ){
+         if (BHPAGE.navLookup[bhviewName]['send_only'] != undefined){
+            //Some views can only send signals not receive them, exclude from list
+            continue;
+         }
+         if (BHPAGE.navLookup[bhviewName]['signals'] != undefined){
+            for(var signal in signals){
+               if (BHPAGE.navLookup[bhviewName]['signals'][signal] != undefined){
+                  bhviews.push(BHPAGE.navLookup[bhviewName]);
+                  //We only need one match to include the signla
+                  break;
+               }
             }
          }
       }

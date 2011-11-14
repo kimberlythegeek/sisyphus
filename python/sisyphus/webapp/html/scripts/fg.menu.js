@@ -155,6 +155,11 @@ function Menu(caller, options){
             //the clickHandler.  This is rather hacktastic -Jeads
             if(options.clickHandler && (c != 'positionHelper')){
                options.clickHandler(event);
+               if( event.target.type == 'checkbox' ){
+                  //This prevents a menu that contains a checkbox
+                  //from closing when the checkbox is clicked
+                  return true;
+               }
             }else{
                menu.kill(); 
             }

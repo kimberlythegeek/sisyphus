@@ -97,6 +97,17 @@ var BHViewComponent = new Class({
       //Select view and load the data
       this.selectBHView();
 
+      //Set up the update of the date range in the page every 5 minutes
+      setInterval( _.bind(this._updateDateRange, this), 300000 );
+   },
+   _updateDateRange: function(){
+
+      jQuery.ajax( this.model.dateRangeLocation, { accepts:'application/json',
+                                                   dataType:'json',
+                                                   cache:false,
+                                                   type:'GET',
+                                                   context:this.view,
+                                                   success:this.view.updateDateRange });
    },
    /****************
     *PUBLIC INTERFACE
@@ -629,8 +640,11 @@ var BHViewComponent = new Class({
    },
    openWindow: function(){
       this.view.closeMenu();
+
+      var signals = this.model.getBHViewAttribute('signals');
+
       BHPAGE.ConnectionsComponent.setBHViewIndex(this.bhviewIndex);
-      BHPAGE.ConnectionsComponent.open('open', this.signalingType);
+      BHPAGE.ConnectionsComponent.open('open', this.signalingType, signals);
    },
    refresh: function(){
       this.view.closeMenu();
@@ -700,6 +714,10 @@ var BHViewComponent = new Class({
 
             var elId = $(event.target).attr('id');
 
+            var adapterName = this.model.getBHViewAttribute('data_adapter');
+            var a = this.dataAdapters.getAdapter(adapterName);
+            a.processPanelClick(elId);
+
             if( elId == controlPanelBtSel ){
                //close menu
                this.view.closeMenu();
@@ -707,13 +725,10 @@ var BHViewComponent = new Class({
                $(this.view.allViewsContainerSel).trigger( this.processControlPanelEvent, 
                                                          { bhviewIndex:this.bhviewIndex }); 
             }else if(elId == controlPanelClearBtSel){
-               //Get data adapter to clear fields
-               var adapterName = this.model.getBHViewAttribute('data_adapter');
-               var a = this.dataAdapters.getAdapter(adapterName);
                a.clearPanel(controlPanelDropdownSel);
             }
 
-            return false;
+            event.stopPropagation();
 
          }, this) //end bind
       });
@@ -818,6 +833,11 @@ var BHViewView = new Class({
       this.signalHelpBtSel = '#bh_signal_help_bt_c';
       this.maxSignalDataLength = 60;
 
+      //Date range selectors
+      this.startDateSel = '#bh_start_date';
+      this.endDateSel = '#bh_end_date';
+      this.currentDateSel = '#bh_current_date';
+
       //Clone id selector, finds all elements with an id attribute ending in _c
       this.cloneIdSelector = '*[id$="_c"]';
 
@@ -827,6 +847,18 @@ var BHViewView = new Class({
       //Signal base id
       this.signalBaseSel = '#bh_post_';
 
+   },
+   updateDateRange: function(data, textStatus, jqXHR){
+
+      if(data.start_date != undefined){
+         $(this.startDateSel).attr('value', data.start_date);
+      }
+      if(data.end_date != undefined){
+         $(this.endDateSel).attr('value', data.end_date);
+      }
+      if(data.current_date != undefined){
+         $(this.currentDateSel).attr('value', data.current_date);
+      }
    },
    getTablePaginationSel: function(bhviewIndex){
       return this.tablePaginationSel.replace('BHVIEW_INDEX', bhviewIndex);
@@ -1281,6 +1313,7 @@ var BHViewModel = new Class({
       this.bhviewHash = {};
       this.setBHViewHash(this.options.bhviewName);
       this.apiLocation = "/bughunter/api/views/";
+      this.dateRangeLocation = "/bughunter/views/get_date_range";
    },
    /***************
     *GET METHODS

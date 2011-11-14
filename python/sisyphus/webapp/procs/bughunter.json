@@ -15,9 +15,9 @@
                        c.signature
                 FROM SiteTestCrash AS stc
                 JOIN Crash AS c ON stc.crash_id = c.id
-                WHERE REP0 
+                WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1') REP2 
                 ORDER BY stc.datetime DESC
-                LIMIT 500",
+                LIMIT 1000",
          "host_type":"master_host"
       },
       "socorro_record":{
@@ -43,9 +43,9 @@
                        sr.reason
                  FROM SocorroRecord AS sr
                  JOIN SiteTestRun AS str ON sr.id = str.socorro_id
-                 WHERE REP0
+                 WHERE (str.datetime >= 'REP0' AND str.datetime <= 'REP1') REP2 
                  ORDER BY str.datetime DESC
-                 LIMIT 500",
+                 LIMIT 1000",
 
          "host_type":"master_host"
       },
@@ -57,25 +57,24 @@
                           str.os_name,
                           str.os_version,
                           str.cpu_name,
-                          COUNT( c.id ) AS 'Count',
-                          sr.url
+                          COUNT( c.id ) AS 'Count'
                     FROM Crash AS c
                     JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
                     JOIN SiteTestRun AS str ON stc.testrun_id = str.id
                     JOIN SocorroRecord AS sr ON str.socorro_id = sr.id
-                    WHERE REP0
+                    WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1') REP2
                     GROUP BY c.signature,
                              str.fatal_message,
                              str.branch,
                              str.os_name,
                              str.os_version,
                              str.cpu_name
-                  LIMIT 500",
+                    ORDER BY str.fatal_message DESC, c.signature ASC
+                    LIMIT 1000",
 
             "host_type":"master_host"
       },
-
-      "newcrashes":{
+      "new_crash_signatures":{
 
             "sql":"SELECT c.signature,
                           str.fatal_message,
@@ -83,20 +82,25 @@
                           str.os_name,
                           str.os_version,
                           str.cpu_name,
-                          DATE_FORMAT(str.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
                           COUNT( c.id ) AS 'Count'
-                   FROM Crash AS c
-                   JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
-                   JOIN SiteTestRun AS str ON stc.testrun_id = str.id
-                   JOIN SocorroRecord AS sr ON str.socorro_id = sr.id
-                   WHERE REP0
-                   GROUP BY c.signature,
-                            str.fatal_message,
-                            str.branch,
-                            str.os_name,
-                            str.os_version,
-                            str.cpu_name
-                   LIMIT 500",
+                    FROM Crash AS c
+                    JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
+                    JOIN SiteTestRun AS str ON stc.testrun_id = str.id
+                    JOIN SocorroRecord AS sr ON str.socorro_id = sr.id
+                    WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1') AND 
+                           c.id NOT IN (
+                              SELECT c.id
+                              FROM Crash AS c
+                              JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
+                              WHERE (stc.datetime < 'REP0')) REP2
+                    GROUP BY c.signature,
+                             str.fatal_message,
+                             str.branch,
+                             str.os_name,
+                             str.os_version,
+                             str.cpu_name
+                    ORDER BY str.fatal_message DESC, c.signature ASC
+                    LIMIT 1000",
 
             "host_type":"master_host"
       },
@@ -112,10 +116,10 @@
                        COUNT(stc.url) AS 'url_count'
                  FROM Crash AS c
                  JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
-                 WHERE REP0
+                 WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1') REP2
                  GROUP BY stc.url, c.branch, c.os_name, c.os_version, c.build_cpu_name
                  ORDER BY stc.datetime DESC
-                 LIMIT 500",
+                 LIMIT 1000",
 
          "host_type":"master_host"
       },
@@ -165,9 +169,10 @@
                   FROM Crash AS c
                   JOIN SiteTestCrash AS stc
                   ON c.id = stc.crash_id 
-                  REP0 ) 
-               REP1
-               LIMIT 500",
+                  WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1')
+               ) 
+               REP2
+               LIMIT 1000",
 
          "host_type":"master_host"
       },
@@ -183,11 +188,10 @@
                  FROM Crash AS c
                  JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
                  JOIN SiteTestRun AS str ON stc.testrun_id = str.id
-                 WHERE REP0
+                 WHERE (str.datetime >= 'REP0' AND str.datetime <= 'REP1') REP2
                  GROUP BY stc.url, c.branch, c.os_name, c.os_version, c.build_cpu_name
                  ORDER BY stc.datetime DESC 
-                 LIMIT 500
-               ",
+                 LIMIT 1000",
 
          "host_type":"master_host"
       }

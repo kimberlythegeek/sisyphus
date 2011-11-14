@@ -7,9 +7,11 @@ var BughunterPage = new Class( {
    jQuery:'BughunterPage',
 
    initialize: function(selector, options){
+
       this.parent(options);
       this.allViewsContainerSel = '#bh_view_container';
       this.addBHViewEvent = 'ADD_BHVIEW';
+
    }
 });
 

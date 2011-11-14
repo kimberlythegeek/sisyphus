@@ -18,14 +18,17 @@ var DataAdapterCollection = new Class({
       //Holds a list of adapters.  The key should be found in
       //views.json in the data_adapter attribute.
       this.adapters = { 'named_fields':new BHViewAdapter(),
-                        'new_crashes':new NewCrashesAdapter() };
+                        'crashes':new CrashesAdapter() };
+
    },
 
    getAdapter: function(adapter){
 
       if(this.adapters[adapter] === undefined){
+         this.adapters['named_fields'].adapter = adapter;
          return this.adapters['named_fields'];
       }else{
+         this.adapters[adapter].adapter = adapter;
          return this.adapters[adapter];
       }
    }
@@ -53,6 +56,11 @@ var BHViewAdapter = new Class({
    initialize: function(selector, options){
 
       this.setOptions(options);
+
+      //Name of the adapter, set by getAdapter()
+      this.adapter = "";
+      //Set's the default column to sort on
+      this.sorting = {};
 
       this.mediaColumns = { crashreport:true,
                             log:true };
@@ -98,10 +106,16 @@ var BHViewAdapter = new Class({
          }
 
       }else {
+
          var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
-         startInput.attr('value',  $(this.startDateSel).val() );
          var endInput = $(controlPanelDropdownEl).find('[name="end_date"]');
-         endInput.attr('value', $(this.endDateSel).val() );
+
+         //Only set the values to the default date range if both values
+         //are undefined
+         if( !startInput.val() && !endInput.val() ){ 
+            startInput.attr('value',  $(this.startDateSel).val() );
+            endInput.attr('value', $(this.endDateSel).val() );
+         }
       }
    },
    processControlPanel: function(controlPanelSel, data){
@@ -132,7 +146,7 @@ var BHViewAdapter = new Class({
 
          for(var i=0; i<inputs.length; i++){
             var type = $(inputs[i]).attr('type');
-            if(type == 'text'){
+            if((type == 'text') || (type == 'checkbox')){
                var name = $(inputs[i]).attr('name');
                var v = $(inputs[i]).val();
                if(!(v === "")){
@@ -207,12 +221,15 @@ var BHViewAdapter = new Class({
        *    signals - Associative array of signals that the bhview
        *              can receive/send
        * ***************************/
-
       if(dataObject.data.length >= 1 ){
 
          wrapFound = false;
          signalsFound = false;
          mediaFound = false;
+
+         if(this.sorting[ this.adapter ]){
+            datatableObject.aaSorting = this.sorting[this.adapter];
+         }
 
          //Build column names and test for columns that need
          //special handling.  We want to avoid iterating through
@@ -236,14 +253,14 @@ var BHViewAdapter = new Class({
          if(wrapFound || signalsFound || mediaFound){
             for(var i=0; i<dataObject.data.length; i++){
                if(wrapFound){
-                  //URL encoded spaces, %20, breaks wrapping in HTML table rows.
+                  //URL encoded &, %26, breaks wrapping in HTML table rows.
                   //Tried using decodeURI() here but it fails, not sure why...
                   //Resorted to replaceing %20 explicitly.  Maybe a better place
                   //for this would be in the server side environment, so we don't 
                   //have to iterate over every row.  
                   for(var w in this.wrapColumns){
                      if(dataObject.data[i][w] != undefined){
-                        var data = dataObject.data[i][w].replace(/\%20/g, ' ');
+                        var data = dataObject.data[i][w].replace(/\%26/g, '&');
                         data = data.replace(/\n/g, ' ');
                         dataObject.data[i][w] = BHPAGE.escapeHtmlEntities(data);
                      }
@@ -277,58 +294,57 @@ var BHViewAdapter = new Class({
    escapeForUrl: function(s, signal){
       if(signal == 'url'){
          //Return space to %20
-         s = s.replace(/ /g, '%20');
+         s = s.replace(/\&/g, '%26');
       }
       return encodeURIComponent( BHPAGE.unescapeHtmlEntities(s) );
    },
    unescapeForUrl: function(s, signal){
       if(signal == 'url'){
-         s = s.replace(/\%20/g, ' ');
+         s = s.replace(/\%26/g, '\&');
       }
       return decodeURIComponent( BHPAGE.unescapeHtmlEntities(s) );
+   },
+   processPanelClick: function(elId){
+      return;
    }
 });
-var NewCrashesAdapter = new Class({
+var CrashesAdapter = new Class({
 
    Extends:BHViewAdapter,
 
-   jQuery:'NewCrashesAdapter',
+   jQuery:'CrashesAdapter',
 
    initialize: function(selector, options){
       this.setOptions(options);
       this.parent(options);
+
+      //Set default sort column to Total Count
+      this.sorting = { 'crashes':[[2, 'desc']] };
+
+      this.newSignaturesId = 'bh_new_signatures_c';
+   },
+   processPanelClick: function(elId){
+      if(elId === undefined){
+         return;
+      }
+      if(elId.match(this.newSignaturesId)){
+         var el = $('#' + elId);
+         var value = $(el).attr('value');
+         if(value == 'on'){
+            $(el).attr('value', 'off');
+         }else{
+            $(el).attr('value', 'on');
+         }
+      }
    },
    getDefaultParams: function(){
       /******************
        * Build the default URL parameter string.  In this case
-       * the date range should just be today's date which is the end date.
+       * use the date range embedded in the page.
        * ****************/
-      var params = 'start_date=' + $(this.currentDateSel).val() +
-                   '&end_date=' + $(this.endDateSel).val();
+      var params = 'start_date=' + $(this.startDateSel).val() +
+                   '&end_date=' + $(this.endDateSel).val() +
+                   '&new_signatures=on';
       return params;
-   },
-   setControlPanelFields: function(controlPanelDropdownEl, data){
-      if(!_.isEmpty(data)){
-         //this.clearPanel(controlPanelDropdownEl);
-         var el = $(controlPanelDropdownEl).find('[name="' + data.signal + '"]');
-         $(el).attr('value', this.unescapeForUrl(data.data));
-
-         if(!_.isEmpty(data.date_range)){
-            var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
-            startInput.attr('value',  data.date_range.start_date );
-            var endInput = $(controlPanelDropdownEl).find('[name="end_date"]');
-            endInput.attr('value', data.date_range.end_date );
-         }
-
-      }else {
-         var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
-         var endInput = $(controlPanelDropdownEl).find('[name="end_date"]');
-         if(!startInput.val()){
-            startInput.attr('value',  $(this.currentDateSel).val() );
-         }
-         if(!endInput.val()){
-            endInput.attr('value',  $(this.endDateSel).val() );
-         }
-      }
    }
 });
