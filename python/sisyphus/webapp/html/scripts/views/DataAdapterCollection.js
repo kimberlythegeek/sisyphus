@@ -78,6 +78,8 @@ var BHViewAdapter = new Class({
       this.cellAnchorClassSel = '.bh-cell-contextanchor';
       this.cellMenuClassSel = '.bh-cell-contextmenu';
 
+      this.ignoreKeyCodes = { 37:1,    //left arrow
+                              39:1 };  //right arrow
    },
    setControlPanelFields: function(controlPanelDropdownEl, data){
       /*********************
@@ -149,6 +151,9 @@ var BHViewAdapter = new Class({
             if((type == 'text') || (type == 'checkbox')){
                var name = $(inputs[i]).attr('name');
                var v = $(inputs[i]).val();
+               if(v != undefined){
+                  v = v.replace(/\s+$/, '');
+               }
                if(!(v === "")){
                   params += name + '=' + this.escapeForUrl(v) + '&';
                }
@@ -165,14 +170,22 @@ var BHViewAdapter = new Class({
          params = params.replace(/\&$/, '');
       }
 
+      if(params == ""){
+         //If params is still an empty string it's possible processControlPanel
+         //was called before the control panel was created.  Get the date range
+         var dateRange = this.getDateRangeParams(controlPanelSel, data);
+         params = "start_date=" + dateRange.start_date + "&end_date=" + dateRange.end_date;
+      }
+
       return params;
    },
-   getDateRangeParams: function(controlPanelDropdownEl){
+   getDateRangeParams: function(controlPanelDropdownEl, signalData){
 
       var start = "";
       var end = "";
 
-      if($(controlPanelDropdownEl)[0] === undefined){
+      //Ugh, this a bit hideous
+      if(($(controlPanelDropdownEl)[0] === undefined) && (signalData === undefined)){
          //Menu has not been created take date range out of page
          start = $(this.startDateSel).val();
          end = $(this.endDateSel).val();
@@ -180,8 +193,20 @@ var BHViewAdapter = new Class({
          //Menu has been created already
          var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
          start = startInput.val();
+         if(start != undefined){
+            start = start.replace(/\s+$/, '');
+         }
          var endInput = $(controlPanelDropdownEl).find('[name="end_date"]');
          end = endInput.val();
+         if(end != undefined){
+            end = end.replace(/\s+$/, '');
+         }
+
+         //signal data exists but the menu has not been created, could occur on refresh
+         //or navigating to another view
+         if( ((start === undefined) && (end === undefined)) && (signalData['date_range'] != undefined)){
+            return signalData['date_range'];
+         }
       }
 
       return { start_date:start, end_date:end };
@@ -210,6 +235,80 @@ var BHViewAdapter = new Class({
       var params = 'start_date=' + $(this.startDateSel).val() +
                    '&end_date=' + $(this.endDateSel).val();
       return params;
+   },
+   resetDates: function(controlPanelDropdownEl){
+
+      //Reset the start and end date to the values embedded
+      //in the page.
+      var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
+      startInput.attr('value', $(this.startDateSel).val());
+
+      var endInput = $(controlPanelDropdownEl).find('[name="end_date"]');
+      endInput.attr('value', $(this.endDateSel).val());
+   },
+   checkDates: function(controlPanelDropdownEl, 
+                        showMessage, 
+                        serverStartDate, 
+                        serverEndDate, 
+                        serverResetSel,
+                        badDateSel){
+
+      this.serverResetSel = serverResetSel;
+      this.badDateSel = badDateSel;
+
+      var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
+      var endInput = $(controlPanelDropdownEl).find('[name="end_date"]');
+
+      //Check if the server reset the date range 
+      if( showMessage ){
+         //update panel values
+         startInput.attr('value', serverStartDate);
+         endInput.attr('value', serverEndDate);
+         //display message
+         $(this.serverResetSel).removeClass('hidden');
+      }else{
+         $(this.serverResetSel).addClass('hidden');
+         $(this.badDateSel).addClass('hidden');
+      }
+
+      //Set up date format listeners
+      startInput.keyup( _.bind(this.validateDate, this ) );
+      endInput.keyup( _.bind(this.validateDate, this) );
+   },
+   unbindPanel: function(controlPanelDropdownEl){
+      var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
+      var endInput = $(controlPanelDropdownEl).find('[name="end_date"]');
+      startInput.unbind();
+      endInput.unbind();
+   },
+   validateDate: function(event){
+
+      var dt = $(event.target).val();
+
+      var carretPos = event.target.selectionStart -1;
+
+      //Let the user use the backspace anywhere
+      //in the string
+      if(this.ignoreKeyCodes[event.keyCode]){
+         return;
+      }
+      if( dt.match(/[^\d\-\:\s/]/) ){
+         //Don't allow bad chars
+         $(event.target).attr('value', dt.replace(/[^\d\-\:\s/]/, '') );
+         return;
+      }
+      //collapse multiple spaces to one
+      if( dt.match(/\s\s/g) ){
+         $(event.target).attr('value', dt.replace(/\s\s/, ' ') );
+         return;
+      }
+      //Let the user know when they have a bad date
+      if( dt.match(/^\d\d\d\d\-\d\d\-\d\d\s\d\d\:\d\d\:\d\d$|^\d\d\d\d\-\d\d\-\d\d\s{0,}$/) ){
+         $(this.badDateSel).addClass('hidden');
+      }else{
+         $(this.badDateSel).removeClass('hidden');
+         $(this.serverResetSel).addClass('hidden');
+      }
    },
    processData: function(dataObject, datatableObject, signals){
       /****************************
@@ -306,6 +405,19 @@ var BHViewAdapter = new Class({
    },
    processPanelClick: function(elId){
       return;
+   },
+   setSelectionRange: function(input, selectionStart, selectionEnd){
+
+      if(input.setSelectionRange){
+         input.focus();
+         input.setSelectionRange(selectionStart, selectionEnd);
+      }else if(input.createTextRange){
+         var range = input.createTextRange();
+         range.collapse(true);
+         range.moveEnd('character', selectionEnd);
+         range.moveStart('character', selectionStart);
+         range.select();
+      }
    }
 });
 var CrashesAdapter = new Class({

@@ -75,7 +75,8 @@ function Menu(caller, options){
 		//topLinkText: 'All',
 		nextCrumbLink: 'ui-icon-carat-1-e',
 
-      onOpen:undefined, //caller can pass in a callback to be called when the menu is opend -Jeads
+      onOpen:undefined, //caller can pass in a callback to be called when the menu is opened -Jeads
+      onClose:undefined, //caller can pass in a callback to be called when the menu is closed -Jeads
       callback:undefined, //caller can pass in a callback function -Jeads
       clickHandler:undefined //caller can pass in a clickhandler to manage menu clicks -Jeads
 
@@ -153,7 +154,14 @@ function Menu(caller, options){
             //If the class is positionHelper the user has
             //selected the toggler element so don't call
             //the clickHandler.  This is rather hacktastic -Jeads
-            if(options.clickHandler && (c != 'positionHelper')){
+            if(c == 'positionHelper'){
+               if(options.onClose){
+                  options.onClose(event);
+               }
+
+               menu.kill(); 
+
+            }else if(options.clickHandler){
                options.clickHandler(event);
                if( event.target.type == 'checkbox' ){
                   //This prevents a menu that contains a checkbox

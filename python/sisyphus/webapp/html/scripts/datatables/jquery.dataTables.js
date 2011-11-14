@@ -628,6 +628,13 @@
 		 */
 		"html-asc": function ( a, b )
 		{
+         //Added handling for nulls -Jeads
+         if(a === null){
+            return 1;
+         }
+         if(b === null){
+            return -1;
+         }
 			var x = a.replace( /<.*?>/g, "" ).toLowerCase();
 			var y = b.replace( /<.*?>/g, "" ).toLowerCase();
 			return ((x < y) ? -1 : ((x > y) ? 1 : 0));
@@ -635,6 +642,13 @@
 		
 		"html-desc": function ( a, b )
 		{
+         //Added handling for nulls -Jeads
+         if(a === null){
+            return 1;
+         }
+         if(b === null){
+            return -1;
+         }
 			var x = a.replace( /<.*?>/g, "" ).toLowerCase();
 			var y = b.replace( /<.*?>/g, "" ).toLowerCase();
 			return ((x < y) ? 1 : ((x > y) ? -1 : 0));

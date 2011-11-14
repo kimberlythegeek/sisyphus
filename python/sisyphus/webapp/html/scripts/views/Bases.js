@@ -47,8 +47,10 @@ var Page = new Class({
       return str;
    },
    unescapeHtmlEntities: function(str){
-      for (var i=0; i<this.decodeHtmlEntities.length; i++){
-         str = str.replace(this.decodeHtmlEntities[i][0], this.decodeHtmlEntities[i][1]);
+      if(str != undefined){
+         for (var i=0; i<this.decodeHtmlEntities.length; i++){
+            str = str.replace(this.decodeHtmlEntities[i][0], this.decodeHtmlEntities[i][1]);
+         }
       }
       return str;
    }

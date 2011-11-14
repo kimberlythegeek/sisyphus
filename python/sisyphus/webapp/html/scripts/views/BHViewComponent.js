@@ -30,6 +30,7 @@ var BHViewComponent = new Class({
       //This index is dynamically appended
       //to every id in a view clone.
       this.bhviewIndex = this.options.bhviewIndex;
+      this.parentIndex = this.options.parentIndex;
 
       //The defaultBHView is the first view initialized
       //when the page loads.
@@ -49,8 +50,8 @@ var BHViewComponent = new Class({
 
       this.model = new BHViewModel('#BHViewModel', {bhviewName:this.options.bhviewName,
                                                     dataAdapters:this.dataAdapters});
-      this.view = new BHViewView('#BHViewView', {});
 
+      this.view = new BHViewView('#BHViewView', {});
 
       //BHView events
       this.closeEvent = 'CLOSE_BHVIEW';
@@ -65,6 +66,10 @@ var BHViewComponent = new Class({
       this.subscriptionTargets[this.signalEvent] = this.signalHandler;
       this.subscriptionTargets[this.signalTypeEvent] = this.setSignalingType;
 
+      //Boolean indicating if the server had to reset the
+      //date range supplied by the user
+      this.serverDateRangeUpdate = true;
+
       //Register subscribers
       BHPAGE.registerSubscribers(this.subscriptionTargets,
                                  this.view.allViewsContainerSel,
@@ -75,7 +80,7 @@ var BHViewComponent = new Class({
 
       //Look for signals embedded in the page to
       //initialize the control panel with
-      this.signalData = this.getSignalData();
+      this.signalData = this.getSignalDataFromPage();
 
       //The signalingType indicates whether a view
       //can send or receive signals.
@@ -98,10 +103,15 @@ var BHViewComponent = new Class({
       this.selectBHView();
 
       //Set up the update of the date range in the page every 5 minutes
-      setInterval( _.bind(this._updateDateRange, this), 300000 );
+      //and only run it if we are the first bhview.  The first bhview
+      //cannot be deleted.
+      if(this.bhviewIndex == 0){
+         this.updateDateRangeInterval = setInterval( _.bind(this.updateDateRange, this), 300000 );
+      }
    },
-   _updateDateRange: function(){
+   updateDateRange: function(){
 
+      //Make ajax call to retrieve date range, update the values in the page
       jQuery.ajax( this.model.dateRangeLocation, { accepts:'application/json',
                                                    dataType:'json',
                                                    cache:false,
@@ -185,6 +195,12 @@ var BHViewComponent = new Class({
       //unique control panel/bhview relationships
       this.setControlPanelEv();
 
+      //Display signal data
+      this.view.displaySignalData('', this.signalData, this.bhviewIndex);
+
+      //Display parent/child relationship
+      this.view.displayParentChild(this.parentIndex, this.bhviewIndex);
+
       var adapterName = this.model.getBHViewAttribute('data_adapter');
       var a = this.dataAdapters.getAdapter(adapterName);
       var params = "";
@@ -231,6 +247,12 @@ var BHViewComponent = new Class({
          }else{
             params = a.processControlPanel(controlPanelDropdownSel);
          }
+
+         //Display the signal data
+         this.updateSignalDateRange();
+         //this.signalData['date_range'] = dateRange;
+         this.view.displaySignalData('', this.signalData, this.bhviewIndex);
+
          this.view.showTableSpinner(this.bhviewIndex);
 
          this.model.getBHViewData(this.model.getBHViewAttribute('name'),
@@ -242,43 +264,43 @@ var BHViewComponent = new Class({
    signalHandler: function(data){
 
       //If this view can receive and it's not the sender
-      if((this.signalingType == 'receive') && 
-         (this.signalData.bhviewIndex != this.bhviewIndex)){
+      if((data.bhviewIndex != this.bhviewIndex) && (this.model)){
+         //NOTE: this.model should never be undefined.  This is a hack to 
+         //      handle when a bhview has been deleted by the user.  When
+         //      a view is deleted the destroy method should remove all event 
+         //      listeners.  However, the destroy method fails to remove signal
+         //      listeners. Yucky... 
 
          var signals = this.model.getBHViewAttribute('signals');
+
+         //Get parent view index
+         var parentIndex = BHPAGE.BHViewCollection.getBHViewParent(this.bhviewIndex);
+         if(parentIndex != data.bhviewIndex){
+            //signal sender is not the parent, ignore
+            return;
+         }
 
          //Make sure the bhview can handle the signal
          if(signals[ data.signal ] != 1){
             return;
          }
 
-         //This view can receive signals
-         if(data.signal == 'text_filter'){
-            
-            //This causes some resize bugs, could be cool in
-            //the future if i can fix... commenting out for now
-            
-            //filter in browser using search box
-            //this.dataTable.fnFilter( data.data );
-            
-         }else{
-            this.signalData = data;
-            //Pre-fill any fields
-            var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
-                                                                   this.bhviewIndex);
+         this.signalData = data;
+         //Pre-fill any fields
+         var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
+                                                               this.bhviewIndex);
 
-            //Display the signal data
-            this.view.displaySignalData('receive', this.signalData, this.bhviewIndex);
+         //Display the signal data
+         this.view.displaySignalData('receive', this.signalData, this.bhviewIndex);
 
-            var adapterName = this.model.getBHViewAttribute('data_adapter');
-            var a = this.dataAdapters.getAdapter(adapterName);
-            a.setControlPanelFields(controlPanelDropdownSel, this.signalData);
+         var adapterName = this.model.getBHViewAttribute('data_adapter');
+         var a = this.dataAdapters.getAdapter(adapterName);
+         a.setControlPanelFields(controlPanelDropdownSel, this.signalData);
 
-            var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
-                                                                  this.bhviewIndex);
+         var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
+                                                               this.bhviewIndex);
 
-            this.processControlPanel(this.signalData);
-         }
+         this.processControlPanel(this.signalData);
       }
    },
 
@@ -425,6 +447,19 @@ var BHViewComponent = new Class({
          //Set up signal handling
          this.setDataTableSignals();
 
+         //Update signal data to whatever the server set it to
+         if((this.model.start_date != this.signalData.date_range.start_date) ||
+            (this.model.end_date != this.signalData.date_range.end_date) ){
+
+            this.serverDateRangeUpdate = true;
+
+            this.signalData.date_range = { start_date:this.model.start_date, 
+                                           end_date:this.model.end_date };
+            this.view.displaySignalData('', this.signalData, this.bhviewIndex);
+         }else{
+            this.serverDateRangeUpdate = false;
+         }
+
          this.tableCreated = true;
 
          var bhviewReadName = this.model.getBHViewAttribute('read_name');
@@ -441,10 +476,15 @@ var BHViewComponent = new Class({
          this.view.showNoDataMessage(this.bhviewIndex);
       } 
    },
-   getSignalData: function(){
+   getSignalDataFromPage: function(){
 
       var signals = this.model.getBHViewAttribute('signals');
-      var signalData = {};
+
+      var adapterName = this.model.getBHViewAttribute('data_adapter');
+      var a = this.dataAdapters.getAdapter(adapterName);
+      var dateRange = a.getDateRangeParams('', this.signalData);
+
+      var signalData = {date_range:dateRange};
 
       if(signals != undefined){
 
@@ -452,8 +492,10 @@ var BHViewComponent = new Class({
             var signalDataSel = this.view.signalBaseSel + signal;
             var data = $( signalDataSel ).val();
             if(data != undefined){
-               signalData = { signal:signal,
-                              data:data };
+
+               signalData['signal'] = signal;
+               signalData['data'] = data;
+
                //Remove signal to prevent all new bhviews from using
                //it as a default
                $( signalDataSel ).remove();
@@ -462,6 +504,16 @@ var BHViewComponent = new Class({
          }
       }
       return signalData;
+   },
+   updateSignalDateRange: function(){
+
+      var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
+                                                            this.bhviewIndex);
+      var adapterName = this.model.getBHViewAttribute('data_adapter');
+      var a = this.dataAdapters.getAdapter(adapterName);
+      var dateRange = a.getDateRangeParams(controlPanelDropdownSel, this.signalData);
+      this.signalData['date_range'] = dateRange;
+
    },
    setDataTableSignals: function(){
 
@@ -523,42 +575,21 @@ var BHViewComponent = new Class({
 
                var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
                                                                      this.bhviewIndex);
-               var dateRange = a.getDateRangeParams(controlPanelDropdownSel);
+               var dateRange = a.getDateRangeParams(controlPanelDropdownSel, this.signalData);
+
                var signalData = { bhviewIndex:this.bhviewIndex,
                                   data:targetData,
                                   date_range:dateRange,
                                   signal:href };
 
-               if(this.signalingType == 'send'){
+               //Display the signalData
+               this.view.displaySignalData('send', signalData, this.bhviewIndex);
 
-                  //Display the signalData
-                  this.view.displaySignalData('send', signalData, this.bhviewIndex);
-
-                  $(this.view.allViewsContainerSel).trigger(this.signalEvent, signalData);
-               }
+               $(this.view.allViewsContainerSel).trigger(this.signalEvent, signalData);
             }
          }
       }, this));
 
-      /*****************************
-       * This captures the text entry in the search box and sends 
-       * it out as a signal, currently not using this feature but
-       * it could come in handy later so leaving it commented out for
-       * now.
-       *
-      var filterSel = this.view.getFilterSel(this.bhviewIndex);
-      var filterInputEl = $(filterSel).find('input');
-      $(filterInputEl).bind('keyup', _.bind(function(event){ 
-
-         var data = { bhviewIndex:this.bhviewIndex,
-                      data:$(event.target).val(),
-                      signal:'text_filter' };
-
-         if(this.signalingType == 'send'){
-            $(this.view.allViewsContainerSel).trigger(this.signalEvent, data);
-         }
-      }, this));
-         ***************************/
    },
    openCellContextMenu: function(menuAnchorEl){
 
@@ -600,12 +631,23 @@ var BHViewComponent = new Class({
 
                if($(event.target).hasClass(this.view.cellOpenBHViewBtClass)){
 
+                  //Get the dateRange
+                  var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
+                                                                         this.bhviewIndex);
+                  var adapterName = this.model.getBHViewAttribute('data_adapter');
+                  var a = this.dataAdapters.getAdapter(adapterName);
+                  var dateRange = a.getDateRangeParams(controlPanelDropdownSel, this.signalData);
+                  var dateParams = "start_date=" + dateRange.start_date + "&end_date=" + dateRange.end_date + "&";
+
+                  //Get the signal
                   var cellChildElements = $(menuAnchorEl).parent().children();
                   var cellText = $(cellChildElements[0]).text();
                   var bhview = this.view.getCellMenuBHViewSelection(event.target);
+
+                  //Build the data object for the event
                   var data = { selectedView:bhview,
                                displayType:'page',
-                               params:signal + '=' + cellText };
+                               params:dateParams + signal + '=' + cellText};
 
                   $(this.view.allViewsContainerSel).trigger(this.addBHViewEvent, data);
 
@@ -647,8 +689,17 @@ var BHViewComponent = new Class({
       BHPAGE.ConnectionsComponent.open('open', this.signalingType, signals);
    },
    refresh: function(){
+
+      //this.updateSignalDateRange();
       this.view.closeMenu();
-      this.selectBHView();
+
+      //Display the signal data
+      this.view.displaySignalData('', this.signalData, this.bhviewIndex);
+
+      data = { bhviewIndex:this.bhviewIndex }; 
+      this.processControlPanel(data);
+
+      //this.selectBHView();
    },
    help: function(){
       this.view.closeMenu();
@@ -697,9 +748,38 @@ var BHViewComponent = new Class({
             //any signal data
             var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
                                                                   this.bhviewIndex);
+            var serverResetDateRangeSel = this.view.getIdSelector(this.view.serverResetDateRangeSel,
+                                                                  this.bhviewIndex);
+            var badDateFormatSel = this.view.getIdSelector(this.view.badDateFormatSel, this.bhviewIndex);
+
             var adapterName = this.model.getBHViewAttribute('data_adapter');
             var a = this.dataAdapters.getAdapter(adapterName);
             a.setControlPanelFields(controlPanelDropdownSel, this.signalData);
+            a.checkDates(controlPanelDropdownSel, 
+                         this.serverDateRangeUpdate,
+                         this.model.start_date, 
+                         this.model.end_date,
+                         serverResetDateRangeSel,
+                         badDateFormatSel);
+
+
+         }, this),
+
+         onClose: _.bind(function(event){
+
+            //Update the signal data when the menu is closed to make 
+            //sure we get any modification to the date range
+            var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
+                                                                  this.bhviewIndex);
+            var adapterName = this.model.getBHViewAttribute('data_adapter');
+            var a = this.dataAdapters.getAdapter(adapterName);
+            a.unbindPanel(controlPanelDropdownSel);
+
+            var dateRange = a.getDateRangeParams(controlPanelDropdownSel, {});
+
+            if(this.signalData){
+               this.signalData['date_range'] = dateRange;
+            }
 
          }, this),
 
@@ -707,24 +787,31 @@ var BHViewComponent = new Class({
          //clicked for data input.  
          clickHandler:_.bind(function(event){
 
-            var controlPanelBtSel = this.view.getId(this.view.controlPanelBtSel, this.bhviewIndex);
-            var controlPanelClearBtSel = this.view.getId(this.view.controlPanelClearBtSel, this.bhviewIndex);
+            var controlPanelBtId = this.view.getId(this.view.controlPanelBtSel, this.bhviewIndex);
+            var controlPanelClearBtId = this.view.getId(this.view.controlPanelClearBtSel, this.bhviewIndex);
+            var controlPanelResetDatesBtId = this.view.getId(this.view.controlPanelResetDatesSel, this.bhviewIndex);
             var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
                                                                   this.bhviewIndex);
 
             var elId = $(event.target).attr('id');
 
+            //This enables control panel's with checkboxes
             var adapterName = this.model.getBHViewAttribute('data_adapter');
             var a = this.dataAdapters.getAdapter(adapterName);
             a.processPanelClick(elId);
 
-            if( elId == controlPanelBtSel ){
+            if( elId == controlPanelBtId ){
+
                //close menu
                this.view.closeMenu();
                //fire event
                $(this.view.allViewsContainerSel).trigger( this.processControlPanelEvent, 
                                                          { bhviewIndex:this.bhviewIndex }); 
-            }else if(elId == controlPanelClearBtSel){
+            }else if(elId == controlPanelResetDatesBtId){
+
+               a.resetDates(controlPanelDropdownSel);
+
+            }else if(elId == controlPanelClearBtId){
                a.clearPanel(controlPanelDropdownSel);
             }
 
@@ -775,7 +862,7 @@ var BHViewView = new Class({
       this.helpHtmlUrl = '/help/';
 
       this.controlPanelWidth = 475;
-      this.cellContextPanelWidth = 300;
+      this.cellContextPanelWidth = 360;
 
       //Scrolling params
       this.minScrollPanelSize = 250;
@@ -814,6 +901,7 @@ var BHViewView = new Class({
       this.controlPanelBtSel = '#bh_cp_load_view_c';
       this.controlPanelClearBtSel = '#bh_cp_clear_c';
       this.controlPanelDropdownSel = '#bh_cp_dropdown_c';
+      this.controlPanelResetDatesSel = '#bh_reset_dates_c';
 
       //Cell context menu class selectors
       this.cellAnchorClassSel = '.bh-cell-contextanchor';
@@ -837,6 +925,12 @@ var BHViewView = new Class({
       this.startDateSel = '#bh_start_date';
       this.endDateSel = '#bh_end_date';
       this.currentDateSel = '#bh_current_date';
+      this.serverResetDateRangeSel = '#bh_server_date_range_reset_c';
+      this.badDateFormatSel = '#bh_bad_date_format_c';
+
+      //Parent/Child relationship display
+      this.parentIndexDisplaySel = '#bh_parent_display_c';
+      this.viewIndexDisplaySel = '#bh_view_display_c';
 
       //Clone id selector, finds all elements with an id attribute ending in _c
       this.cloneIdSelector = '*[id$="_c"]';
@@ -1088,6 +1182,24 @@ var BHViewView = new Class({
    /************************
     *BHVIEW MODIFICATION METHODS
     ************************/
+   displayParentChild: function(parentIndex, bhviewIndex){
+
+      var parentIndexDisplaySel = this.getIdSelector(this.parentIndexDisplaySel, bhviewIndex);
+      var viewIndexDisplaySel = this.getIdSelector(this.viewIndexDisplaySel, bhviewIndex);
+
+      var parentText = ""
+      var viewText = parseInt(bhviewIndex) + 1; 
+
+      if(parentIndex === undefined){
+         parentText = 'None';
+      }else{
+         parentText = " View " + (parseInt(parentIndex) + 1);
+      }
+
+      $(parentIndexDisplaySel).text(parentText);
+      $(viewIndexDisplaySel).text(viewText);
+
+   },
    disableClose: function(bhviewIndex){
       var closeButtonSel = this.getIdSelector(this.closeButtonSel, bhviewIndex);
       $(closeButtonSel).addClass("ui-state-disabled");
@@ -1314,6 +1426,13 @@ var BHViewModel = new Class({
       this.setBHViewHash(this.options.bhviewName);
       this.apiLocation = "/bughunter/api/views/";
       this.dateRangeLocation = "/bughunter/views/get_date_range";
+
+      //This is set from any incoming view data
+      //to whatever the final range was.  If the
+      //range provided by the UI is invalid the server 
+      //will reset it.
+      this.start_date = "";
+      this.end_date = "";
    },
    /***************
     *GET METHODS
@@ -1374,6 +1493,10 @@ var BHViewModel = new Class({
       //jQuery.parseJSON is being used instead.  Not sure why this
       //occurs.
       var dataObject = jQuery.parseJSON( data );
+
+      //Set the date range
+      this.start_date = dataObject.start_date;
+      this.end_date = dataObject.end_date;
 
       //NOTE: datatableObject cannot be an attribute of the
       //      model instance because it is unique to different 

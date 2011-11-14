@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import datetime
+import time
 import simplejson
 
 from collections import defaultdict
@@ -50,9 +51,11 @@ def doParseDate(datestring):
                 0, # weekday
                 0, # yearday
                 -1) # isdst
+
     else:
         # fall back to parsedatetime
         date, x = cal.parse(datestring)
+
     return time.mktime(date)
 
 def login_required(func):
@@ -639,7 +642,10 @@ def _get_crashes(proc_path, proc_name, full_proc_path, placeholders, replacement
    
    columns = ['signature', 'fatal_message', 'Total Count', 'Platform']
 
-   return simplejson.dumps( {'columns':columns, 'data':response_data} )
+   return simplejson.dumps( { 'columns':columns, 
+                              'data':response_data,
+                              'start_date':nfields['start_date'], 
+                              'end_date':nfields['end_date'] } )
 
 def _get_site_test_crash(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
 
@@ -696,42 +702,48 @@ def _get_json(nfields, col_prefixes, path):
    ####
    #Run the select on the temporary table
    ####
-   json = settings.DHUB.execute(proc=path,
+   data = settings.DHUB.execute(proc=path,
                                 debug_show=settings.DEBUG,
                                 replace=[ nfields['start_date'], nfields['end_date'], rep ],
-                                return_type='table_json')
+                                return_type='table')
 
-   return json
+   return simplejson.dumps( {'columns':data['columns'], 
+                             'data':data['data'], 
+                             'start_date':nfields['start_date'], 
+                             'end_date':nfields['end_date']} )
 
 def _set_dates_for_placeholders(nfields):
 
+   ##Handle null fields##
    start, end = _get_date_range()
-
-   if ('start_date' not in nfields) or (not nfields['start_date']):
+   if ('start_date' not in nfields) or (nfields['start_date'] == ''):
       nfields['start_date'] = str(start)
-   elif ('end_date' not in nfields) or (not nfields['end_date']):
+   if ('end_date' not in nfields) or (nfields['end_date'] == ''):
       nfields['end_date'] = str(end)
 
-   nfields['start_date'] = nfields['start_date'].encode('utf-8')
-   nfields['end_date'] = nfields['end_date'].encode('utf-8')
+   ##utf-8 encode and Parse date and time##
+   start_date = _get_datetime_from_string( nfields['start_date'].encode('utf-8') )
+   end_date = _get_datetime_from_string( nfields['end_date'].encode('utf-8') )
 
+   start_type = type(start_date)
+   end_type = type(end_date)
 
-   ##0 index is the date##
-   start_date_only = nfields['start_date'].split(' ')
-   end_date_only = nfields['end_date'].split(' ')
-
-   ##Convert each number in the date to an integer##
-   start_integers = map(lambda d:int(d), start_date_only[0].split('-'));
-   end_integers = map(lambda d:int(d), end_date_only[0].split('-'));
-
-   ##Convert start and end dates into total days##
-   start_days = datetime.date(start_integers[0], start_integers[1], start_integers[2])
-   end_days = datetime.date(end_integers[0], end_integers[1], end_integers[2])
+   if start_type != end_type:
+      ####
+      #Find which one is not datetime and convert it
+      #so we can compute a timedelta without a type 
+      #error
+      ####
+      dt_type = type(datetime.datetime.today())
+      if start_type != dt_type:
+         start_date = datetime.datetime.combine( start_date, datetime.time(0, 0, 0) )
+      elif end_type != dt_type:
+         end_date = datetime.datetime.combine( end_date, datetime.time(0, 0, 0) )
 
    ##Measure the difference in days##
-   time_difference = end_days - start_days
+   time_difference = end_date - start_date
 
-   ##Max allowed range in days##
+   ##Maximum date range allowed in days##
    max_difference = datetime.timedelta(days=60)
 
    ####
@@ -739,8 +751,53 @@ def _set_dates_for_placeholders(nfields):
    # provided to calculate an end date within max_difference.
    #####
    if time_difference > max_difference: 
-      end_days = start_days + max_difference
-      nfields['end_date'] = str(end_days)
+      end_days = start_date + max_difference
+      end_date = str(end_days)
+
+   nfields['start_date'] = str(start_date)
+   nfields['end_date'] = str(end_date)
+
+def _get_datetime_from_string(datestring):
+
+   ####
+   #The regex and match parsing was adapted from doParseDate above.  The return
+   #values have been modified to support timedeltas with date + timestamps.
+   ####
+
+   ##Set fallback to today's date if match fails##
+   dt = datetime.date.today()
+
+   ##Parse the datestring and hope for the best##
+   datestring = datestring.strip()
+   m = re.match("^(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d)(?: (?P<hour>\d\d)(?::(?P<minute>\d\d)(?::(?P<second>\d\d))?)?)?$", datestring)
+   if m:
+      date = (int(m.group("year")), int(m.group("month")), int(m.group("day")),
+               m.group("hour") and int(m.group("hour")) or 0,
+               m.group("minute") and int(m.group("minute")) or 0,
+               m.group("second") and int(m.group("second")) or 0)
+
+      tstamp = None
+      dtime = None
+      try:
+         tstamp = datetime.time(*date[3:len(date)])
+      except ValueError:
+         ##Don't create timestamps by default
+         pass
+         
+      try:
+         dtime = datetime.date(*date[0:3])
+      except ValueError:
+         dtime = datetime.date.today()
+         
+      if tstamp:
+         ###
+         # Combine the date and timestamp into a datetime type
+         ###
+         dt = datetime.datetime.combine( dtime, tstamp )
+      else:
+         dt = dtime
+
+   return dt
 
 def _build_new_rep(nfields, col_prefixes):
 

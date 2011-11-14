@@ -104,6 +104,7 @@ var ConnectionsView = new Class({
                $(this.connectionsModalClassSel).dialog('close');
                //Trigger the add view event
                $(this.allViewsContainerSel).trigger(this.addBHViewEvent, { selectedView:selectedView, 
+                                                                           bhviewIndex:this.bhviewIndex,
                                                                            displayType:this.displayType });
 
             }, this)

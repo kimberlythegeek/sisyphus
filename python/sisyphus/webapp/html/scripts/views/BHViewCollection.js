@@ -69,7 +69,12 @@ var BHViewCollection = new Class({
 
          var bhviewComponent = new BHViewComponent('#bhviewComponent', 
                                                  { bhviewName:bhviewName, 
+                                                   parentIndex:data.bhviewIndex,
                                                    bhviewIndex:bhviewIndex }); 
+
+         //Record parent/child relationships
+         this.model.addParentChildRelationship(data.bhviewIndex, bhviewIndex);
+
          if(defaultView){
             bhviewComponent.markAsDefault();
          }
@@ -84,7 +89,10 @@ var BHViewCollection = new Class({
    },
    getAllBHViewNames: function(){
       return this.model.getAllBHViewNames();
-   }
+   },
+   getBHViewParent: function(childIndex){
+      return this.model.bhviewRelationships[ childIndex ]['parent'];
+   },
 });
 var BHViewCollectionView = new Class({
 
@@ -151,6 +159,29 @@ var BHViewCollectionModel = new Class({
       //Could embed the bhviewIndex in the keys.  Then we
       //can remove deleted array entries safely.
       this.bhviewCollection = [];
+
+      /******
+       * This data structure maintains the parent/child relationships
+       * for all views a user has created
+       * 
+       *    { bhviewIndex: { parent:parent bhviewIndex,
+       *                     children: { child bhviewIndex1 .. bhviewIndexn } }
+       *
+       * ****/
+      this.bhviewRelationships = {};
+
+   },
+   addParentChildRelationship: function(parentIndex, childIndex){
+
+      //Has the parent already been entered?
+      if(this.bhviewRelationships[parentIndex]){
+         //Add the child index to children
+         this.bhviewRelationships[parentIndex]['children'][childIndex] = 1;
+         this.bhviewRelationships[childIndex] = { 'parent':parentIndex, 'children':{} };
+      }else if( (parentIndex === undefined) && (childIndex == 0)){
+         //First view
+         this.bhviewRelationships[childIndex] = { 'parent':undefined, 'children':{} }; 
+      }
    },
    getBHView: function(bhviewIndex){
       if( !_.isNull( this.bhviewCollection[ bhviewIndex ] ) ){
@@ -231,7 +262,18 @@ var BHViewCollectionModel = new Class({
    addBHView: function(bhview){
       this.bhviewCollection.push(bhview);
    },
-   removeBHView: function(bhviewIndex){
-      this.bhviewCollection[bhviewIndex] = delete(this.bhviewCollection[bhviewIndex]);
+   removeBHView: function(bhviewObject){
+
+      this.bhviewCollection[bhviewObject] = delete(this.bhviewCollection[bhviewObject]);
+
+      var bhviewIndex = bhviewObject.bhviewIndex;
+
+      //Clean up relationships
+      var parentIndex = this.bhviewRelationships[bhviewIndex]['parent'];
+
+      //Remove this child from parent's children
+      delete(this.bhviewRelationships[parentIndex]['children'][bhviewIndex]);
+      //Remove this bhview
+      delete(this.bhviewRelationships[bhviewIndex]);
    }
 });
