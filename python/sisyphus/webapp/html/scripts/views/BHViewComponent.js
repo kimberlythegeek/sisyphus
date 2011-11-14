@@ -40,6 +40,7 @@ var BHViewComponent = new Class({
                               openwindow:this.openWindow,
                               refresh:this.refresh,
                               help:this.help,
+                              signal_help:this.getSignalHelp,
                               increasesize:this.increaseSize,
                               decreasesize:this.decreaseSize };
 
@@ -231,7 +232,7 @@ var BHViewComponent = new Class({
 
       //If this view can receive and it's not the sender
       if((this.signalingType == 'receive') && 
-            (this.signalData.bhviewIndex != this.bhviewIndex)){
+         (this.signalData.bhviewIndex != this.bhviewIndex)){
 
          var signals = this.model.getBHViewAttribute('signals');
 
@@ -254,6 +255,10 @@ var BHViewComponent = new Class({
             //Pre-fill any fields
             var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
                                                                    this.bhviewIndex);
+
+            //Display the signal data
+            this.view.displaySignalData('receive', this.signalData, this.bhviewIndex);
+
             var adapterName = this.model.getBHViewAttribute('data_adapter');
             var a = this.dataAdapters.getAdapter(adapterName);
             a.setControlPanelFields(controlPanelDropdownSel, this.signalData);
@@ -350,7 +355,13 @@ var BHViewComponent = new Class({
             var buttonType = "";
             if(event.target.tagName == 'SPAN'){
                var p = $(event.target).parent();
-               buttonType = $(p).attr('href').replace('#', '');
+
+               var signalHelpSel = this.view.getIdSelector(this.view.signalHelpBtSel, this.bhviewIndex);
+               if($(event.target).attr('id')){ 
+                  buttonType = 'signal_help';
+               }else{
+                  buttonType = $(p).attr('href').replace('#', '');
+               }
             }else { 
                buttonType = $(event.target).attr('href').replace('#', '');
             }
@@ -502,13 +513,17 @@ var BHViewComponent = new Class({
                var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
                                                                      this.bhviewIndex);
                var dateRange = a.getDateRangeParams(controlPanelDropdownSel);
-               var data = { bhviewIndex:this.bhviewIndex,
-                            data:targetData,
-                            date_range:dateRange,
-                            signal:href };
+               var signalData = { bhviewIndex:this.bhviewIndex,
+                                  data:targetData,
+                                  date_range:dateRange,
+                                  signal:href };
 
                if(this.signalingType == 'send'){
-                  $(this.view.allViewsContainerSel).trigger(this.signalEvent, data);
+
+                  //Display the signalData
+                  this.view.displaySignalData('send', signalData, this.bhviewIndex);
+
+                  $(this.view.allViewsContainerSel).trigger(this.signalEvent, signalData);
                }
             }
          }
@@ -624,6 +639,9 @@ var BHViewComponent = new Class({
    help: function(){
       this.view.closeMenu();
       alert("I'm so confused.  Please help me by writing some help messaging. Thanks!");
+   },
+   getSignalHelp: function(){
+      alert("Please tell me all about sending and receiving signals, i'm a bit confused. Thanks!");
    },
    increaseSize: function(){
 
@@ -792,6 +810,13 @@ var BHViewView = new Class({
       this.cellUrlMenuPanelClassSel = '.bh-url-cell-menu-panel';
       this.cellMenuTogglerClassSel = '.bh-cell-menu-toggle';
       this.cellMenuTargetClass = 'bh-menu-target';
+
+      //Signal display ids
+      this.signalDirectionDisplaySel = '#bh_signal_direction_c';
+      this.signalDataDisplaySel = '#bh_signal_data_c';
+      this.signalDateRangeDisplaySel = '#bh_signal_date_range_c';
+      this.signalHelpBtSel = '#bh_signal_help_bt_c';
+      this.maxSignalDataLength = 60;
 
       //Clone id selector, finds all elements with an id attribute ending in _c
       this.cloneIdSelector = '*[id$="_c"]';
@@ -1090,6 +1115,35 @@ var BHViewView = new Class({
    /*******************
     *TOGGLE METHODS
     *******************/
+   displaySignalData: function(direction, signalData, bhviewIndex){
+
+      var signalDirectionDisplaySel = this.getIdSelector(this.signalDirectionDisplaySel, bhviewIndex);
+      var signalDataDisplaySel = this.getIdSelector(this.signalDataDisplaySel, bhviewIndex);
+      var signalDateRangeDisplaySel = this.getIdSelector(this.signalDateRangeDisplaySel, bhviewIndex);
+
+      //Show direction of signal
+      if(direction == 'receive'){
+         $(signalDirectionDisplaySel).text(' Received');
+      }else if(direction == 'send'){
+         $(signalDirectionDisplaySel).text(' Sent');
+      }
+      //Show data range sent if we have one
+      if(signalData.date_range){
+         var dateRange = 'date range:' + signalData.date_range.start_date + ' to ' + signalData.date_range.end_date;
+         $(signalDateRangeDisplaySel).text(dateRange); 
+      }
+      //Show signal type and associated data
+      if(signalData.data && signalData.signal){
+         var data = BHPAGE.escapeHtmlEntities(decodeURIComponent(signalData.data));
+         var displayData = data;
+         if(data.length >= this.maxSignalDataLength){
+            displayData = data.substring(0, this.maxSignalDataLength - 3) + '...';
+         }
+         var signalDisplayData = signalData.signal + ':' + displayData;
+         $(signalDataDisplaySel).text(signalDisplayData);
+         $(signalDataDisplaySel).attr('title', data);
+      }
+   },
    showNoDataMessage: function(bhviewIndex){
 
       //Hide main pane spinner

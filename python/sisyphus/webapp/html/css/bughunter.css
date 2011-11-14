@@ -207,6 +207,9 @@ div.bh-spinner {
 /***********
  *datatable styles
  ***********/
+.bh-signal-title {
+  font-size: 12px;
+}
 .display {
   font-size: smaller;
   border-spacing: 0;
