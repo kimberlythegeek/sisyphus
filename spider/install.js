@@ -1,6 +1,6 @@
 const APP_NAME     = 'spider';
 const APP_PACKAGE  = '/bclary.com/spider';
-const APP_VERSION  = '0.0.3.7';
+const APP_VERSION  = '0.0.3.8';
 const APP_JAR_PATH = 'chrome/spider.jar';
 const APP_JAR_FILE = 'spider.jar';
 const APP_CONTENT  = 'content/spider/';
