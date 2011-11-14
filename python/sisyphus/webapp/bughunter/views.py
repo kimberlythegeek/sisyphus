@@ -427,10 +427,10 @@ def bhview_setup(func):
                   # DHUB.escapeString escapes strings for mysql which will prevent 
                   # SQL injection
                   ###
-                  nfields[f] = settings.DHUB.escapeString( urllib.unquote_plus(match.group(1)) )
+                  nfields[f] = settings.DHUB.escapeString( urllib.unquote(match.group(1)) )
             else:
                if request.POST[f]:
-                  nfields[f] = settings.DHUB.escapeString( urllib.unquote_plus(request.POST[f]) )
+                  nfields[f] = settings.DHUB.escapeString( urllib.unquote(request.POST[f]) )
 
       kwargs = dict( proc_name=proc_name,
                      proc_path=proc_path,
@@ -484,6 +484,7 @@ def bhview(request, target=settings.VIEW_LOGIN_PAGE):
     data = { 'username':request.user.username,
              'start_date':start_date,
              'end_date':end_date,
+             'current_date':datetime.date.today(),
              'signals':signals }
 
     return render_to_response('bughunter.views.html', data)
@@ -802,7 +803,7 @@ def _get_date_range():
 
    #start_date = datetime.date.today() - datetime.timedelta(hours=48)
    start_date = datetime.date.today() - datetime.timedelta(hours=120)
-   end_date = datetime.date.today()
+   end_date = datetime.date.today() + datetime.timedelta(hours=24)
 
    return start_date, end_date
 

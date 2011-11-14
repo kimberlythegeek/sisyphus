@@ -65,6 +65,7 @@ var BHViewAdapter = new Class({
 
       this.startDateSel = '#bh_start_date';
       this.endDateSel = '#bh_end_date';
+      this.currentDateSel = '#bh_current_date';
 
       this.cellAnchorClassSel = '.bh-cell-contextanchor';
       this.cellMenuClassSel = '.bh-cell-contextmenu';
@@ -161,7 +162,6 @@ var BHViewAdapter = new Class({
          //Menu has not been created take date range out of page
          start = $(this.startDateSel).val();
          end = $(this.endDateSel).val();
-         console.log([start, end]);
       }else{
          //Menu has been created already
          var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
@@ -314,7 +314,8 @@ var NewCrashesAdapter = new Class({
        * Build the default URL parameter string.  In this case
        * the date range should just be today's date which is the end date.
        * ****************/
-      var params = 'start_date=' + $(this.endDateSel).val();
+      var params = 'start_date=' + $(this.currentDateSel).val() +
+                   '&end_date=' + $(this.endDateSel).val();
       return params;
    },
    setControlPanelFields: function(controlPanelDropdownEl, data){
@@ -331,10 +332,13 @@ var NewCrashesAdapter = new Class({
          }
 
       }else {
-         //Set start date only
          var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
+         var endInput = $(controlPanelDropdownEl).find('[name="end_date"]');
          if(!startInput.val()){
-            startInput.attr('value',  $(this.endDateSel).val() );
+            startInput.attr('value',  $(this.currentDateSel).val() );
+         }
+         if(!endInput.val()){
+            endInput.attr('value',  $(this.endDateSel).val() );
          }
       }
    }
