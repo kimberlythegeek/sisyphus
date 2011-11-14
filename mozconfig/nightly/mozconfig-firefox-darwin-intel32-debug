@@ -12,6 +12,7 @@ ac_add_options --with-macos-sdk=/Developer/SDKs/MacOSX10.5.sdk
 ac_add_options --enable-application=browser
 ac_add_options --enable-debug
 ac_add_options --disable-optimize
+ac_add_options --disable-jemalloc
 ac_add_options --enable-debug-symbols="-gdwarf-2"
 # libxul required for packaging.
 ac_add_options --enable-libxul
@@ -26,11 +27,8 @@ tonumber() (IFS='. ';let v=0; m=100;digits="$1";for d in $digits; do let v=v+d*m
 # compare two numbers
 lessthan() (if [[ `tonumber $1` -lt `tonumber $2` ]]; then return 0; else return 1; fi )
 
-# Only specify valgrind for Mac OS X 10.5 and earlier.
-if lessthan `uname -r` 10.2.0; then
 ac_add_options --with-valgrind=yes
 ac_add_options --enable-valgrind=yes
-fi
 
 ac_add_options --enable-accessibility
 
