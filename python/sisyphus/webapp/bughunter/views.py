@@ -28,14 +28,6 @@ from sisyphus.automation import utils
 
 APP_JS = 'application/json'
 
-#######
-#Enable DEBUG to redirect stdout to a log file for debugging
-######
-if settings.DEBUG:
-    saveout = sys.stdout
-    log_out = open('/var/log/django/sisyphus.error.log', 'w')
-    sys.stdout = log_out
-
 def doParseDate(datestring):
     """Given a date string, try to parse it as an ISO 8601 date.
     If that fails, try parsing it with the parsedatetime module,
@@ -250,16 +242,12 @@ def post_files(request):
                             os.mkdir(dest_dir)
                         except Exception, e:
                             exceptionType, exceptionValue, errorMessage  = utils.formatException()
-                            viewslog = open('/tmp/views.log', 'ab+')
-                            viewslog.write("%s Exception: %s creating %s\n" % (logprefix, errorMessage, dest_dir))
-                            viewslog.close()
+                            sys.stderr.write("%s Exception: %s creating %s.\n" % (logprefix, errorMessage, dest_dir))
         if not request.FILES:
             error_list.append('Missing file content')
 
         if error_list:
-            viewslog = open('/tmp/views.log', 'ab+')
-            viewslog.write('%s Bad Request: %s.\n' % (logprefix, ','.join(error_list)))
-            viewslog.close()
+            sys.stderr.write('%s Bad Request: %s.\n' % (logprefix, ','.join(error_list)))
             return HttpResponseBadRequest('Bad Request: %s.' % ','.join(error_list))
 
         try:
@@ -276,9 +264,7 @@ def post_files(request):
             filename    = uploadedfile.name
 
             if not rfile.match(filename):
-                viewslog = open('/tmp/views.log', 'ab+')
-                viewslog.write("%s bad filename: %s\n" % (logprefix, filename))
-                viewslog.close()
+                sys.stderr.write("%s bad filename: %s.\n" % (logprefix, filename))
                 return HttpResponseBadRequest('Bad Request: filename %s' % filename)
 
             oldfilepath = eval('row.' + fieldname)
@@ -305,9 +291,7 @@ def post_files(request):
 
     except:
         exceptionType, exceptionValue, errorMessage  = utils.formatException()
-        viewslog = open('/tmp/views.log', 'wb+')
-        viewslog.write("%s Exception: %s" % (logprefix, errorMessage))
-        viewslog.close()
+        sys.stderr.write("%s Exception: %s.\n" % (logprefix, errorMessage))
         response = HttpResponseServerError("ERROR: %s" % errorMessage)
 
     return response

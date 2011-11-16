@@ -1,9 +1,15 @@
 #!/bin/bash
+if [[ ! -d /var/log/bughunter ]]; then
+    mkdir -p /var/log/bughunter
+fi
 cd /work/mozilla/builds/hg.mozilla.org/sisyphus/python/sisyphus/webapp/
 python ./manage.py runfcgi \
     --pythonpath=/work/mozilla/builds/hg.mozilla.org/sisyphus/python \
     daemonize=true \
-    method=threaded \
+    method=prefork \
     host=127.0.0.1 \
     port=8081 \
-    pidfile=/var/run/bughunter.pid
+    pidfile=/var/run/bughunter.pid \
+    debug=$SISYPHUS_DEBUG \
+    outlog=/var/log/bughunter/bughunter.log \
+    errlog=/var/log/bughunter/bughunter.error.log
