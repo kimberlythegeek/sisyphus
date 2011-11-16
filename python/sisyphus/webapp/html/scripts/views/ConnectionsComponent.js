@@ -103,9 +103,9 @@ var ConnectionsView = new Class({
                //Close the dialog
                $(this.connectionsModalClassSel).dialog('close');
                //Trigger the add view event
-               $(this.allViewsContainerSel).trigger(this.addBHViewEvent, { selectedView:selectedView, 
-                                                                           bhviewIndex:this.bhviewIndex,
-                                                                           displayType:this.displayType });
+               $(this.allViewsContainerSel).trigger(this.addBHViewEvent, { selected_bhview:selectedView, 
+                                                                           parent_bhview_index:this.bhviewIndex,
+                                                                           display_type:this.displayType });
 
             }, this)
          };
@@ -127,7 +127,7 @@ var ConnectionsView = new Class({
       $(this.radioButtonConnectionsClassSel).bind( 'click', _.bind(function(event){
             var value = $( event.target ).attr('value');
             $(this.allViewsContainerSel).trigger(this.signalTypeEv, 
-                                                 { type:value, bhviewIndex:this.bhviewIndex } );
+                                                 { type:value, bhview_index:this.bhviewIndex } );
       }, this));
    },
    setSignalingType: function(type){

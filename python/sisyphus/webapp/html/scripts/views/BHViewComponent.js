@@ -30,7 +30,8 @@ var BHViewComponent = new Class({
       //This index is dynamically appended
       //to every id in a view clone.
       this.bhviewIndex = this.options.bhviewIndex;
-      this.parentIndex = this.options.parentIndex;
+      this.bhviewParentIndex = this.options.bhviewParentIndex;
+      this.parentWindowName = window.document.title;
 
       //The defaultBHView is the first view initialized
       //when the page loads.
@@ -52,6 +53,14 @@ var BHViewComponent = new Class({
                                                     dataAdapters:this.dataAdapters});
 
       this.view = new BHViewView('#BHViewView', {});
+
+      //The parent view index, it will be defined when this window
+      //was spawned from another.
+      if((window.opener != null) && (this.bhviewIndex == 0)){
+         //get the parent bhview index embedded in the page
+         this.bhviewParentIndex = this.view.getParentBHViewIndex();
+         this.parentWindowName = window.opener.document.title;
+      }
 
       //BHView events
       this.closeEvent = 'CLOSE_BHVIEW';
@@ -95,6 +104,10 @@ var BHViewComponent = new Class({
          this.signalingType = 'receive';
       }
 
+      //We could be a child in a new window, register listener
+      //for cross window communication
+      this.notifyBHViewCollection();
+
       //Get a new HTML clone for the 
       //view and initialize it.
       this.getBHViewClone();
@@ -108,6 +121,57 @@ var BHViewComponent = new Class({
       if(this.bhviewIndex == 0){
          this.updateDateRangeInterval = setInterval( _.bind(this.updateDateRange, this), 300000 );
       }
+   },
+   notifyBHViewCollection: function(){
+
+      if(window.opener != null){
+         //If we have an opener we're a child on a new page
+         window.opener.BHPAGE.BHViewCollection.loadNewChildWindow(window);
+         //Register listener for signals from parent
+         window.addEventListener('message', _.bind(this.processWindowSignal, this));
+      }
+
+   },
+   processWindowSignal: function(event){
+
+      var data = this.validateMessageData(event);
+
+      if(window.opener != null){
+         if(!_.isEmpty(data)){
+            //Make sure the window/view sender are the appropriate parents
+            if((data.window_sender == window.opener.document.title) && 
+               (this.bhviewParentIndex == data.parent_bhview_index)){
+
+               //Let listener know this is a window message
+               data['window_message'] = true;
+               $(this.view.allViewsContainerSel).trigger(this.signalEvent, data);
+
+            }
+         }
+      }
+   },
+   validateMessageData: function(event){
+
+      var safeData = {};
+      var dataObject = JSON.parse(event.data);
+      var targetOrigin = BHPAGE.getTargetOrigin();
+
+      //Validate the origin is correct
+      if(targetOrigin === event.origin){
+
+         //Validate that we have the required fields, any window
+         //could send a message
+         if( (dataObject.data != undefined) &&
+             (dataObject.window_sender != undefined) &&
+             (dataObject.date_range != undefined) &&
+             (dataObject.signal != undefined) ){
+
+            //Yer all clear kid!
+            safeData = dataObject;
+         }
+      }
+
+      return safeData;
    },
    updateDateRange: function(){
 
@@ -199,13 +263,17 @@ var BHViewComponent = new Class({
       this.view.displaySignalData('', this.signalData, this.bhviewIndex);
 
       //Display parent/child relationship
-      this.view.displayParentChild(this.parentIndex, this.bhviewIndex);
+      this.view.displayParentChild(this.bhviewParentIndex, 
+                                   this.bhviewIndex, 
+                                   this.parentWindowName);
 
       var adapterName = this.model.getBHViewAttribute('data_adapter');
       var a = this.dataAdapters.getAdapter(adapterName);
       var params = "";
       if(this.signalData.signal != undefined){
-         params += this.signalData.signal + '=' + this.signalData.data;
+         params += 'start_date=' + this.signalData.date_range.start_date + 
+                   '&end_date=' + this.signalData.date_range.end_date + '&' +
+                   this.signalData.signal + '=' + this.signalData.data;
       }else{
          params = a.getDefaultParams();
       }
@@ -229,7 +297,7 @@ var BHViewComponent = new Class({
     ***************/
    processControlPanel: function(data){
 
-      var bhviewIndex = parseInt(data.bhviewIndex);
+      var bhviewIndex = parseInt(data.bhview_index);
 
       //Since this is an event listener on the main view container
       //we need to confirm that the click event matches this BHView's 
@@ -263,21 +331,42 @@ var BHViewComponent = new Class({
    },
    signalHandler: function(data){
 
-      //If this view can receive and it's not the sender
-      if((data.bhviewIndex != this.bhviewIndex) && (this.model)){
+      var processSignal = false;
+
+      if(data.window_message === true){
+
+         //message was sent from another window and has already been validated for receiving
+         processSignal = true;
+
+      }else if( (data.parent_bhview_index != this.bhviewIndex) && 
+                (this.bhviewParentIndex == data.parent_bhview_index) ){
+
+         //signal was sent from inside page, make sure it was not this view that sent it
+         //and that the signal was sent from this view's parent
+         processSignal = true;
+
+      }
+
+      if(this.model === undefined){
          //NOTE: this.model should never be undefined.  This is a hack to 
          //      handle when a bhview has been deleted by the user.  When
          //      a view is deleted the destroy method should remove all event 
          //      listeners.  However, the destroy method fails to remove signal
          //      listeners. Yucky... 
+         processSignal = false;
+      }
+
+      if(processSignal){
 
          var signals = this.model.getBHViewAttribute('signals');
 
-         //Get parent view index
-         var parentIndex = BHPAGE.BHViewCollection.getBHViewParent(this.bhviewIndex);
-         if(parentIndex != data.bhviewIndex){
-            //signal sender is not the parent, ignore
-            return;
+         if(data.window_message != true){
+            //Get parent view index
+            var parentIndex = BHPAGE.BHViewCollection.getBHViewParent(this.bhviewIndex);
+            if( parentIndex != data.parent_bhview_index ){
+               //signal sender is not the parent, ignore
+               return;
+            }
          }
 
          //Make sure the bhview can handle the signal
@@ -286,6 +375,7 @@ var BHViewComponent = new Class({
          }
 
          this.signalData = data;
+
          //Pre-fill any fields
          var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
                                                                this.bhviewIndex);
@@ -305,7 +395,7 @@ var BHViewComponent = new Class({
    },
 
    setSignalingType: function(data){
-      if(data.bhviewIndex == this.bhviewIndex){
+      if(data.parent_bhview_index == this.bhviewIndex){
          this.signalingType = data.type;
       }
    },
@@ -485,7 +575,6 @@ var BHViewComponent = new Class({
       var dateRange = a.getDateRangeParams('', this.signalData);
 
       var signalData = {date_range:dateRange};
-
       if(signals != undefined){
 
          for(var signal in signals){
@@ -577,7 +666,7 @@ var BHViewComponent = new Class({
                                                                      this.bhviewIndex);
                var dateRange = a.getDateRangeParams(controlPanelDropdownSel, this.signalData);
 
-               var signalData = { bhviewIndex:this.bhviewIndex,
+               var signalData = { parent_bhview_index:this.bhviewIndex,
                                   data:targetData,
                                   date_range:dateRange,
                                   signal:href };
@@ -645,11 +734,22 @@ var BHViewComponent = new Class({
                   var bhview = this.view.getCellMenuBHViewSelection(event.target);
 
                   //Build the data object for the event
-                  var data = { selectedView:bhview,
-                               displayType:'page',
-                               params:dateParams + signal + '=' + cellText};
 
-                  $(this.view.allViewsContainerSel).trigger(this.addBHViewEvent, data);
+                  //Get the bhviewIndex from the table, we cannot use this.bhviewIndex here because
+                  //it will be the last view created.
+                  var tableId = $( $(menuAnchorEl).parent() ).closest( 'table' ).attr('id');
+                  var indexMatch = tableId.match(/(\d+)$/);
+
+                  if(indexMatch != null){
+                     var bhviewIndex = parseInt(indexMatch[1]);
+
+                     var data = { selected_bhview:bhview,
+                                  parent_bhview_index:bhviewIndex,
+                                  display_type:'page',
+                                  params:dateParams + signal + '=' + cellText};
+
+                     $(this.view.allViewsContainerSel).trigger(this.addBHViewEvent, data);
+                  }
 
                }else if($(event.target).hasClass(this.view.cellOpenPageBtClass)){
 
@@ -677,7 +777,7 @@ var BHViewComponent = new Class({
       this.view.closeMenu();
       //disable button if we are the main view
       if(this.bhviewIndex != 0){
-         $(this.view.allViewsContainerSel).trigger( this.closeEvent, { bhviewIndex:this.bhviewIndex } ); 
+         $(this.view.allViewsContainerSel).trigger( this.closeEvent, { bhview_index:this.bhviewIndex } ); 
       }
    },
    openWindow: function(){
@@ -696,10 +796,10 @@ var BHViewComponent = new Class({
       //Display the signal data
       this.view.displaySignalData('', this.signalData, this.bhviewIndex);
 
-      data = { bhviewIndex:this.bhviewIndex }; 
+      data = { bhview_index:this.bhviewIndex }; 
+
       this.processControlPanel(data);
 
-      //this.selectBHView();
    },
    help: function(){
       this.view.closeMenu();
@@ -801,12 +901,11 @@ var BHViewComponent = new Class({
             a.processPanelClick(elId);
 
             if( elId == controlPanelBtId ){
-
                //close menu
                this.view.closeMenu();
                //fire event
                $(this.view.allViewsContainerSel).trigger( this.processControlPanelEvent, 
-                                                         { bhviewIndex:this.bhviewIndex }); 
+                                                         { bhview_index:this.bhviewIndex }); 
             }else if(elId == controlPanelResetDatesBtId){
 
                a.resetDates(controlPanelDropdownSel);
@@ -931,6 +1030,7 @@ var BHViewView = new Class({
       //Parent/Child relationship display
       this.parentIndexDisplaySel = '#bh_parent_display_c';
       this.viewIndexDisplaySel = '#bh_view_display_c';
+      this.parentBHViewIndexSel = '#bh_parent_bhview_index';
 
       //Clone id selector, finds all elements with an id attribute ending in _c
       this.cloneIdSelector = '*[id$="_c"]';
@@ -1182,18 +1282,16 @@ var BHViewView = new Class({
    /************************
     *BHVIEW MODIFICATION METHODS
     ************************/
-   displayParentChild: function(parentIndex, bhviewIndex){
+   displayParentChild: function(parentIndex, bhviewIndex, parentWindowName){
 
       var parentIndexDisplaySel = this.getIdSelector(this.parentIndexDisplaySel, bhviewIndex);
       var viewIndexDisplaySel = this.getIdSelector(this.viewIndexDisplaySel, bhviewIndex);
 
-      var parentText = ""
+      var parentText = parentWindowName;
       var viewText = parseInt(bhviewIndex) + 1; 
 
-      if(parentIndex === undefined){
-         parentText = 'None';
-      }else{
-         parentText = " View " + (parseInt(parentIndex) + 1);
+      if(parentIndex >= 0){
+         parentText += ", View " + (parseInt(parentIndex) + 1);
       }
 
       $(parentIndexDisplaySel).text(parentText);
@@ -1249,6 +1347,9 @@ var BHViewView = new Class({
    /*******************
     * GET METHODS
     *******************/
+   getParentBHViewIndex: function(){
+      return parseInt($(this.parentBHViewIndexSel).val());
+   },
    getFilterSel: function(bhviewIndex){
       return '#bh_tview_c_' + bhviewIndex + '_filter';
    },

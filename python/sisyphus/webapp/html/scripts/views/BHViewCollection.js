@@ -21,7 +21,8 @@ var BHViewCollection = new Class({
       this.defaultBHViewName = this.model.getDefaultBHView();
 
       this.subscriptionTargets = { CLOSE_BHVIEW:this.closeBHView,
-                                   ADD_BHVIEW:this.addBHView };
+                                   ADD_BHVIEW:this.addBHView,
+                                   SIGNAL_BHVIEW:this.sendSignalToChildWindows};
 
       BHPAGE.registerSubscribers(this.subscriptionTargets, 
                                  this.view.allViewsContainerSel,
@@ -36,9 +37,15 @@ var BHViewCollection = new Class({
    getBHViewCount: function(){
       return this.model.getBHViewCount();
    },
+   getAllBHViewNames: function(){
+      return this.model.getAllBHViewNames();
+   },
+   getBHViewParent: function(childIndex){
+      return this.model.bhviewRelationships[ childIndex ]['parent'];
+   },
    addBHView: function(data){
       
-      var bhviewName = data.selectedView;
+      var bhviewName = data.selected_bhview;
       var bhviewHash = BHPAGE.navLookup[bhviewName];
 
       //View has no pane version and can only be launched
@@ -47,20 +54,20 @@ var BHViewCollection = new Class({
          //Check for any page targets
          var url = bhviewHash.page_target.replace('HASH', '#');
          window.open(url);
+
          return false;
       }
 
-      if(data.displayType == 'page'){
-         if(data.params){
-            this.view.submitPostForm(this.model.newViewUrl, data.params, data.selectedView);
-         }else{
-            var url = this.model.newViewUrl + '#' + data.selectedView;
-            window.open(url);
-         }
+      if(data.display_type == 'page'){
+         this.view.submitPostForm(this.model.newViewUrl, 
+                                  data.params, 
+                                  data.selected_bhview,
+                                  data.parent_bhview_index);
+
       }else {
          var defaultView = false;
 
-         if(!this.model.hasBHView(data.selectedView)){
+         if(!this.model.hasBHView(data.selected_bhview)){
             bhviewName = this.defaultBHViewName;
             defaultView = true;
          }
@@ -69,11 +76,11 @@ var BHViewCollection = new Class({
 
          var bhviewComponent = new BHViewComponent('#bhviewComponent', 
                                                  { bhviewName:bhviewName, 
-                                                   parentIndex:data.bhviewIndex,
+                                                   bhviewParentIndex:data.parent_bhview_index,
                                                    bhviewIndex:bhviewIndex }); 
 
          //Record parent/child relationships
-         this.model.addParentChildRelationship(data.bhviewIndex, bhviewIndex);
+         this.model.addParentChildRelationship(data.parent_bhview_index, bhviewIndex);
 
          if(defaultView){
             bhviewComponent.markAsDefault();
@@ -83,16 +90,28 @@ var BHViewCollection = new Class({
       }
    },
    closeBHView: function(data){
-      var bhview = this.model.getBHView(data.bhviewIndex);
+      var bhview = this.model.getBHView(data.bhview_index);
       this.model.removeBHView(bhview);
       bhview.destroy();
    },
-   getAllBHViewNames: function(){
-      return this.model.getAllBHViewNames();
+   loadNewChildWindow: function(childWindow){
+      this.model.loadNewChildWindow(childWindow);
    },
-   getBHViewParent: function(childIndex){
-      return this.model.bhviewRelationships[ childIndex ]['parent'];
-   },
+   sendSignalToChildWindows: function(data){
+
+      //Make sure the message was not sent from another window
+      if(data.window_message === undefined){
+         //Send message to child windows and include which
+         //window sent the message
+         data['window_sender'] = document.title;
+
+         var targetOrigin = BHPAGE.getTargetOrigin();
+
+         for(var i=0; i<this.model.childWindows.length; i++){
+            this.model.childWindows[i].postMessage(JSON.stringify(data), targetOrigin);
+         }
+      }
+   }
 });
 var BHViewCollectionView = new Class({
 
@@ -107,15 +126,7 @@ var BHViewCollectionView = new Class({
       this.urlBase = '/bughunter/views/';
       this.allViewsContainerSel = '#bh_view_container';
    },
-   submitPostForm: function(newViewUrl, params, selectedView){
-
-      var regex = /^(.*?)=(.*)$/;
-      var match = regex.exec( params );
-
-      //Make sure we have a match for a name/value pair
-      if(!(match.length >= 3)){
-         return;
-      }
+   submitPostForm: function(newViewUrl, params, selectedView, parentBHviewIndex){
 
       /*****************
        * Note: Ran into some issues submitting the form
@@ -129,17 +140,64 @@ var BHViewCollectionView = new Class({
       form.setAttribute("action", this.urlBase + '#' + selectedView);
       form.setAttribute("target", "_blank");
 
-      //Set the name and value in an input field
-      var hiddenField = document.createElement("input");
-      hiddenField.setAttribute('type', 'hidden');
-      hiddenField.setAttribute('name', match[1]);
-      hiddenField.setAttribute('value', match[2]);
-      form.appendChild(hiddenField);
+      var signals = BHPAGE.navLookup[selectedView]['signals'];
+
+      var hiddenFields = this.loadSignalDataInPage(params, parentBHviewIndex, signals);
+      for(var i=0; i < hiddenFields.length; i++){
+         form.appendChild(hiddenFields[i]);
+      }
+
       document.body.appendChild(form);
-      form.submit();
+
+      var t = form.submit();
 
       //Finished with the form, remove from DOM
       $(form).remove();
+   },
+   loadSignalDataInPage: function(params, parentBHviewIndex, signals){
+
+      var hiddenFields = [];
+
+      if((signals != undefined) && (params != undefined)){
+         for(var sig in signals){
+            var match = params.split(sig + '=');
+
+            //Make sure we have a match for a name/value pair
+            if((match != null) && (match.length >= 2)){
+
+               var signalHiddenField = document.createElement("input");
+
+               //Load any signals in the params
+               signalHiddenField.setAttribute('type', 'hidden');
+               signalHiddenField.setAttribute('name', sig);
+               signalHiddenField.setAttribute('value', encodeURIComponent(match[1]));
+               hiddenFields.push(signalHiddenField);
+
+               //Load the date range
+               var dateMatch = match[0].replace(/&$/, '').split('&');
+               if((dateMatch != null) && (dateMatch.length >= 2)){
+                  for(var i=0; i < dateMatch.length; i++){
+                     
+                     var dateNameValue = dateMatch[i].split('=');
+                     var signalHiddenField = document.createElement("input");
+                     signalHiddenField.setAttribute('type', 'hidden');
+                     signalHiddenField.setAttribute('name', dateNameValue[0]);
+                     signalHiddenField.setAttribute('value', dateNameValue[1]);
+                     hiddenFields.push(signalHiddenField);
+                  }
+               }
+            }
+         }
+      }
+
+      //Add the index of the parent view
+      var parentHiddenField = document.createElement("input");
+      parentHiddenField.setAttribute('type', 'hidden');
+      parentHiddenField.setAttribute('name', 'parent_bhview_index');
+      parentHiddenField.setAttribute('value', parentBHviewIndex);
+      hiddenFields.push(parentHiddenField);
+
+      return hiddenFields;
    }
 });
 
@@ -169,6 +227,10 @@ var BHViewCollectionModel = new Class({
        *
        * ****/
       this.bhviewRelationships = {};
+
+      //List of children window objects on different tabs.
+      //Used to manage cross tab communication.
+      this.childWindows = [];
 
    },
    addParentChildRelationship: function(parentIndex, childIndex){
@@ -264,8 +326,6 @@ var BHViewCollectionModel = new Class({
    },
    removeBHView: function(bhviewObject){
 
-      this.bhviewCollection[bhviewObject] = delete(this.bhviewCollection[bhviewObject]);
-
       var bhviewIndex = bhviewObject.bhviewIndex;
 
       //Clean up relationships
@@ -275,5 +335,10 @@ var BHViewCollectionModel = new Class({
       delete(this.bhviewRelationships[parentIndex]['children'][bhviewIndex]);
       //Remove this bhview
       delete(this.bhviewRelationships[bhviewIndex]);
+
+      this.bhviewCollection[bhviewObject] = delete(this.bhviewCollection[bhviewObject]);
+   },
+   loadNewChildWindow: function(newWin){
+      this.childWindows.push(newWin);
    }
 });

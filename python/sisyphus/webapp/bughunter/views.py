@@ -477,18 +477,31 @@ def bhview(request, target=settings.VIEW_LOGIN_PAGE):
     get_token(request)
     request.META["CSRF_COOKIE_USED"] = True
 
+    ####
+    #Load any signals provided in the page
+    ####
     signals = []
+    start_date, end_date = _get_date_range()
+
     for f in NAMED_FIELDS:
       if f in request.POST:
-         signals.append( { 'value':request.POST[f], 'name':f } )
-
-    start_date, end_date = _get_date_range()
+         if f == 'start_date':
+            start_date = datetime.date( *time.strptime(request.POST[f], '%Y-%m-%d')[0:3] )
+         elif f == 'end_date':
+            end_date = datetime.date( *time.strptime(request.POST[f], '%Y-%m-%d')[0:3] )
+         else:
+            signals.append( { 'value':urllib.unquote( request.POST[f] ), 'name':f } )
 
     data = { 'username':request.user.username,
              'start_date':start_date,
              'end_date':end_date,
              'current_date':datetime.date.today(),
              'signals':signals }
+
+    ##Caller has provided the view parent of the signals, load in page##
+    parentIndexKey = 'parent_bhview_index'
+    if parentIndexKey in request.POST:
+      data[parentIndexKey] = request.POST[parentIndexKey]
 
     return render_to_response('bughunter.views.html', data)
 

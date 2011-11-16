@@ -47,6 +47,7 @@
 {% for signal in signals %}
 <input id="bh_post_{{ signal.name }}" type="hidden" value="{{ signal.value|safe }}" />
 {% endfor %}
+<input id="bh_parent_bhview_index" type="hidden" value="{{ parent_bhview_index }}" />
 
 <!--This is required by django to place the csrf token in the cookie-->
 <form id="ajax_form" style="display:none;">{% csrf_token %}</form>
