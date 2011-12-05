@@ -37,6 +37,9 @@ get_rand_str = lambda n: b64encode( os.urandom(int(math.ceil(0.75*n))), '__')[:n
 
 APP_JS = 'application/json'
 
+####
+#ADMIN APPLICATION SERVICE METHODS
+####
 def doParseDate(datestring):
     """Given a date string, try to parse it as an ISO 8601 date.
     If that fails, try parsing it with the parsedatetime module,
@@ -357,17 +360,13 @@ ORDER BY `SiteTestRun`.`fatal_message` DESC , Crash.signature ASC"""
 
     return HttpResponse(simplejson.dumps(response_data), mimetype=APP_JS)
         
+####
+#BUGHUNTER VIEW SERVICE METHODS
+####
 
-
-
-
-
-
-
-
-"""
-Bughunter View Service Methods
-"""
+####
+#VIEW SERVICE DECORATORS
+####
 def bhview_setup(func):
    """
    This decorator initializes common data for VIEW_ADAPTERS.
@@ -379,23 +378,6 @@ def bhview_setup(func):
       proc_path = "bughunter.views."
       ##Full proc name including base path in json file##
       full_proc_path = "%s%s" % (proc_path, proc_name)
-
-      ##Get any placeholders##
-      placeholders = []
-      if 'p' in request.GET:
-         placeholders = request.GET['p'].split(',')
-
-      ##Get any replacements##
-      replace_type = None
-      replacements = []
-      if 'r' in request.GET:
-         replace_type = 'replace'
-         replacements = request.GET['r'].split(',')
-
-      ##Set replace_quote##
-      if 'rq' in request.GET:
-         replace_type = 'replace_quote'
-         replacements = request.GET['rq'].split(',')
 
       ##Get any named fields##
       nfields = {} 
@@ -431,15 +413,15 @@ def bhview_setup(func):
       kwargs = dict( proc_name=proc_name,
                      proc_path=proc_path,
                      full_proc_path=full_proc_path,
-                     placeholders=placeholders,
-                     replacements=replacements,
-                     replace_type=replace_type,
                      named_fields=nfields )
 
       return func(request, **kwargs)
 
    return wrap
 
+####
+#VIEW SERVICE METHODS WITH URL MAPPINGS
+####
 @csrf_exempt
 def view_login(request):
 
@@ -518,7 +500,7 @@ def get_bhview(request, **kwargs):
    the data proc file bughunter.json.  It works off of the 
    following url structure:   
 
-   /views/viewname?p=PLACEHOLDERS&r=REPLACE&rq=REPLACE_QUOTE&named_field=VALUE
+   /views/viewname?named_field=VALUE
 
    viewname - Could be a data hub proc name or a key in 
               VIEW_ADAPTERS.  VIEW_ADAPTERS is a dictionary that maps
@@ -535,16 +517,9 @@ def get_bhview(request, **kwargs):
 
    See the datasource README for more documentation
 
-   p=placeholders
-   r=replace
-   rq=replace_quote
    named_field= The named_fields other than p,r,rq require a
                 view_adapter to manage their incorporation into
                 an arguments to execute().
-
-   settings.DHUB.execute( proc=viewname,
-                          placeholders=PLACEHOLDERS,
-                          replace|replace_quote=REPLACE|REPLACE_QUOTE )
 
    To add a new service method add SQL to bughunter.json and you're
    done unless you require named fields.  If you cannot get what you 
@@ -555,18 +530,7 @@ def get_bhview(request, **kwargs):
    proc_name = kwargs['proc_name']
    proc_path = kwargs['proc_path']
    full_proc_path = kwargs['full_proc_path']
-   placeholders = kwargs['placeholders']
-   replacements = kwargs['replacements']
-   replace_type = kwargs['replace_type']
    nfields = kwargs['named_fields']
-
-   ##options for execute##
-   exec_args = dict()
-
-   if placeholders:
-      exec_args['placeholders'] = placeholders
-   if replacements:
-      exec_args[replace_type] = replacements
 
    if settings.DEBUG:
       ###
@@ -583,26 +547,14 @@ def get_bhview(request, **kwargs):
       json = VIEW_ADAPTERS[proc_name](proc_path, 
                                       proc_name, 
                                       full_proc_path, 
-                                      placeholders, 
-                                      replacements,
                                       nfields)
-   else:
-      ####
-      #Default behavior for a view
-      ####
-      exec_args['proc'] = full_proc_path
-      exec_args['return_type'] = 'tuple_json'
-
-      ####
-      # Uncomment this line to see fully assembled
-      # SQL in the server log.  Useful for debugging.
-      exec_args['debug_show'] = settings.DEBUG
-      json = settings.DHUB.execute(**exec_args)
-   
 
    return HttpResponse(json, mimetype=APP_JS)
-   
-def _get_crashes(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+
+#####
+#SITE TESTING DATA ADAPTERS: Crashes
+#####
+def _get_crashes_st(proc_path, proc_name, full_proc_path, nfields):
 
    col_prefixes = { 'signature':'c',
                     'url':'sr',
@@ -617,7 +569,7 @@ def _get_crashes(proc_path, proc_name, full_proc_path, placeholders, replacement
    rep = _build_new_rep(nfields, col_prefixes)
 
    if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
-      full_proc_path = proc_path + 'new_crash_signatures'
+      full_proc_path = proc_path + 'new_crash_signatures_st'
 
    table_struct = settings.DHUB.execute(proc=full_proc_path,
                                        debug_show=settings.DEBUG,
@@ -636,7 +588,74 @@ def _get_crashes(proc_path, proc_name, full_proc_path, placeholders, replacement
                               'start_date':nfields['start_date'], 
                               'end_date':nfields['end_date'] } )
 
-def _get_assertions(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+def _get_crash_urls_st(proc_path, proc_name, full_proc_path, nfields):
+
+   col_prefixes = { 'signature':'c',
+                    'url':'stc',
+                    'fatal_message':'str',
+                    'address':'stc',
+                    'pluginfilename':'stc',
+                    'pluginversion':'stc',
+                    'exploitability':'stc' }
+
+   _set_dates_for_placeholders(nfields)
+
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                       debug_show=settings.DEBUG,
+                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                       return_type='table')
+
+   response_data = _aggregate_url_platform_data(table_struct)
+
+   columns = ['url', 'Total Count', 'Platform']
+
+   return simplejson.dumps( { 'columns':columns, 
+                              'data':response_data,
+                              'start_date':nfields['start_date'], 
+                              'end_date':nfields['end_date'] } )
+
+def _get_crash_detail_st(proc_path, proc_name, full_proc_path, nfields):
+
+   col_prefixes = { 'signature':'c',
+                    'url':'stc',
+                    'fatal_message':'str',
+                    'address':'stc',
+                    'pluginfilename':'stc',
+                    'pluginversion':'stc',
+                    'exploitability':'stc' }
+
+   _set_dates_for_placeholders(nfields)
+
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   temp_table_name = 'temp_urls_st_' + get_rand_str(8)
+
+   ##Build temp table##
+   settings.DHUB.execute(proc=proc_path + 'temp_urls_st',
+                         debug_show=settings.DEBUG,
+                         replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
+
+   ##Get the crashdetails##
+   data = settings.DHUB.execute(proc=full_proc_path,
+                                debug_show=settings.DEBUG,
+                                replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
+                                return_type='table')
+
+   ##Remove temp table##
+   settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
+                         debug_show=settings.DEBUG,
+                         replace=[ temp_table_name ])
+
+   return simplejson.dumps( {'columns':data['columns'], 
+                             'data':data['data'], 
+                             'start_date':nfields['start_date'], 
+                             'end_date':nfields['end_date']} )
+#####
+#SITE TESTING DATA ADAPTERS: Assertions
+#####
+def _get_assertions_st(proc_path, proc_name, full_proc_path, nfields):
 
    col_prefixes = { 'assertion':'a',
                     'location':'a' }
@@ -646,7 +665,7 @@ def _get_assertions(proc_path, proc_name, full_proc_path, placeholders, replacem
    rep = _build_new_rep(nfields, col_prefixes)
 
    if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
-      full_proc_path = proc_path + 'new_assertions'
+      full_proc_path = proc_path + 'new_assertions_st'
 
    table_struct = settings.DHUB.execute(proc=full_proc_path,
                                        debug_show=settings.DEBUG,
@@ -657,6 +676,7 @@ def _get_assertions(proc_path, proc_name, full_proc_path, placeholders, replacem
    
    columns = [ 'assertion', 
                'location', 
+               'Occurence Count',
                'Total Count', 
                'Platform' ]
 
@@ -665,17 +685,70 @@ def _get_assertions(proc_path, proc_name, full_proc_path, placeholders, replacem
                               'start_date':nfields['start_date'], 
                               'end_date':nfields['end_date'] } )
 
+def _get_assertion_urls_st(proc_path, proc_name, full_proc_path, nfields):
 
-def _get_site_test_crash(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+   col_prefixes = { 'url':'sta',
+                    'assertion':'a' }
 
-   col_prefixes = { 'signature':'c',
-                    'url':'stc' }
+   _set_dates_for_placeholders(nfields)
 
-   json = _get_json(nfields, col_prefixes, full_proc_path)
+   rep = _build_new_rep(nfields, col_prefixes)
 
-   return json
+   table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                       debug_show=settings.DEBUG,
+                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                       return_type='table')
 
-def _get_socorro_record(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+   response_data = _aggregate_url_platform_data(table_struct)
+
+   columns = ['url', 'Occurence Count', 'Total Count', 'Platform']
+
+   return simplejson.dumps( { 'columns':columns, 
+                              'data':response_data,
+                              'start_date':nfields['start_date'], 
+                              'end_date':nfields['end_date'] } )
+
+def _get_assertion_detail_st(proc_path, proc_name, full_proc_path, nfields):
+
+   col_prefixes = { 'assertion':'a',
+                    'location':'a', 
+                    'url':'sta' }
+
+   _set_dates_for_placeholders(nfields)
+
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   temp_table_name = 'temp_assertion_urls_st_' + get_rand_str(8)
+
+   ##Build temp table##
+   settings.DHUB.execute(proc=proc_path + 'temp_assertion_urls_st',
+                         debug_show=settings.DEBUG,
+                         replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
+
+   ##Get the crashdetails##
+   data = settings.DHUB.execute(proc=full_proc_path,
+                                debug_show=settings.DEBUG,
+                                replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
+                                return_type='table')
+
+   ##Remove temp table##
+   settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
+                         debug_show=settings.DEBUG,
+                         replace=[ temp_table_name ])
+
+   return simplejson.dumps( {'columns':data['columns'], 
+                             'data':data['data'], 
+                             'start_date':nfields['start_date'], 
+                             'end_date':nfields['end_date']} )
+
+#####
+#UNIT TESTING ADAPTERS
+#####
+
+#####
+#CRASH TABLE ADAPTERS
+#####
+def _get_socorro_record(proc_path, proc_name, full_proc_path, nfields):
 
    col_prefixes = { 'signature':'sr',
                     'url':'sr',
@@ -713,194 +786,157 @@ def _get_socorro_record(proc_path, proc_name, full_proc_path, placeholders, repl
                              'start_date':nfields['start_date'], 
                              'end_date':nfields['end_date']} )
 
-def _get_crash_detail(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+#####
+#PLATFORM AGGREGATION METHODS
+#####
+def _aggregate_crashes_platform_data(table_struct):
 
-   col_prefixes = { 'signature':'c',
-                    'url':'stc',
-                    'fatal_message':'str',
-                    'address':'stc',
-                    'pluginfilename':'stc',
-                    'pluginversion':'stc',
-                    'exploitability':'stc' }
-
-   _set_dates_for_placeholders(nfields)
-
-   rep = _build_new_rep(nfields, col_prefixes)
-
-   temp_table_name = 'temp_urls_' + get_rand_str(8)
-
-   ##Build temp table##
-   settings.DHUB.execute(proc=proc_path + 'temp_urls',
-                         debug_show=settings.DEBUG,
-                         replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
-
-   ##Get the crashdetails##
-   data = settings.DHUB.execute(proc=full_proc_path,
-                                debug_show=settings.DEBUG,
-                                replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
-                                return_type='table')
-
-   ##Remove temp table##
-   settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
-                         debug_show=settings.DEBUG,
-                         replace=[ temp_table_name ])
-
-   return simplejson.dumps( {'columns':data['columns'], 
-                             'data':data['data'], 
-                             'start_date':nfields['start_date'], 
-                             'end_date':nfields['end_date']} )
-
-def _get_assertion_detail(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
-
-   col_prefixes = { 'assertion':'a',
-                    'location':'a', 
-                    'url':'sta' }
-
-   _set_dates_for_placeholders(nfields)
-
-   rep = _build_new_rep(nfields, col_prefixes)
-
-   temp_table_name = 'temp_assertion_urls_' + get_rand_str(8)
-
-   ##Build temp table##
-   settings.DHUB.execute(proc=proc_path + 'temp_assertion_urls',
-                         debug_show=settings.DEBUG,
-                         replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
-
-   ##Only use an order by call if we have a signal in the where clause##
-   proc = full_proc_path
-   for signal in col_prefixes.keys():
-      if signal in nfields: 
-         proc = proc_path + 'ordered_assertion_detail'
-         break
-
-   ##Get the crashdetails##
-   data = settings.DHUB.execute(proc=proc,
-                                debug_show=settings.DEBUG,
-                                replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
-                                return_type='table')
-
-   ##Remove temp table##
-   settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
-                         debug_show=settings.DEBUG,
-                         replace=[ temp_table_name ])
-
-   return simplejson.dumps( {'columns':data['columns'], 
-                             'data':data['data'], 
-                             'start_date':nfields['start_date'], 
-                             'end_date':nfields['end_date']} )
-
-def _get_urls(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
-
-   col_prefixes = { 'signature':'c',
-                    'url':'stc',
-                    'fatal_message':'str',
-                    'address':'stc',
-                    'pluginfilename':'stc',
-                    'pluginversion':'stc',
-                    'exploitability':'stc' }
-
-   _set_dates_for_placeholders(nfields)
-
-   rep = _build_new_rep(nfields, col_prefixes)
-
-   table_struct = settings.DHUB.execute(proc=full_proc_path,
-                                       debug_show=settings.DEBUG,
-                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
-                                       return_type='table')
-
-   response_data = _aggregate_url_platform_data(table_struct)
-
-   columns = ['url', 'Total Count', 'Platform']
-
-   return simplejson.dumps( { 'columns':columns, 
-                              'data':response_data,
-                              'start_date':nfields['start_date'], 
-                              'end_date':nfields['end_date'] } )
-
-def _get_assertion_urls(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
-
-   col_prefixes = { 'url':'sta',
-                    'assertion':'a' }
-
-   _set_dates_for_placeholders(nfields)
-
-   rep = _build_new_rep(nfields, col_prefixes)
-
-   table_struct = settings.DHUB.execute(proc=full_proc_path,
-                                       debug_show=settings.DEBUG,
-                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
-                                       return_type='table')
-
-   response_data = _aggregate_url_platform_data(table_struct)
-
-   columns = ['url', 'Total Count', 'Platform']
-
-   return simplejson.dumps( { 'columns':columns, 
-                              'data':response_data,
-                              'start_date':nfields['start_date'], 
-                              'end_date':nfields['end_date'] } )
-
-def _get_json(nfields, col_prefixes, path):
-
-   _set_dates_for_placeholders(nfields)
-
-   rep = _build_new_rep(nfields, col_prefixes)
-
-   data = settings.DHUB.execute(proc=path,
-                                debug_show=settings.DEBUG,
-                                replace=[ nfields['start_date'], nfields['end_date'], rep ],
-                                return_type='table')
-
-   return simplejson.dumps( {'columns':data['columns'], 
-                             'data':data['data'], 
-                             'start_date':nfields['start_date'], 
-                             'end_date':nfields['end_date']} )
-
-def _set_dates_for_placeholders(nfields):
-
-   ##Handle null fields##
-   start, end = _get_date_range()
-   if ('start_date' not in nfields) or (nfields['start_date'] == ''):
-      nfields['start_date'] = str(start)
-   if ('end_date' not in nfields) or (nfields['end_date'] == ''):
-      nfields['end_date'] = str(end)
-
-   ##utf-8 encode and Parse date and time##
-   start_date = _get_datetime_from_string( nfields['start_date'].encode('utf-8') )
-   end_date = _get_datetime_from_string( nfields['end_date'].encode('utf-8') )
-
-   start_type = type(start_date)
-   end_type = type(end_date)
-
-   if start_type != end_type:
-      ####
-      #Find which one is not datetime and convert it
-      #so we can compute a timedelta without a type 
-      #error
-      ####
-      dt_type = type(datetime.datetime.today())
-      if start_type != dt_type:
-         start_date = datetime.datetime.combine( start_date, datetime.time(0, 0, 0) )
-      elif end_type != dt_type:
-         end_date = datetime.datetime.combine( end_date, datetime.time(0, 0, 0) )
-
-   ##Measure the difference in days##
-   time_difference = end_date - start_date
-
-   ##Maximum date range allowed in days##
-   max_difference = datetime.timedelta(days=60)
-
-   ####
-   # if the maximum date range is exceeded, use the start date
-   # provided to calculate an end date within max_difference.
    #####
-   if time_difference > max_difference: 
-      end_days = start_date + max_difference
-      end_date = str(end_days)
+   #Aggregate the os_name, os_version, and cpu_name by branch
+   #####
+   data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int)))))
 
-   nfields['start_date'] = str(start_date)
-   nfields['end_date'] = str(end_date)
+   for row in table_struct['data']:
+
+      cpu_data = _format_cpu_data(row)
+
+      platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
+      data[row['signature']][row['fatal_message']][row['branch']][platform]['total_count'] += row['total_count']
+
+   response_data = []
+   for signature, sig_matches in data.iteritems():
+      for fatal_message, branches in sig_matches.iteritems():
+
+         total_count, platform, aggregation_count = _format_branch_data(branches)
+
+         crash = { 'signature': signature,
+                   'fatal_message': fatal_message,
+                   'Platform': platform,
+                   'Total Count':total_count}
+
+         response_data.append(crash)
+
+   return response_data
+
+def _aggregate_assertion_platform_data(table_struct):
+
+   #####
+   #Aggregate the os_name, os_version, and cpu_name by branch
+   #####
+   data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int)))))
+
+   for row in table_struct['data']:
+
+      cpu_data = _format_cpu_data(row)
+
+      platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
+      data[row['assertion']][row['location']][row['branch']][platform]['total_count'] += int(row['total_count'])
+      data[row['assertion']][row['location']][row['branch']][platform]['assertion_count'] += int(row['assertion_count'])
+
+   response_data = []
+   for assertion, matches in data.iteritems():
+
+      assertion_count = 0
+
+      for location, branches in matches.iteritems():
+
+         total_count, formated_platform, assertion_count = _format_branch_data(branches)
+
+         crash = { 'assertion': assertion,
+                   'location': location,
+                   'Platform': formated_platform,
+                   'Total Count':total_count,
+                   'Occurence Count':assertion_count}
+
+         response_data.append(crash)
+
+   return response_data
+
+def _aggregate_url_platform_data(table_struct):
+
+   #####
+   #Aggregate the os_name, os_version, and cpu_name by branch
+   #####
+   data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int))))
+
+   for row in table_struct['data']:
+
+      cpu_data = _format_cpu_data(row)
+
+      platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
+      data[row['url']][row['branch']][platform]['total_count'] += int(row['total_count'])
+
+      if 'assertion_count' in row:
+         data[row['url']][row['branch']][platform]['assertion_count'] += int(row['assertion_count'])
+
+   response_data = []
+   for url, branches in data.iteritems():
+
+      total_count, platform, occurence_count = _format_branch_data(branches)
+
+      url_summary = { 'Occurence Count': occurence_count,
+                      'Total Count':total_count, 
+                      'url': url,
+                      'Platform': platform }
+
+      response_data.append(url_summary)
+
+   return response_data
+
+def _format_branch_data(branches):
+
+   platform = "" 
+   counts_broken_down = "" 
+   total_count = 0
+   assertion_count = 0
+
+   ##Build the platform string, sort branches alphabetically##
+   for branch in sorted(branches.keys()):
+      counts_broken_down += "<b>%s</b>:&nbsp;&nbsp;&nbsp;" % branch
+      for line in branches[branch]: 
+         counts_broken_down += "%s&nbsp;&nbsp;&nbsp;" % line.replace(' ', '&nbsp;')
+
+         if 'total_count' in branches[branch][line]:
+            total_count += branches[branch][line]['total_count']
+
+         if 'assertion_count' in branches[branch][line]:
+            assertion_count += branches[branch][line]['assertion_count']
+
+      counts_broken_down += "<br />"
+      platform += counts_broken_down
+      counts_broken_down = ""
+
+   return total_count, platform, assertion_count
+
+def _format_cpu_data(row):
+
+   architecture = ""
+   cpu_bits = "32"
+   build_cpu_bits = "32"
+
+   if row['cpu_name'].find('_') > -1:
+      cpu_parts = row['cpu_name'].split('_')
+      architecture = cpu_parts[0]
+      cpu_bits = cpu_parts[1]
+   else:
+      architecture = row['cpu_name']
+
+   if row['build_cpu_name'].find('_') > -1:
+      build_cpu_bits = row['build_cpu_name'].split('_')[1]
+      
+   cpu_data = "%s %s/%s" % (architecture, cpu_bits, build_cpu_bits)
+
+   return cpu_data
+
+#####
+#UTILITY METHODS
+#####
+def _get_date_range():
+
+   start_date = datetime.date.today() - datetime.timedelta(hours=24)
+   end_date = datetime.date.today() + datetime.timedelta(hours=24)
+
+   return start_date, end_date
 
 def _get_datetime_from_string(datestring):
 
@@ -960,150 +996,79 @@ def _build_new_rep(nfields, col_prefixes):
 
    return rep
 
-def _get_date_range():
+def _set_dates_for_placeholders(nfields):
 
-   start_date = datetime.date.today() - datetime.timedelta(hours=24)
-   end_date = datetime.date.today() + datetime.timedelta(hours=24)
+   ##Handle null fields##
+   start, end = _get_date_range()
+   if ('start_date' not in nfields) or (nfields['start_date'] == ''):
+      nfields['start_date'] = str(start)
+   if ('end_date' not in nfields) or (nfields['end_date'] == ''):
+      nfields['end_date'] = str(end)
 
-   return start_date, end_date
+   ##utf-8 encode and Parse date and time##
+   start_date = _get_datetime_from_string( nfields['start_date'].encode('utf-8') )
+   end_date = _get_datetime_from_string( nfields['end_date'].encode('utf-8') )
 
-def _aggregate_crashes_platform_data(table_struct):
+   start_type = type(start_date)
+   end_type = type(end_date)
 
+   if start_type != end_type:
+      ####
+      #Find which one is not datetime and convert it
+      #so we can compute a timedelta without a type 
+      #error
+      ####
+      dt_type = type(datetime.datetime.today())
+      if start_type != dt_type:
+         start_date = datetime.datetime.combine( start_date, datetime.time(0, 0, 0) )
+      elif end_type != dt_type:
+         end_date = datetime.datetime.combine( end_date, datetime.time(0, 0, 0) )
+
+   ##Measure the difference in days##
+   time_difference = end_date - start_date
+
+   ##Maximum date range allowed in days##
+   max_difference = datetime.timedelta(days=60)
+
+   ####
+   # if the maximum date range is exceeded, use the start date
+   # provided to calculate an end date within max_difference.
    #####
-   #Aggregate the os_name, os_version, and cpu_name by branch
-   #####
-   data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int))))
+   if time_difference > max_difference: 
+      end_days = start_date + max_difference
+      end_date = str(end_days)
 
-   for row in table_struct['data']:
+   nfields['start_date'] = str(start_date)
+   nfields['end_date'] = str(end_date)
 
-      cpu_data = _format_cpu_data(row)
+def _get_json(nfields, col_prefixes, path):
 
-      platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['Count'])
-      data[row['signature']][row['fatal_message']][row['branch']][platform] += row['Count']
+   _set_dates_for_placeholders(nfields)
 
-   response_data = []
-   for signature, sig_matches in data.iteritems():
-      for fatal_message, branches in sig_matches.iteritems():
+   rep = _build_new_rep(nfields, col_prefixes)
 
-         total_count, platform = _format_branch_data(platform, branches)
+   data = settings.DHUB.execute(proc=path,
+                                debug_show=settings.DEBUG,
+                                replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                return_type='table')
 
-         crash = { 'signature': signature,
-                   'fatal_message': fatal_message,
-                   'Platform': platform,
-                   'Total Count':total_count}
-
-         response_data.append(crash)
-
-   return response_data
-
-def _aggregate_assertion_platform_data(table_struct):
-
-   #####
-   #Aggregate the os_name, os_version, and cpu_name by branch
-   #####
-   data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int))))
-
-   for row in table_struct['data']:
-
-      cpu_data = _format_cpu_data(row)
-
-      platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['Count'])
-      data[row['assertion']][row['location']][row['branch']][platform] += row['Count']
-
-   response_data = []
-   for assertion, sig_matches in data.iteritems():
-      for location, branches in sig_matches.iteritems():
-
-         total_count, platform = _format_branch_data(platform, branches)
-
-         crash = { 'assertion': assertion,
-                   'location': location,
-                   'Platform': platform,
-                   'Total Count':total_count}
-
-         response_data.append(crash)
-
-   return response_data
-
-def _aggregate_url_platform_data(table_struct):
-
-   #####
-   #Aggregate the os_name, os_version, and cpu_name by branch
-   #####
-   data = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
-
-   for row in table_struct['data']:
-
-      cpu_data = _format_cpu_data(row)
-
-      platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['Count'])
-      data[row['url']][row['branch']][platform] += row['Count']
-
-   response_data = []
-   for url, branches in data.iteritems():
-
-      total_count, platform = _format_branch_data(platform, branches)
-
-      url_summary = { 'Total Count':total_count, 
-                      'url': url,
-                      'Platform': platform }
-
-      response_data.append(url_summary)
-
-   return response_data
-
-def _format_branch_data(platform, branches):
-
-   platform = "" 
-   counts_broken_down = "" 
-   total_count = 0
-
-   ##Build the platform string, sort branches alphabetically##
-   for branch in sorted(branches.keys()):
-      counts_broken_down += "<b>%s</b>:&nbsp;&nbsp;&nbsp;" % branch
-      for line in branches[branch]: 
-         counts_broken_down += "%s&nbsp;&nbsp;&nbsp;" % line.replace(' ', '&nbsp;')
-         total_count += branches[branch][line]
-      counts_broken_down += "<br />"
-      platform += counts_broken_down
-      counts_broken_down = ""
-
-   return total_count, platform
-
-def _format_cpu_data(row):
-
-   architecture = ""
-   cpu_bits = "32"
-   build_cpu_bits = "32"
-
-   if row['cpu_name'].find('_') > -1:
-      cpu_parts = row['cpu_name'].split('_')
-      architecture = cpu_parts[0]
-      cpu_bits = cpu_parts[1]
-   else:
-      architecture = row['cpu_name']
-
-   if row['build_cpu_name'].find('_') > -1:
-      build_cpu_bits = row['build_cpu_name'].split('_')[1]
-      
-   cpu_data = "%s %s/%s" % (architecture, cpu_bits, build_cpu_bits)
-
-   return cpu_data
-
-
+   return simplejson.dumps( {'columns':data['columns'], 
+                             'data':data['data'], 
+                             'start_date':nfields['start_date'], 
+                             'end_date':nfields['end_date']} )
 
 ####
 #VIEW_ADAPTERS maps view names to function
 #references that handle them.  All adapters
 #need to return json
 ####
-VIEW_ADAPTERS = dict( crashes=_get_crashes,
-                      crash_urls=_get_urls,
-                      crash_detail=_get_crash_detail,
-                      socorro_record=_get_socorro_record,
-                      assertions=_get_assertions,
-                      assertion_urls=_get_assertion_urls,
-                      assertion_detail=_get_assertion_detail )
+VIEW_ADAPTERS = dict( crashes_st=_get_crashes_st,
+                      crash_urls_st=_get_crash_urls_st,
+                      crash_detail_st=_get_crash_detail_st,
+                      assertions_st=_get_assertions_st,
+                      assertion_urls_st=_get_assertion_urls_st,
+                      assertion_detail_st=_get_assertion_detail_st,
+                      socorro_record=_get_socorro_record)
 
 NAMED_FIELDS = set( ['signature',
                      'url',

@@ -144,6 +144,8 @@ var ConnectionsView = new Class({
       //Clear out any existing options
       $(this.viewListSel).empty();
 
+      bhviewNames.sort(this.sortOptionMenu);
+
       for(var i=0; i<bhviewNames.length; i++){
          var optionEl = $('<option></option>');
          $(optionEl).attr('value', bhviewNames[i].name);
@@ -153,6 +155,16 @@ var ConnectionsView = new Class({
          }
          $(optionEl).css('display', 'block');
          $(this.viewListSel).append(optionEl);
+      }
+   },
+   sortOptionMenu: function(a, b){
+
+      if(a.name.match('assertion')){
+         return 1;
+      }else if(a.name.match('crash')){
+         return 1;
+      }else{
+         return 0;
       }
    },
    setTabSelections: function(){

@@ -59,7 +59,7 @@
 
          "host_type":"master_host"
       },
-      "crashes":{
+      "crashes_st":{
 
             "sql":"SELECT c.signature,
                           str.fatal_message,
@@ -68,7 +68,7 @@
                           str.os_version,
                           str.cpu_name,
                           str.build_cpu_name,
-                          COUNT( c.id ) AS 'Count'
+                          COUNT( c.id ) AS 'total_count'
                     FROM Crash AS c
                     JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
                     JOIN SiteTestRun AS str ON stc.testrun_id = str.id
@@ -84,7 +84,7 @@
 
             "host_type":"master_host"
       },
-      "new_crash_signatures":{
+      "new_crash_signatures_st":{
 
             "sql":"SELECT c.signature,
                           str.fatal_message,
@@ -93,7 +93,7 @@
                           str.os_version,
                           str.cpu_name,
                           str.build_cpu_name,
-                          COUNT( c.id ) AS 'Count'
+                          COUNT( c.id ) AS 'total_count'
                     FROM Crash AS c
                     JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
                     JOIN SiteTestRun AS str ON stc.testrun_id = str.id
@@ -114,7 +114,7 @@
 
             "host_type":"master_host"
       },
-      "temp_urls":{
+      "temp_urls_st":{
 
             "sql":"CREATE TEMPORARY TABLE IF NOT EXISTS REP3 AS 
                    SELECT DISTINCT stc.url AS url
@@ -124,7 +124,7 @@
                    WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1') REP2",
             "host_type":"master_host"
       },
-      "crash_detail":{
+      "crash_detail_st":{
 
          "sql":"SELECT c.signature AS signature, 
                        str.fatal_message,
@@ -156,16 +156,6 @@
                WHERE stc.url IN (
                   SELECT url FROM REP2
                ) AND (str.datetime >= 'REP0' AND str.datetime <= 'REP1')
-               ORDER BY c.signature,
-                        str.fatal_message,
-                        c.os_name,
-                        c.os_version,
-                        c.cpu_name,
-                        c.build_cpu_name,
-                        c.product,
-                        c.branch,
-                        stc.url,
-                        stc.datetime
                LIMIT 1000",
 
          "host_type":"master_host"
@@ -177,7 +167,7 @@
          "host_type":"master_host"
 
       },
-      "crash_urls":{
+      "crash_urls_st":{
          "sql":"SELECT DISTINCT(stc.url),
                        c.branch,
                        c.os_name,
@@ -185,9 +175,10 @@
                        c.cpu_name,
                        c.build_cpu_name,
                        DATE_FORMAT(stc.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
-                       COUNT(stc.url) AS 'Count'
+                       COUNT(stc.url) AS 'total_count'
                  FROM Crash AS c
                  JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
+                 JOIN SiteTestRun AS str ON stc.testrun_id = str.id
                  WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1') REP2
                  GROUP BY stc.url, c.branch, c.os_name, c.os_version, c.build_cpu_name
                  ORDER BY stc.datetime DESC
@@ -196,7 +187,7 @@
          "host_type":"master_host"
       },
 
-      "assertions":{
+      "assertions_st":{
 
          "sql":"SELECT a.assertion,
                        a.location,
@@ -205,7 +196,8 @@
                        a.os_version,
                        a.cpu_name,
                        a.build_cpu_name,
-                       COUNT( a.id ) AS 'Count'
+                       COUNT( a.id ) AS 'total_count',
+                       SUM( sta.count ) AS 'assertion_count'
                 FROM Assertion AS a
                 JOIN SiteTestAssertion AS sta ON a.id = sta.assertion_id
                 WHERE (sta.datetime >= 'REP0' AND sta.datetime <= 'REP1') REP2
@@ -223,7 +215,7 @@
 
       },
 
-      "new_assertions":{
+      "new_assertions_st":{
 
             "sql":"SELECT a.assertion,
                           a.location,
@@ -232,7 +224,8 @@
                           a.os_version,
                           a.cpu_name,
                           a.build_cpu_name,
-                          COUNT( a.id ) AS 'Count'
+                          COUNT( a.id ) AS 'total_count',
+                          SUM( sta.count ) AS 'assertion_count'
                     FROM Assertion AS a
                     JOIN SiteTestAssertion AS sta ON a.id = sta.assertion_id
                     WHERE (sta.datetime >= 'REP0' AND sta.datetime <= 'REP1') AND 
@@ -254,7 +247,7 @@
             "host_type":"master_host"
       },
 
-      "assertion_urls":{
+      "assertion_urls_st":{
 
          "sql":"SELECT DISTINCT(sta.url),
                        a.branch,
@@ -263,7 +256,8 @@
                        a.cpu_name,
                        a.build_cpu_name,
                        DATE_FORMAT(sta.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
-                       COUNT(sta.url) AS 'Count'
+                       COUNT(sta.url) AS 'total_count',
+                       SUM( sta.count ) AS 'assertion_count'
                  FROM Assertion AS a
                  JOIN SiteTestAssertion AS sta ON a.id = sta.assertion_id
                  WHERE (sta.datetime >= 'REP0' AND sta.datetime <= 'REP1') REP2
@@ -274,7 +268,7 @@
          "host_type":"master_host"
       },
 
-      "temp_assertion_urls":{
+      "temp_assertion_urls_st":{
 
             "sql":"CREATE TEMPORARY TABLE IF NOT EXISTS REP3 AS 
                    SELECT DISTINCT sta.url AS url
@@ -285,7 +279,7 @@
             "host_type":"master_host"
       },
 
-      "assertion_detail":{
+      "assertion_detail_st":{
 
          "sql":"SELECT a.assertion, 
                        a.location,
@@ -316,46 +310,61 @@
 
          "host_type":"master_host"
       },
-      "ordered_assertion_detail":{
 
-         "sql":"SELECT a.assertion, 
-                       a.location,
-                       a.os_name,
-                       a.os_version,
-                       a.cpu_name,
-                       a.build_cpu_name,
-                       a.product,
-                       a.branch,
-                       sta.url,
-                       DATE_FORMAT(sta.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
-                       sta.stack,
-                       sta.count,
-                       str.log,
-                       str.changeset,
-                       str.bug_list,
-                       str.steps,
-                       str.exitstatus,
-                       str.priority,
-                       str.socorro_id
-               FROM Assertion AS a 
-               JOIN SiteTestAssertion AS sta ON a.id = sta.assertion_id
-               JOIN SiteTestRun AS str ON sta.testrun_id = str.id
-               WHERE sta.url IN (
-                  SELECT url FROM REP2
-               ) AND (sta.datetime >= 'REP0' AND sta.datetime <= 'REP1')
-               ORDER BY a.assertion,
-                        a.location,
-                        a.os_name,
-                        a.os_version,
-                        a.cpu_name,
-                        a.build_cpu_name,
-                        a.product,
-                        a.branch,
-                        sta.url,
-                        sta.datetime
-               LIMIT 1000",
+      "crashes_ut":{
 
-         "host_type":"master_host"
+            "sql":"SELECT c.signature,
+                          utr.fatal_message,
+                          utr.branch,
+                          utr.os_name,
+                          utr.os_version,
+                          utr.cpu_name,
+                          utr.build_cpu_name,
+                          COUNT( c.id ) AS 'total_count'
+                    FROM Crash AS c
+                    JOIN UnitTestCrash AS utc ON c.id = utc.crash_id
+                    JOIN UnitTestRun AS utr ON utc.testrun_id = utr.id
+                    WHERE (utc.datetime >= 'REP0' AND utc.datetime <= 'REP1') REP2
+                    GROUP BY c.signature,
+                             utr.fatal_message,
+                             utr.branch,
+                             utr.os_name,
+                             utr.os_version,
+                             utr.cpu_name
+                    ORDER BY utr.fatal_message DESC, c.signature ASC
+                    LIMIT 1000",
+
+            "host_type":"master_host"
+      },
+      "new_crash_signatures_ut":{
+
+            "sql":"SELECT c.signature,
+                          utr.fatal_message,
+                          utr.branch,
+                          utr.os_name,
+                          utr.os_version,
+                          utr.cpu_name,
+                          utr.build_cpu_name,
+                          COUNT( c.id ) AS 'total_count'
+                    FROM Crash AS c
+                    JOIN UnitTestCrash AS utc ON c.id = utc.crash_id
+                    JOIN UnitTestRun AS utr ON utc.testrun_id = utr.id
+                    WHERE (utc.datetime >= 'REP0' AND utc.datetime <= 'REP1') AND 
+                           c.id NOT IN (
+                              SELECT c.id
+                              FROM Crash AS c
+                              JOIN UnitTestCrash AS utc ON c.id = utc.crash_id
+                              WHERE (utc.datetime < 'REP0')) REP2
+                    GROUP BY c.signature,
+                             utr.fatal_message,
+                             utr.branch,
+                             utr.os_name,
+                             utr.os_version,
+                             utr.cpu_name
+                    ORDER BY utr.fatal_message DESC, c.signature ASC
+                    LIMIT 1000",
+
+            "host_type":"master_host"
       }
    }
 }

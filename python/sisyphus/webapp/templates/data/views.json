@@ -1,7 +1,7 @@
 [
    { "Crashes": [
 
-      { "name":"crashes",
+      { "name":"crashes_st",
         "read_name":"Crashes",
         "signals":{ "signature":"1", 
                     "fatal_message":"1",
@@ -18,7 +18,7 @@
                    { "name":"tree" } ]
       },
    
-      { "name":"crash_urls",
+      { "name":"crash_urls_st",
         "read_name":"Crash URL Summary",
         "signals":{ "url":"1", 
                     "signature":"1", 
@@ -35,8 +35,8 @@
                    { "name":"tree" } ]
       },
 
-      { "name":"crash_detail",
-        "read_name":"Crash Details",
+      { "name":"crash_detail_st",
+        "read_name":"Related Crashes",
         "signals":{ "url":"1", 
                     "signature":"1", 
                     "fatal_message":"1", 
@@ -57,11 +57,10 @@
 
   { "Assertions": [
 
-      { "name":"assertions",
+      { "name":"assertions_st",
         "read_name":"Assertions",
         "signals":{ "assertion":"1", "location":"1" },
         "control_panel":"assertions.html",
-        "default":1,
         "data_adapter":"crashes",
         "charts":[ { "name":"table" }, 
                    { "name":"pie" }, 
@@ -69,7 +68,7 @@
                    { "name":"tree" } ]
       },
 
-      { "name":"assertion_urls",
+      { "name":"assertion_urls_st",
         "read_name":"Assertion URL Summary",
         "signals":{ "assertion":"1", 
                     "url":"1" },
@@ -81,8 +80,8 @@
                    { "name":"tree" } ]
       },
 
-      { "name":"assertion_detail",
-        "read_name":"Assertion Details",
+      { "name":"assertion_detail_st",
+        "read_name":"Related Assertions",
         "signals":{ "assertion":"1", 
                     "location":"1",
                     "url":"1"},
