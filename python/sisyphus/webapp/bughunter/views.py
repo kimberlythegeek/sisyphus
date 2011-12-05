@@ -636,6 +636,36 @@ def _get_crashes(proc_path, proc_name, full_proc_path, placeholders, replacement
                               'start_date':nfields['start_date'], 
                               'end_date':nfields['end_date'] } )
 
+def _get_assertions(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+
+   col_prefixes = { 'assertion':'a',
+                    'location':'a' }
+
+   _set_dates_for_placeholders(nfields)
+
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
+      full_proc_path = proc_path + 'new_assertions'
+
+   table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                       debug_show=settings.DEBUG,
+                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                       return_type='table')
+
+   response_data = _aggregate_assertion_platform_data(table_struct)
+   
+   columns = [ 'assertion', 
+               'location', 
+               'Total Count', 
+               'Platform' ]
+
+   return simplejson.dumps( { 'columns':columns, 
+                              'data':response_data,
+                              'start_date':nfields['start_date'], 
+                              'end_date':nfields['end_date'] } )
+
+
 def _get_site_test_crash(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
 
    col_prefixes = { 'signature':'c',
@@ -720,6 +750,46 @@ def _get_crash_detail(proc_path, proc_name, full_proc_path, placeholders, replac
                              'start_date':nfields['start_date'], 
                              'end_date':nfields['end_date']} )
 
+def _get_assertion_detail(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+
+   col_prefixes = { 'assertion':'a',
+                    'location':'a', 
+                    'url':'sta' }
+
+   _set_dates_for_placeholders(nfields)
+
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   temp_table_name = 'temp_assertion_urls_' + get_rand_str(8)
+
+   ##Build temp table##
+   settings.DHUB.execute(proc=proc_path + 'temp_assertion_urls',
+                         debug_show=settings.DEBUG,
+                         replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
+
+   ##Only use an order by call if we have a signal in the where clause##
+   proc = full_proc_path
+   for signal in col_prefixes.keys():
+      if signal in nfields: 
+         proc = proc_path + 'ordered_assertion_detail'
+         break
+
+   ##Get the crashdetails##
+   data = settings.DHUB.execute(proc=proc,
+                                debug_show=settings.DEBUG,
+                                replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
+                                return_type='table')
+
+   ##Remove temp table##
+   settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
+                         debug_show=settings.DEBUG,
+                         replace=[ temp_table_name ])
+
+   return simplejson.dumps( {'columns':data['columns'], 
+                             'data':data['data'], 
+                             'start_date':nfields['start_date'], 
+                             'end_date':nfields['end_date']} )
+
 def _get_urls(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
 
    col_prefixes = { 'signature':'c',
@@ -729,6 +799,29 @@ def _get_urls(proc_path, proc_name, full_proc_path, placeholders, replacements, 
                     'pluginfilename':'stc',
                     'pluginversion':'stc',
                     'exploitability':'stc' }
+
+   _set_dates_for_placeholders(nfields)
+
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                       debug_show=settings.DEBUG,
+                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                       return_type='table')
+
+   response_data = _aggregate_url_platform_data(table_struct)
+
+   columns = ['url', 'Total Count', 'Platform']
+
+   return simplejson.dumps( { 'columns':columns, 
+                              'data':response_data,
+                              'start_date':nfields['start_date'], 
+                              'end_date':nfields['end_date'] } )
+
+def _get_assertion_urls(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+
+   col_prefixes = { 'url':'sta',
+                    'assertion':'a' }
 
    _set_dates_for_placeholders(nfields)
 
@@ -903,6 +996,35 @@ def _aggregate_crashes_platform_data(table_struct):
 
    return response_data
 
+def _aggregate_assertion_platform_data(table_struct):
+
+   #####
+   #Aggregate the os_name, os_version, and cpu_name by branch
+   #####
+   data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int))))
+
+   for row in table_struct['data']:
+
+      cpu_data = _format_cpu_data(row)
+
+      platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['Count'])
+      data[row['assertion']][row['location']][row['branch']][platform] += row['Count']
+
+   response_data = []
+   for assertion, sig_matches in data.iteritems():
+      for location, branches in sig_matches.iteritems():
+
+         total_count, platform = _format_branch_data(platform, branches)
+
+         crash = { 'assertion': assertion,
+                   'location': location,
+                   'Platform': platform,
+                   'Total Count':total_count}
+
+         response_data.append(crash)
+
+   return response_data
+
 def _aggregate_url_platform_data(table_struct):
 
    #####
@@ -976,9 +1098,12 @@ def _format_cpu_data(row):
 #need to return json
 ####
 VIEW_ADAPTERS = dict( crashes=_get_crashes,
-                      urls=_get_urls,
-                      crashdetail=_get_crash_detail,
-                      socorro_record=_get_socorro_record)
+                      crash_urls=_get_urls,
+                      crash_detail=_get_crash_detail,
+                      socorro_record=_get_socorro_record,
+                      assertions=_get_assertions,
+                      assertion_urls=_get_assertion_urls,
+                      assertion_detail=_get_assertion_detail )
 
 NAMED_FIELDS = set( ['signature',
                      'url',
@@ -990,7 +1115,9 @@ NAMED_FIELDS = set( ['signature',
                      'address',
                      'pluginfilename',
                      'pluginversion',
-                     'exploitability'] )
+                     'exploitability',
+                     'assertion',
+                     'location'] )
 
 VIEW_PAGES = set([ 'bhview' ])
 

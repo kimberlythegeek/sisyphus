@@ -72,7 +72,6 @@
                     FROM Crash AS c
                     JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
                     JOIN SiteTestRun AS str ON stc.testrun_id = str.id
-                    JOIN SocorroRecord AS sr ON str.socorro_id = sr.id
                     WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1') REP2
                     GROUP BY c.signature,
                              str.fatal_message,
@@ -98,7 +97,6 @@
                     FROM Crash AS c
                     JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
                     JOIN SiteTestRun AS str ON stc.testrun_id = str.id
-                    JOIN SocorroRecord AS sr ON str.socorro_id = sr.id
                     WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1') AND 
                            c.id NOT IN (
                               SELECT c.id
@@ -126,7 +124,7 @@
                    WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1') REP2",
             "host_type":"master_host"
       },
-      "crashdetail":{
+      "crash_detail":{
 
          "sql":"SELECT c.signature AS signature, 
                        str.fatal_message,
@@ -179,7 +177,7 @@
          "host_type":"master_host"
 
       },
-      "urls":{
+      "crash_urls":{
          "sql":"SELECT DISTINCT(stc.url),
                        c.branch,
                        c.os_name,
@@ -190,11 +188,172 @@
                        COUNT(stc.url) AS 'Count'
                  FROM Crash AS c
                  JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
-                 JOIN SiteTestRun AS str ON stc.testrun_id = str.id
                  WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1') REP2
                  GROUP BY stc.url, c.branch, c.os_name, c.os_version, c.build_cpu_name
                  ORDER BY stc.datetime DESC
                  LIMIT 1000",
+
+         "host_type":"master_host"
+      },
+
+      "assertions":{
+
+         "sql":"SELECT a.assertion,
+                       a.location,
+                       a.branch,
+                       a.os_name,
+                       a.os_version,
+                       a.cpu_name,
+                       a.build_cpu_name,
+                       COUNT( a.id ) AS 'Count'
+                FROM Assertion AS a
+                JOIN SiteTestAssertion AS sta ON a.id = sta.assertion_id
+                WHERE (sta.datetime >= 'REP0' AND sta.datetime <= 'REP1') REP2
+                GROUP BY a.assertion,
+                         a.location,
+                         a.branch,
+                         a.os_name,
+                         a.os_version,
+                         a.cpu_name,
+                         a.build_cpu_name
+                ORDER BY a.assertion ASC
+                LIMIT 1000",
+
+         "host_type":"master_host"
+
+      },
+
+      "new_assertions":{
+
+            "sql":"SELECT a.assertion,
+                          a.location,
+                          a.branch,
+                          a.os_name,
+                          a.os_version,
+                          a.cpu_name,
+                          a.build_cpu_name,
+                          COUNT( a.id ) AS 'Count'
+                    FROM Assertion AS a
+                    JOIN SiteTestAssertion AS sta ON a.id = sta.assertion_id
+                    WHERE (sta.datetime >= 'REP0' AND sta.datetime <= 'REP1') AND 
+                           a.id NOT IN (
+                              SELECT a.id
+                              FROM Assertion AS a
+                              JOIN SiteTestAssertion AS sta ON a.id = sta.assertion_id
+                              WHERE (sta.datetime < 'REP0')) REP2
+                    GROUP BY a.assertion,
+                             a.location,
+                             a.branch,
+                             a.os_name,
+                             a.os_version,
+                             a.cpu_name,
+                             a.build_cpu_name
+                    ORDER BY a.assertion ASC
+                    LIMIT 1000",
+
+            "host_type":"master_host"
+      },
+
+      "assertion_urls":{
+
+         "sql":"SELECT DISTINCT(sta.url),
+                       a.branch,
+                       a.os_name,
+                       a.os_version,
+                       a.cpu_name,
+                       a.build_cpu_name,
+                       DATE_FORMAT(sta.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
+                       COUNT(sta.url) AS 'Count'
+                 FROM Assertion AS a
+                 JOIN SiteTestAssertion AS sta ON a.id = sta.assertion_id
+                 WHERE (sta.datetime >= 'REP0' AND sta.datetime <= 'REP1') REP2
+                 GROUP BY sta.url, a.branch, a.os_name, a.os_version, a.build_cpu_name
+                 ORDER BY sta.datetime DESC
+                 LIMIT 1000",
+
+         "host_type":"master_host"
+      },
+
+      "temp_assertion_urls":{
+
+            "sql":"CREATE TEMPORARY TABLE IF NOT EXISTS REP3 AS 
+                   SELECT DISTINCT sta.url AS url
+                   FROM Assertion AS a
+                   JOIN SiteTestAssertion AS sta ON a.id = sta.assertion_id
+                   WHERE (sta.datetime >= 'REP0' AND sta.datetime <= 'REP1') REP2",
+
+            "host_type":"master_host"
+      },
+
+      "assertion_detail":{
+
+         "sql":"SELECT a.assertion, 
+                       a.location,
+                       a.os_name,
+                       a.os_version,
+                       a.cpu_name,
+                       a.build_cpu_name,
+                       a.product,
+                       a.branch,
+                       sta.url,
+                       DATE_FORMAT(sta.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
+                       sta.stack,
+                       sta.count,
+                       str.log,
+                       str.changeset,
+                       str.bug_list,
+                       str.steps,
+                       str.exitstatus,
+                       str.priority,
+                       str.socorro_id
+               FROM Assertion AS a 
+               JOIN SiteTestAssertion AS sta ON a.id = sta.assertion_id
+               JOIN SiteTestRun AS str ON sta.testrun_id = str.id
+               WHERE sta.url IN (
+                  SELECT url FROM REP2
+               ) AND (sta.datetime >= 'REP0' AND sta.datetime <= 'REP1')
+               LIMIT 1000",
+
+         "host_type":"master_host"
+      },
+      "ordered_assertion_detail":{
+
+         "sql":"SELECT a.assertion, 
+                       a.location,
+                       a.os_name,
+                       a.os_version,
+                       a.cpu_name,
+                       a.build_cpu_name,
+                       a.product,
+                       a.branch,
+                       sta.url,
+                       DATE_FORMAT(sta.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
+                       sta.stack,
+                       sta.count,
+                       str.log,
+                       str.changeset,
+                       str.bug_list,
+                       str.steps,
+                       str.exitstatus,
+                       str.priority,
+                       str.socorro_id
+               FROM Assertion AS a 
+               JOIN SiteTestAssertion AS sta ON a.id = sta.assertion_id
+               JOIN SiteTestRun AS str ON sta.testrun_id = str.id
+               WHERE sta.url IN (
+                  SELECT url FROM REP2
+               ) AND (sta.datetime >= 'REP0' AND sta.datetime <= 'REP1')
+               ORDER BY a.assertion,
+                        a.location,
+                        a.os_name,
+                        a.os_version,
+                        a.cpu_name,
+                        a.build_cpu_name,
+                        a.product,
+                        a.branch,
+                        sta.url,
+                        sta.datetime
+               LIMIT 1000",
 
          "host_type":"master_host"
       }

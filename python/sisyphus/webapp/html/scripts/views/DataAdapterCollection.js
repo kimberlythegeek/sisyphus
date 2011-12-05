@@ -357,16 +357,9 @@ var BHViewAdapter = new Class({
          if(wrapFound || signalsFound || mediaFound){
             for(var i=0; i<dataObject.data.length; i++){
                if(wrapFound){
-                  //URL encoded &, %26, breaks wrapping in HTML table rows.
-                  //Tried using decodeURI() here but it fails, not sure why...
-                  //Resorted to replaceing %20 explicitly.  Maybe a better place
-                  //for this would be in the server side environment, so we don't 
-                  //have to iterate over every row.  
                   for(var w in this.wrapColumns){
                      if(dataObject.data[i][w] != undefined){
-                        var data = dataObject.data[i][w].replace(/\%26/g, '&');
-                        data = data.replace(/\n/g, ' ');
-                        dataObject.data[i][w] = BHPAGE.escapeHtmlEntities(data);
+                        dataObject.data[i][w] = BHPAGE.escapeHtmlEntities(dataObject.data[i][w]);
                      }
                   }
                }
@@ -475,3 +468,4 @@ var UrlAdapter = new Class({
       this.sorting = { 'urls':[[1, 'desc']] };
    }
 });
+

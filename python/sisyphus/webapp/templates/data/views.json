@@ -18,8 +18,8 @@
                    { "name":"tree" } ]
       },
    
-      { "name":"urls",
-        "read_name":"URL Summary",
+      { "name":"crash_urls",
+        "read_name":"Crash URL Summary",
         "signals":{ "url":"1", 
                     "signature":"1", 
                     "fatal_message":"1",
@@ -35,7 +35,7 @@
                    { "name":"tree" } ]
       },
 
-      { "name":"crashdetail",
+      { "name":"crash_detail",
         "read_name":"Crash Details",
         "signals":{ "url":"1", 
                     "signature":"1", 
@@ -54,6 +54,48 @@
                    { "name":"tree"} ]
       }
    ] },
+
+  { "Assertions": [
+
+      { "name":"assertions",
+        "read_name":"Assertions",
+        "signals":{ "assertion":"1", "location":"1" },
+        "control_panel":"assertions.html",
+        "default":1,
+        "data_adapter":"crashes",
+        "charts":[ { "name":"table" }, 
+                   { "name":"pie" }, 
+                   { "name":"bar" }, 
+                   { "name":"tree" } ]
+      },
+
+      { "name":"assertion_urls",
+        "read_name":"Assertion URL Summary",
+        "signals":{ "assertion":"1", 
+                    "url":"1" },
+        "control_panel":"assertion_urls.html",
+        "data_adapter":"urls",
+        "charts":[ { "name":"table" }, 
+                   { "name":"pie" }, 
+                   { "name":"bar" }, 
+                   { "name":"tree" } ]
+      },
+
+      { "name":"assertion_detail",
+        "read_name":"Assertion Details",
+        "signals":{ "assertion":"1", 
+                    "location":"1",
+                    "url":"1"},
+        "control_panel":"assertion_urls.html",
+        "data_adapter":"named_fields",
+        "hidden_columns":{ "changeset":"13", "bug_list":"14", "steps":"15", "exitstatus":"16", "priority":"17" },
+        "charts":[ { "name":"table" }, 
+                   { "name":"pie" }, 
+                   { "name":"bar" }, 
+                   { "name":"tree"} ]
+      }
+
+  ] },
 
   { "Admin": [
 
