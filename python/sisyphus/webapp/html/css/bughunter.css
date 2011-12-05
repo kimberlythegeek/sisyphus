@@ -184,6 +184,10 @@ div.bh-title {
 span.bh-redtext {
    color:#CD0000;
 }
+div.bh-control-panel {
+   height:500px;
+   overflow-y:scroll;
+}
 
 /***********
  * Modal and form styles

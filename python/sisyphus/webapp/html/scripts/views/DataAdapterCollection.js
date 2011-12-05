@@ -18,7 +18,8 @@ var DataAdapterCollection = new Class({
       //Holds a list of adapters.  The key should be found in
       //views.json in the data_adapter attribute.
       this.adapters = { 'named_fields':new BHViewAdapter(),
-                        'crashes':new CrashesAdapter() };
+                        'crashes':new CrashesAdapter(),
+                        'urls':new UrlAdapter() };
 
    },
 
@@ -48,6 +49,9 @@ var BHViewAdapter = new Class({
     *     clearPanel()
     *     getDefaultParams()
     *     processData()
+    *     processPanelClick()
+    *     setSelectionRange()
+    *
     **************************/
    Extends:Options,
 
@@ -60,7 +64,7 @@ var BHViewAdapter = new Class({
       //Name of the adapter, set by getAdapter()
       this.adapter = "";
       //Set's the default column to sort on
-      this.sorting = {};
+      this.sorting = { 'named_fields':[[0, 'desc']] };
 
       this.mediaColumns = { crashreport:true,
                             log:true };
@@ -98,7 +102,7 @@ var BHViewAdapter = new Class({
       if(!_.isEmpty(data)){
          //this.clearPanel(controlPanelDropdownEl);
          var el = $(controlPanelDropdownEl).find('[name="' + data.signal + '"]');
-         $(el).attr('value', this.unescapeForUrl(data.data));
+         $(el).attr('value', BHPAGE.unescapeForUrl(data.data));
 
          if(!_.isEmpty(data.date_range)){
             var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
@@ -148,14 +152,14 @@ var BHViewAdapter = new Class({
 
          for(var i=0; i<inputs.length; i++){
             var type = $(inputs[i]).attr('type');
-            if((type == 'text') || (type == 'checkbox')){
+            if((type == 'text') || (type == 'checkbox') || (type == 'hidden')){
                var name = $(inputs[i]).attr('name');
                var v = $(inputs[i]).val();
                if(v != undefined){
                   v = v.replace(/\s+$/, '');
                }
                if(!(v === "")){
-                  params += name + '=' + this.escapeForUrl(v) + '&';
+                  params += name + '=' + BHPAGE.escapeForUrl(v) + '&';
                }
             }
          }
@@ -164,7 +168,7 @@ var BHViewAdapter = new Class({
             var name = $(textareas[i]).attr('name');
             var v = $(textareas[i]).val();
             if(!(v === "")){
-               params += name + '=' + this.escapeForUrl(v) + '&';
+               params += name + '=' + BHPAGE.escapeForUrl(v) + '&';
             }
          }
          params = params.replace(/\&$/, '');
@@ -370,10 +374,18 @@ var BHViewAdapter = new Class({
                   for(var s in signals){
                      var eclass = 'bh-signal-' + s;
                      if(dataObject.data[i][s] != undefined){
-                        var contextMenuHtml = $(this.cellAnchorClassSel).html();
-                        dataObject.data[i][s] = '<div style="display:inline;"><a class="' + eclass + 
-                                                '" href="#' + s + '">' + BHPAGE.escapeHtmlEntities(dataObject.data[i][s]) + 
-                                                '</a>' + contextMenuHtml + '</div>';
+
+                        if(s == 'socorro_id'){
+                           var contextMenuHtml = $(this.cellAnchorClassSel).html();
+                           dataObject.data[i][s] = '<div style="display:inline;"><a class="' + eclass + 
+                                                   '" href="#' + s + '">' + BHPAGE.escapeHtmlEntities(String(dataObject.data[i][s])) + 
+                                                   '</a>' + contextMenuHtml + '</div>';
+                        }else{
+                           var contextMenuHtml = $(this.cellAnchorClassSel).html();
+                           dataObject.data[i][s] = '<div style="display:inline;"><a class="' + eclass + 
+                                                   '" href="#' + s + '">' + BHPAGE.escapeHtmlEntities(dataObject.data[i][s]) + 
+                                                   '</a>' + contextMenuHtml + '</div>';
+                        }
                      }
                   }
                }
@@ -389,19 +401,6 @@ var BHViewAdapter = new Class({
             }
          }
       }
-   },
-   escapeForUrl: function(s, signal){
-      if(signal == 'url'){
-         //Return space to %20
-         s = s.replace(/\&/g, '%26');
-      }
-      return encodeURIComponent( BHPAGE.unescapeHtmlEntities(s) );
-   },
-   unescapeForUrl: function(s, signal){
-      if(signal == 'url'){
-         s = s.replace(/\%26/g, '\&');
-      }
-      return decodeURIComponent( BHPAGE.unescapeHtmlEntities(s) );
    },
    processPanelClick: function(elId){
       return;
@@ -458,5 +457,20 @@ var CrashesAdapter = new Class({
                    '&end_date=' + $(this.endDateSel).val() +
                    '&new_signatures=on';
       return params;
+   }
+});
+
+var UrlAdapter = new Class({
+
+   Extends:BHViewAdapter,
+
+   jQuery:'UrlAdapter',
+
+   initialize: function(selector, options){
+      this.setOptions(options);
+      this.parent(options);
+
+      //Set default sort column to Total Count
+      this.sorting = { 'urls':[[1, 'desc']] };
    }
 });

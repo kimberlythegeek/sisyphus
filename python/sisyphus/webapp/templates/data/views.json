@@ -3,7 +3,7 @@
 
       { "name":"crashes",
         "read_name":"Crashes",
-        "signals":{ "url":"1", "signature":"1", "fatal_message":"1" },
+        "signals":{ "signature":"1", "fatal_message":"1" },
         "control_panel":"crashes.html",
         "default":1,
         "data_adapter":"crashes",
@@ -14,21 +14,10 @@
       },
    
       { "name":"urls",
-        "read_name":"URL Summary By Signature",
-        "signals":{ "url":"1", "signature":"1" },
-        "control_panel":"date_sig_url.html",
-        "data_adapter":"named_fields",
-        "charts":[ { "name":"table" }, 
-                   { "name":"pie" }, 
-                   { "name":"bar" }, 
-                   { "name":"tree" } ]
-      },
-
-      { "name":"fmurls",
-        "read_name":"URL Summary By Fatal Message",
-        "signals":{ "url":"1", "fatal_message":"1" },
-        "control_panel":"date_url_fmessage.html",
-        "data_adapter":"named_fields",
+        "read_name":"URL Summary",
+        "signals":{ "url":"1", "signature":"1", "fatal_message":"1" },
+        "control_panel":"named_fields.html",
+        "data_adapter":"urls",
         "charts":[ { "name":"table" }, 
                    { "name":"pie" }, 
                    { "name":"bar" }, 
@@ -37,9 +26,10 @@
 
       { "name":"crashdetail",
         "read_name":"Crash Details",
-        "signals":{ "url":"1", "signature":"1", "fatal_message":"1" },
+        "signals":{ "url":"1", "signature":"1", "fatal_message":"1", "socorro_id":"1" },
         "control_panel":"named_fields.html",
         "data_adapter":"named_fields",
+        "hidden_columns":{ "datetime":"9", "changeset":"18", "bug_list":"19", "steps":"20", "exitstatus":"21", "priority":"22" },
         "charts":[ { "name":"table" }, 
                    { "name":"pie" }, 
                    { "name":"bar" }, 
@@ -78,19 +68,10 @@
    ] },
 
   { "Crash Tables": [
-     { "name":"site_test_crash",
-       "read_name":"Site Test Crash",
-       "signals":{ "url":"1", "signature":"1", "fatal_message":"1" },
-       "data_adapter":"named_fields",
-       "control_panel":"date_sig_url.html",
-       "charts":[ { "name":"table" }, 
-                  { "name":"pie" }, 
-                  { "name":"bar" }, 
-                  { "name":"tree" } ]
-     },
+
      { "name":"socorro_record",
        "read_name":"Soccorro Record",
-       "signals":{ "url":"1" },
+       "signals":{ "url":"1", "socorro_id":"1" },
        "data_adapter":"named_fields",
        "control_panel":"date_url.html",
        "charts":[ { "name":"table" }, 

@@ -146,33 +146,8 @@ function Menu(caller, options){
          options.onOpen();
       }
 
-      p.click(function(event){ 
+      p.click(this._menuEventHandler);
 
-            //Get the class on the element clicked
-            var c = $(event.target).attr('class');
-
-            //If the class is positionHelper the user has
-            //selected the toggler element so don't call
-            //the clickHandler.  This is rather hacktastic -Jeads
-            if(c == 'positionHelper'){
-               if(options.onClose){
-                  options.onClose(event);
-               }
-
-               menu.kill(); 
-
-            }else if(options.clickHandler){
-               options.clickHandler(event);
-               if( event.target.type == 'checkbox' ){
-                  //This prevents a menu that contains a checkbox
-                  //from closing when the checkbox is clicked
-                  return true;
-               }
-            }else{
-               menu.kill(); 
-            }
-            return false; 
-      });
 		container.hide().slideDown(options.showSpeed).find('.fg-menu:eq(0)');
 		menu.menuOpen = true;
 		caller.removeClass(options.loadingState);
@@ -180,6 +155,32 @@ function Menu(caller, options){
 		
       //Deleted a number of key command listeners here -Jeads
 	};
+   this._menuEventHandler = function(event){
+      //Get the class on the element clicked
+      var c = $(event.target).attr('class');
+
+      //If the class is positionHelper the user has
+      //selected the toggler element so don't call
+      //the clickHandler.  This is rather hacktastic -Jeads
+      if(c == 'positionHelper'){
+         if(options.onClose){
+            options.onClose(event);
+         }
+
+         menu.kill(); 
+
+      }else if(options.clickHandler){
+         options.clickHandler(event);
+         if( event.target.type == 'checkbox' ){
+            //This prevents a menu that contains a checkbox
+            //from closing when the checkbox is clicked
+            return true;
+          }
+       }else{
+         menu.kill(); 
+       }
+      return false; 
+   };
 	
 	this.create = function(){	
 

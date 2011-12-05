@@ -598,46 +598,14 @@ def _get_crashes(proc_path, proc_name, full_proc_path, placeholders, replacement
    if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
       full_proc_path = proc_path + 'new_crash_signatures'
 
-   tableStruct = settings.DHUB.execute(proc=full_proc_path,
+   table_struct = settings.DHUB.execute(proc=full_proc_path,
                                        debug_show=settings.DEBUG,
                                        replace=[ nfields['start_date'], nfields['end_date'], rep ],
                                        return_type='table')
 
-   #####
-   #Aggregate the os_name, os_version, and cpu_name by branch
-   #####
-   data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int))))
-
-   for row in tableStruct['data']:
-      platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], row['cpu_name'], row['Count'])
-      data[row['signature']][row['fatal_message']][row['branch']][platform] += row['Count']
-
-   response_data = []
-   for signature, sig_matches in data.iteritems():
-      for fatal_message, branches in sig_matches.iteritems():
-
-         platform = "" 
-         counts_broken_down = "" 
-         total_count = 0
-
-         ##Build the platform string, sort branches alphabetically##
-         for branch in sorted(branches.keys()):
-            counts_broken_down += "<b>%s</b>:&nbsp;&nbsp;&nbsp;" % branch
-            for line in branches[branch]: 
-               counts_broken_down += "%s&nbsp;&nbsp;&nbsp;" % line.replace(' ', '&nbsp;')
-               total_count += branches[branch][line]
-            counts_broken_down += "<br />"
-            platform += counts_broken_down
-            counts_broken_down = ""
-
-         crash = { 'signature': signature,
-                   'fatal_message': fatal_message,
-                   'Platform': platform,
-                   'Total Count':total_count}
-
-         response_data.append(crash)
+   response_data = _aggregate_crashes_platform_data(table_struct)
    
-   columns = ['signature', 'fatal_message', 'Total Count', 'Platform']
+   columns = [ 'signature', 'fatal_message', 'Total Count', 'Platform' ]
 
    return simplejson.dumps( { 'columns':columns, 
                               'data':response_data,
@@ -656,39 +624,90 @@ def _get_site_test_crash(proc_path, proc_name, full_proc_path, placeholders, rep
 def _get_socorro_record(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
 
    col_prefixes = { 'signature':'sr',
-                    'url':'sr' }
+                    'url':'sr',
+                    'socorro_id':'sr'}
 
-   json = _get_json(nfields, col_prefixes, full_proc_path)
+   _set_dates_for_placeholders(nfields)
 
-   return json
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   proc = full_proc_path
+   column_name = 'socorro_id'
+   replace_list = [ nfields['start_date'], nfields['end_date'], rep ]
+
+   #####
+   #If we have an id don't use the date range.  The date
+   #range will not necessarily match in socorro_record and
+   #we're only returning one row so we don't need it.
+   #####
+   if rep.find(column_name) > -1:
+      ###
+      #In the socorro table sororro_id corresponds to the
+      #id column
+      ###
+      rep = rep.replace('socorro_id', 'id').replace('AND', '')
+      proc = proc_path + 'socorro_record_no_date'
+      replace_list = [rep]
+
+   data = settings.DHUB.execute(proc=proc,
+                                debug_show=settings.DEBUG,
+                                replace=replace_list,
+                                return_type='table')
+
+   return simplejson.dumps( {'columns':data['columns'], 
+                             'data':data['data'], 
+                             'start_date':nfields['start_date'], 
+                             'end_date':nfields['end_date']} )
 
 def _get_crash_detail(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
 
    col_prefixes = { 'signature':'c',
-                    'url':'sr',
+                    'url':'stc',
                     'fatal_message':'str' }
 
-   json = _get_json(nfields, col_prefixes, full_proc_path)
+   _set_dates_for_placeholders(nfields)
 
-   return json
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   ##Build temp table##
+   settings.DHUB.execute(proc=proc_path + 'temp_urls',
+                         debug_show=settings.DEBUG,
+                         replace=[ nfields['start_date'], nfields['end_date'], rep ])
+
+   ##Get the crashdetails##
+   data = settings.DHUB.execute(proc=full_proc_path,
+                                debug_show=settings.DEBUG,
+                                replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                return_type='table')
+
+   return simplejson.dumps( {'columns':data['columns'], 
+                             'data':data['data'], 
+                             'start_date':nfields['start_date'], 
+                             'end_date':nfields['end_date']} )
 
 def _get_urls(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
 
    col_prefixes = { 'signature':'c',
-                    'url':'stc' }
+                    'url':'stc',
+                    'fatal_message':'str'}
 
-   json = _get_json(nfields, col_prefixes, full_proc_path)
+   _set_dates_for_placeholders(nfields)
 
-   return json
+   rep = _build_new_rep(nfields, col_prefixes)
 
-def _get_fmurls(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
+   table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                       debug_show=settings.DEBUG,
+                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                       return_type='table')
 
-   col_prefixes = { 'fatal_message':'str',
-                    'url':'stc' }
+   response_data = _aggregate_url_platform_data(table_struct)
 
-   json = _get_json(nfields, col_prefixes, "%s%s" % (proc_path, 'urls_fm'))
+   columns = ['url', 'Total Count', 'Platform']
 
-   return json
+   return simplejson.dumps( { 'columns':columns, 
+                              'data':response_data,
+                              'start_date':nfields['start_date'], 
+                              'end_date':nfields['end_date'] } )
 
 def _get_json(nfields, col_prefixes, path):
 
@@ -696,9 +715,6 @@ def _get_json(nfields, col_prefixes, path):
 
    rep = _build_new_rep(nfields, col_prefixes)
 
-   ####
-   #Run the select on the temporary table
-   ####
    data = settings.DHUB.execute(proc=path,
                                 debug_show=settings.DEBUG,
                                 replace=[ nfields['start_date'], nfields['end_date'], rep ],
@@ -805,17 +821,113 @@ def _build_new_rep(nfields, col_prefixes):
          if (field == 'start_date') or (field == 'end_date'):
             continue
          if (field in nfields) and (field in col_prefixes):
-            rep += " AND %s.%s='%s' " % (col_prefixes[field], field, nfields[field])
+            if field == 'socorro_id':
+               rep += " AND %s.%s=%s " % (col_prefixes[field], field, int(nfields[field]))
+            else: 
+               rep += " AND %s.%s='%s' " % (col_prefixes[field], field, nfields[field])
 
    return rep
 
 def _get_date_range():
 
-   #start_date = datetime.date.today() - datetime.timedelta(hours=48)
    start_date = datetime.date.today() - datetime.timedelta(hours=120)
    end_date = datetime.date.today() + datetime.timedelta(hours=24)
 
    return start_date, end_date
+
+def _aggregate_crashes_platform_data(table_struct):
+
+   #####
+   #Aggregate the os_name, os_version, and cpu_name by branch
+   #####
+   data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int))))
+
+   for row in table_struct['data']:
+
+      cpu_data = _format_cpu_data(row)
+
+      platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['Count'])
+      data[row['signature']][row['fatal_message']][row['branch']][platform] += row['Count']
+
+   response_data = []
+   for signature, sig_matches in data.iteritems():
+      for fatal_message, branches in sig_matches.iteritems():
+
+         total_count, platform = _format_branch_data(platform, branches)
+
+         crash = { 'signature': signature,
+                   'fatal_message': fatal_message,
+                   'Platform': platform,
+                   'Total Count':total_count}
+
+         response_data.append(crash)
+
+   return response_data
+
+def _aggregate_url_platform_data(table_struct):
+
+   #####
+   #Aggregate the os_name, os_version, and cpu_name by branch
+   #####
+   data = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+
+   for row in table_struct['data']:
+
+      cpu_data = _format_cpu_data(row)
+
+      platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['Count'])
+      data[row['url']][row['branch']][platform] += row['Count']
+
+   response_data = []
+   for url, branches in data.iteritems():
+
+      total_count, platform = _format_branch_data(platform, branches)
+
+      url_summary = { 'Total Count':total_count, 
+                      'url': url,
+                      'Platform': platform }
+
+      response_data.append(url_summary)
+
+   return response_data
+
+def _format_branch_data(platform, branches):
+
+   platform = "" 
+   counts_broken_down = "" 
+   total_count = 0
+
+   ##Build the platform string, sort branches alphabetically##
+   for branch in sorted(branches.keys()):
+      counts_broken_down += "<b>%s</b>:&nbsp;&nbsp;&nbsp;" % branch
+      for line in branches[branch]: 
+         counts_broken_down += "%s&nbsp;&nbsp;&nbsp;" % line.replace(' ', '&nbsp;')
+         total_count += branches[branch][line]
+      counts_broken_down += "<br />"
+      platform += counts_broken_down
+      counts_broken_down = ""
+
+   return total_count, platform
+
+def _format_cpu_data(row):
+
+   architecture = ""
+   cpu_bits = "32"
+   build_cpu_bits = "32"
+
+   if row['cpu_name'].find('_') > -1:
+      cpu_parts = row['cpu_name'].split('_')
+      architecture = cpu_parts[0]
+      cpu_bits = cpu_parts[1]
+   else:
+      architecture = row['cpu_name']
+
+   if row['build_cpu_name'].find('_') > -1:
+      build_cpu_bits = row['build_cpu_name'].split('_')[1]
+      
+   cpu_data = "%s %s/%s" % (architecture, cpu_bits, build_cpu_bits)
+
+   return cpu_data
 
 ####
 #VIEW_ADAPTERS maps view names to function
@@ -823,9 +935,7 @@ def _get_date_range():
 #need to return json
 ####
 VIEW_ADAPTERS = dict( crashes=_get_crashes,
-                      site_test_crash=_get_site_test_crash,
                       urls=_get_urls,
-                      fmurls=_get_fmurls,
                       crashdetail=_get_crash_detail,
                       socorro_record=_get_socorro_record)
 
@@ -834,7 +944,8 @@ NAMED_FIELDS = set( ['signature',
                      'fatal_message',
                      'start_date',
                      'end_date',
-                     'new_signatures'] )
+                     'new_signatures',
+                     'socorro_id'] )
 
 VIEW_PAGES = set([ 'bhview' ])
 

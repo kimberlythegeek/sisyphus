@@ -1,28 +1,9 @@
 {
  "views":{ 
-   "site_test_crash":{
-         "sql":"SELECT stc.url,
-                       DATE_FORMAT(stc.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
-                       stc.reason,
-                       stc.address,
-                       stc.crashreport,
-                       stc.crashtype,
-                       stc.pluginfilename,
-                       stc.pluginversion,
-                       stc.exploitability,
-                       stc.testrun_id,
-                       stc.crash_id,
-                       c.signature
-                FROM SiteTestCrash AS stc
-                JOIN Crash AS c ON stc.crash_id = c.id
-                WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1') REP2 
-                ORDER BY stc.datetime DESC
-                LIMIT 1000",
-         "host_type":"master_host"
-      },
+
       "socorro_record":{
 
-         "sql":"SELECT sr.id,
+         "sql":"SELECT sr.id AS 'socorro_id',
                        sr.signature,
                        sr.url,
                        sr.uuid,
@@ -49,6 +30,35 @@
 
          "host_type":"master_host"
       },
+      "socorro_record_no_date":{
+
+         "sql":"SELECT sr.id AS 'socorro_id',
+                       sr.signature,
+                       sr.url,
+                       sr.uuid,
+                       DATE_FORMAT(sr.client_crash_date, '%Y-%m-%d %H:%i:%s') AS client_crash_date, 
+                       DATE_FORMAT(sr.date_processed, '%Y-%m-%d %H:%i:%s') AS date_processed,
+                       sr.last_crash,
+                       sr.product,
+                       sr.build,
+                       sr.branch,
+                       sr.os_name,
+                       sr.os_full_version,
+                       sr.os_version,
+                       sr.cpu_info,
+                       sr.cpu_name,
+                       sr.address,
+                       sr.bug_list,
+                       sr.user_comments,
+                       sr.reason
+                 FROM SocorroRecord AS sr
+                 JOIN SiteTestRun AS str ON sr.id = str.socorro_id
+                 WHERE REP0 
+                 ORDER BY str.datetime DESC
+                 LIMIT 1000",
+
+         "host_type":"master_host"
+      },
       "crashes":{
 
             "sql":"SELECT c.signature,
@@ -57,6 +67,7 @@
                           str.os_name,
                           str.os_version,
                           str.cpu_name,
+                          str.build_cpu_name,
                           COUNT( c.id ) AS 'Count'
                     FROM Crash AS c
                     JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
@@ -82,6 +93,7 @@
                           str.os_name,
                           str.os_version,
                           str.cpu_name,
+                          str.build_cpu_name,
                           COUNT( c.id ) AS 'Count'
                     FROM Crash AS c
                     JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
@@ -104,93 +116,77 @@
 
             "host_type":"master_host"
       },
+      "temp_urls":{
 
+            "sql":"CREATE TEMPORARY TABLE IF NOT EXISTS temp_urls AS 
+                   SELECT DISTINCT stc.url AS url
+                   FROM Crash AS c
+                   JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
+                   JOIN SiteTestRun AS str ON stc.testrun_id = str.id
+                   WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1') REP2",
+            "host_type":"master_host"
+      },
+      "crashdetail":{
+
+         "sql":"SELECT c.signature AS signature, 
+                       str.fatal_message,
+                       c.os_name,
+                       c.os_version,
+                       c.cpu_name,
+                       c.build_cpu_name,
+                       c.product,
+                       c.branch,
+                       stc.url,
+                       DATE_FORMAT(stc.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
+                       stc.reason,
+                       stc.address,
+                       stc.crashreport,
+                       stc.crashtype,
+                       stc.pluginfilename,
+                       stc.pluginversion,
+                       stc.exploitability,
+                       str.log,
+                       str.changeset,
+                       str.bug_list,
+                       str.steps,
+                       str.exitstatus,
+                       str.priority,
+                       str.socorro_id
+               FROM Crash AS c
+               JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
+               JOIN SiteTestRun AS str ON stc.testrun_id = str.id
+               WHERE stc.url IN (
+                  SELECT url FROM temp_urls 
+               ) AND (str.datetime >= 'REP0' AND str.datetime <= 'REP1') REP2
+               ORDER BY c.signature,
+                        str.fatal_message,
+                        c.os_name,
+                        c.os_version,
+                        c.cpu_name,
+                        c.build_cpu_name,
+                        c.product,
+                        c.branch,
+                        stc.url,
+                        stc.datetime
+               LIMIT 1000",
+
+         "host_type":"master_host"
+      },
       "urls":{
          "sql":"SELECT DISTINCT(stc.url),
                        c.branch,
                        c.os_name,
                        c.os_version,
+                       c.cpu_name,
                        c.build_cpu_name,
-                       c.signature,
                        DATE_FORMAT(stc.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
-                       COUNT(stc.url) AS 'url_count'
-                 FROM Crash AS c
-                 JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
-                 WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1') REP2
-                 GROUP BY stc.url, c.branch, c.os_name, c.os_version, c.build_cpu_name
-                 ORDER BY stc.datetime DESC
-                 LIMIT 1000",
-
-         "host_type":"master_host"
-      },
-
-      "crashdetail":{
-
-         "sql":"SELECT c.signature AS signature, 
-                       c.os_name, 
-                       c.os_version, 
-                       c.cpu_name, 
-                       c.product, 
-                       c.branch, 
-                       c.buildtype, 
-                       c.build_cpu_name, 
-                       stc.url, 
-                       DATE_FORMAT(stc.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
-                       stc.reason, 
-                       stc.address, 
-                       stc.crashreport, 
-                       stc.crashtype, 
-                       stc.pluginfilename, 
-                       stc.pluginversion, 
-                       stc.exploitability,
-                       str.changeset, 
-                       str.bug_list, 
-                       str.steps, 
-                       str.fatal_message AS fatal_message, 
-                       str.exitstatus, 
-                       str.log, 
-                       str.priority, 
-                       sr.signature, 
-                       sr.url AS url, 
-                       sr.uuid,   
-                       sr.bug_list, 
-                       sr.user_comments, 
-                       sr.flash_version, 
-                       sr.hangid, 
-                       sr.reason, 
-                       sr.process_type, 
-                       sr.app_notes 
-               FROM Crash AS c
-               JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
-               JOIN SiteTestRun AS str ON stc.testrun_id = str.id
-               JOIN SocorroRecord AS sr ON str.socorro_id = sr.id
-               WHERE stc.url IN (
-                  SELECT DISTINCT stc.url AS url
-                  FROM Crash AS c
-                  JOIN SiteTestCrash AS stc
-                  ON c.id = stc.crash_id 
-                  WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1')
-               ) 
-               REP2
-               LIMIT 1000",
-
-         "host_type":"master_host"
-      },
-      "urls_fm":{
-         "sql":"SELECT DISTINCT(stc.url),
-                       c.branch,
-                       c.os_name,
-                       c.os_version,
-                       c.build_cpu_name,
-                       str.fatal_message,
-                       DATE_FORMAT(stc.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime', 
-                       COUNT(str.fatal_message) AS 'fatal_message_count'
+                       COUNT(stc.url) AS 'Count'
                  FROM Crash AS c
                  JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
                  JOIN SiteTestRun AS str ON stc.testrun_id = str.id
-                 WHERE (str.datetime >= 'REP0' AND str.datetime <= 'REP1') REP2
+                 WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1') REP2
                  GROUP BY stc.url, c.branch, c.os_name, c.os_version, c.build_cpu_name
-                 ORDER BY stc.datetime DESC 
+                 ORDER BY stc.datetime DESC
                  LIMIT 1000",
 
          "host_type":"master_host"

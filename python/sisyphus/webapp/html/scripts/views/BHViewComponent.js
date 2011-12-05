@@ -252,6 +252,10 @@ var BHViewComponent = new Class({
       //Set data for new view
       this.model.setBHViewHash(bhviewName);
 
+      //Display new view's name
+      var bhviewReadName = this.model.getBHViewAttribute('read_name');
+      this.view.displayBHViewName(this.bhviewIndex, bhviewReadName);
+
       this.view.showTableSpinner(this.bhviewIndex);
 
       //Set up control panel, this must be done
@@ -516,7 +520,6 @@ var BHViewComponent = new Class({
    initializeBHView: function(data, textStatus, jqXHR){
 
       if(data.aoColumns.length > 0){
-
          //Load the data into the table
          var tableSel = this.view.getIdSelector(this.view.tableSel, this.bhviewIndex);
 
@@ -583,7 +586,7 @@ var BHViewComponent = new Class({
             if(data != undefined){
 
                signalData['signal'] = signal;
-               signalData['data'] = data;
+               signalData['data'] = encodeURIComponent(data);
 
                //Remove signal to prevent all new bhviews from using
                //it as a default
@@ -659,7 +662,7 @@ var BHViewComponent = new Class({
 
                var adapterName = this.model.getBHViewAttribute('data_adapter');
                var a = this.dataAdapters.getAdapter(adapterName);
-               var targetData = a.escapeForUrl($(event.target).text(), href);
+               var targetData = BHPAGE.escapeForUrl($(event.target).text(), href);
 
 
                var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
@@ -844,6 +847,10 @@ var BHViewComponent = new Class({
          width: this.view.controlPanelWidth,
 
          onOpen: _.bind(function(event){
+
+            //Make sure we don't have any extra keydown event bindings
+            $(document).unbind('keydown');
+
             //Populate the control panel fields with
             //any signal data
             var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
@@ -863,6 +870,9 @@ var BHViewComponent = new Class({
                          badDateFormatSel);
 
 
+            //Capture keydown and look for enter/return press
+            $(document).keydown( _.bind( this._processControlPanelKeyPress, this ) );
+
          }, this),
 
          onClose: _.bind(function(event){
@@ -880,6 +890,12 @@ var BHViewComponent = new Class({
             if(this.signalData){
                this.signalData['date_range'] = dateRange;
             }
+
+            //This is really dangerous, it will clear all keydown events
+            //assigned at the document level... which really should not be 
+            //any.  When passing a function to unbind it fails probably because
+            //_.bind() is used for context management...
+            $(document).unbind('keydown');
 
          }, this),
 
@@ -919,6 +935,17 @@ var BHViewComponent = new Class({
          }, this) //end bind
       });
    },
+   _processControlPanelKeyPress: function(event){
+      //If the user presses enter/return simulate form submission
+      if(event.keyCode == 13){
+         //close menu
+         this.view.closeMenu();
+         //fire event
+         $(this.view.allViewsContainerSel).trigger( this.processControlPanelEvent, 
+                                                  { bhview_index:this.bhviewIndex }); 
+      }
+   },
+
    _bindCellContextMenu: function(){
       $(this.view.cellMenuTogglerClassSel).bind('click', _.bind(function(event){
          event.stopPropagation();
@@ -1360,6 +1387,10 @@ var BHViewView = new Class({
    /*******************
     *TOGGLE METHODS
     *******************/
+   displayBHViewName: function(bhviewIndex, bhviewReadName){
+      var topbarTitleSel = this.getIdSelector(this.topBarTitleSel, bhviewIndex);
+      $(topbarTitleSel).text(bhviewReadName);
+   },
    displaySignalData: function(direction, signalData, bhviewIndex){
 
       var signalDirectionDisplaySel = this.getIdSelector(this.signalDirectionDisplaySel, bhviewIndex);
@@ -1379,7 +1410,7 @@ var BHViewView = new Class({
       }
       //Show signal type and associated data
       if(signalData.data && signalData.signal){
-         var data = BHPAGE.escapeHtmlEntities(decodeURIComponent(signalData.data));
+         var data = BHPAGE.unescapeForUrl(signalData.data);
          var displayData = data;
          if(data.length >= this.maxSignalDataLength){
             displayData = data.substring(0, this.maxSignalDataLength - 3) + '...';
@@ -1437,8 +1468,7 @@ var BHViewView = new Class({
       var tableSel = this.getIdSelector(this.tableSel, bhviewIndex);
       $(tableSel).removeClass('hidden');
 
-      var topbarTitleSel = this.getIdSelector(this.topBarTitleSel, bhviewIndex);
-      $(topbarTitleSel).text(bhviewReadName);
+      this.displayBHViewName(bhviewIndex, bhviewReadName);
 
       if(bhviewIndex == 0){
          //Disable the close button so the user cannot
@@ -1588,7 +1618,6 @@ var BHViewModel = new Class({
       /*************
        * Adapt webservice data to datatable structure
        *************/
-
       //When JSON.parse() is used here jQuery fails to pass the
       //data returned to the success function ref.  This is why
       //jQuery.parseJSON is being used instead.  Not sure why this
@@ -1599,6 +1628,13 @@ var BHViewModel = new Class({
       this.start_date = dataObject.start_date;
       this.end_date = dataObject.end_date;
 
+      //enable bhview hidden columns
+      var hiddenColumns = this.getBHViewAttribute('hidden_columns');
+      var aTargets = [];
+      for(var col in hiddenColumns){
+         aTargets.push(parseInt(hiddenColumns[col]));
+      }
+
       //NOTE: datatableObject cannot be an attribute of the
       //      model instance because it is unique to different 
       //      views.
@@ -1608,6 +1644,11 @@ var BHViewModel = new Class({
                               sScrollY:"500px",
                               bScrollCollapse:true,
                               sScrollX:"100%",
+
+                              //Hide these columns in initial display
+                              aoColumnDefs:[ 
+                                 { bVisible: false, aTargets:aTargets }
+                              ],
 
                               //Double, Double Toil and Trouble
                               //see http://www.datatables.net/usage/options sDom for an

@@ -47,6 +47,19 @@ var BughunterPage = new Class( {
       var protocol = window.location.protocol;
       var hostname = window.location.host;
       return protocol + '//' + hostname;
+   },
+   escapeForUrl: function(s, signal){
+      if(signal == 'url'){
+         //Return space to %20
+         s = s.replace(/\&/g, '%26');
+      }
+      return encodeURIComponent( BHPAGE.unescapeHtmlEntities(s) );
+   },
+   unescapeForUrl: function(s, signal){
+      if(signal == 'url'){
+         s = s.replace(/\%26/g, '\&');
+      }
+      return decodeURIComponent( BHPAGE.unescapeHtmlEntities(s) );
    }
 
 });
