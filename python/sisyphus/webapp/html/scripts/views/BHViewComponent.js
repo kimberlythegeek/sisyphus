@@ -565,6 +565,8 @@ var BHViewComponent = new Class({
          //the table after its display is set to visible to reset
          //alignment.
          this.dataTable.fnDraw();
+         this.dataTable.fnAdjustColumnSizing();
+
       }else{
          this.view.showNoDataMessage(this.bhviewIndex);
       } 

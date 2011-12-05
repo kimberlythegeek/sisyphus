@@ -27,6 +27,17 @@ var BHViewCollection = new Class({
       BHPAGE.registerSubscribers(this.subscriptionTargets, 
                                  this.view.allViewsContainerSel,
                                  this);
+
+      //reset column widths when window resizes
+      $(window).resize( _.bind( this.resizeWindow, this ) );
+   },
+   resizeWindow: function(event){
+
+      for(var i=0; i < this.model.bhviewCollection.length; i++){
+         if( this.model.bhviewCollection[i].dataTable != undefined ){
+            this.model.bhviewCollection[i].dataTable.fnAdjustColumnSizing();
+         }
+      }
    },
    getBHViewsBySignal: function(signal){
       return this.model.getBHViewsBySignal(signal);
