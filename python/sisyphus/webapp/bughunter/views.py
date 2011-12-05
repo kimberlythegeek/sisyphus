@@ -1,10 +1,12 @@
 import os
+import math
 import sys
 import re
 import datetime
 import time
 import simplejson
 
+from base64 import b64encode
 from collections import defaultdict
 
 from django.contrib.auth import authenticate, login, logout
@@ -25,6 +27,13 @@ import urllib
 from sisyphus.webapp.bughunter import models
 from sisyphus.webapp import settings
 from sisyphus.automation import utils
+
+
+###
+# Returns a random string with specified number of characters.  Adapted from
+# http://code.activestate.com/recipes/576722-pseudo-random-string/
+###
+get_rand_str = lambda n: b64encode( os.urandom(int(math.ceil(0.75*n))), '__')[:n]
 
 APP_JS = 'application/json'
 
@@ -688,16 +697,23 @@ def _get_crash_detail(proc_path, proc_name, full_proc_path, placeholders, replac
 
    rep = _build_new_rep(nfields, col_prefixes)
 
+   temp_table_name = 'temp_urls_' + get_rand_str(8)
+
    ##Build temp table##
    settings.DHUB.execute(proc=proc_path + 'temp_urls',
                          debug_show=settings.DEBUG,
-                         replace=[ nfields['start_date'], nfields['end_date'], rep ])
+                         replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
 
    ##Get the crashdetails##
    data = settings.DHUB.execute(proc=full_proc_path,
                                 debug_show=settings.DEBUG,
-                                replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ],
                                 return_type='table')
+
+   ##Remove temp table##
+   settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
+                         debug_show=settings.DEBUG,
+                         replace=[ temp_table_name ])
 
    return simplejson.dumps( {'columns':data['columns'], 
                              'data':data['data'], 
@@ -951,6 +967,8 @@ def _format_cpu_data(row):
    cpu_data = "%s %s/%s" % (architecture, cpu_bits, build_cpu_bits)
 
    return cpu_data
+
+
 
 ####
 #VIEW_ADAPTERS maps view names to function

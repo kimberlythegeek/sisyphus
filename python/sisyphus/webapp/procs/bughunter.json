@@ -118,7 +118,7 @@
       },
       "temp_urls":{
 
-            "sql":"CREATE TEMPORARY TABLE IF NOT EXISTS temp_urls AS 
+            "sql":"CREATE TEMPORARY TABLE IF NOT EXISTS REP3 AS 
                    SELECT DISTINCT stc.url AS url
                    FROM Crash AS c
                    JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
@@ -156,7 +156,7 @@
                JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
                JOIN SiteTestRun AS str ON stc.testrun_id = str.id
                WHERE stc.url IN (
-                  SELECT url FROM temp_urls 
+                  SELECT url FROM REP3
                ) AND (str.datetime >= 'REP0' AND str.datetime <= 'REP1') REP2
                ORDER BY c.signature,
                         str.fatal_message,
@@ -171,6 +171,13 @@
                LIMIT 1000",
 
          "host_type":"master_host"
+      },
+      "drop_temp_table":{
+
+         "sql":"DROP TEMPORARY TABLE IF EXISTS REP0",
+
+         "host_type":"master_host"
+
       },
       "urls":{
          "sql":"SELECT DISTINCT(stc.url),
