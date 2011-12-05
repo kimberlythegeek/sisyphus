@@ -156,8 +156,8 @@
                JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
                JOIN SiteTestRun AS str ON stc.testrun_id = str.id
                WHERE stc.url IN (
-                  SELECT url FROM REP3
-               ) AND (str.datetime >= 'REP0' AND str.datetime <= 'REP1') REP2
+                  SELECT url FROM REP2
+               ) AND (str.datetime >= 'REP0' AND str.datetime <= 'REP1')
                ORDER BY c.signature,
                         str.fatal_message,
                         c.os_name,

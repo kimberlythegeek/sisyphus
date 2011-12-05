@@ -707,7 +707,7 @@ def _get_crash_detail(proc_path, proc_name, full_proc_path, placeholders, replac
    ##Get the crashdetails##
    data = settings.DHUB.execute(proc=full_proc_path,
                                 debug_show=settings.DEBUG,
-                                replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ],
+                                replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
                                 return_type='table')
 
    ##Remove temp table##
