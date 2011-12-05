@@ -315,6 +315,7 @@ var BHViewAdapter = new Class({
       }
    },
    processData: function(dataObject, datatableObject, signals){
+
       /****************************
        * Carry out any data processing unique to the bhview.
        *

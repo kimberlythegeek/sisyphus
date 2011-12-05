@@ -559,6 +559,13 @@ def get_bhview(request, **kwargs):
    if replacements:
       exec_args[replace_type] = replacements
 
+   if settings.DEBUG:
+      ###
+      #Write IP address and datetime to log
+      ###
+      print "Client IP:%s" % (request.META['REMOTE_ADDR'])
+      print "Request Datetime:%s" % (str(datetime.datetime.now()))
+
    json = ""
    if proc_name in VIEW_ADAPTERS:
       ####
@@ -583,13 +590,18 @@ def get_bhview(request, **kwargs):
       exec_args['debug_show'] = settings.DEBUG
       json = settings.DHUB.execute(**exec_args)
    
+
    return HttpResponse(json, mimetype=APP_JS)
    
 def _get_crashes(proc_path, proc_name, full_proc_path, placeholders, replacements, nfields):
 
    col_prefixes = { 'signature':'c',
                     'url':'sr',
-                    'fatal_message':'str' }
+                    'fatal_message':'str',
+                    'address':'stc',
+                    'pluginfilename':'stc',
+                    'pluginversion':'stc',
+                    'exploitability':'stc' }
 
    _set_dates_for_placeholders(nfields)
 
@@ -605,7 +617,10 @@ def _get_crashes(proc_path, proc_name, full_proc_path, placeholders, replacement
 
    response_data = _aggregate_crashes_platform_data(table_struct)
    
-   columns = [ 'signature', 'fatal_message', 'Total Count', 'Platform' ]
+   columns = [ 'signature', 
+               'fatal_message', 
+               'Total Count', 
+               'Platform' ]
 
    return simplejson.dumps( { 'columns':columns, 
                               'data':response_data,
@@ -663,7 +678,11 @@ def _get_crash_detail(proc_path, proc_name, full_proc_path, placeholders, replac
 
    col_prefixes = { 'signature':'c',
                     'url':'stc',
-                    'fatal_message':'str' }
+                    'fatal_message':'str',
+                    'address':'stc',
+                    'pluginfilename':'stc',
+                    'pluginversion':'stc',
+                    'exploitability':'stc' }
 
    _set_dates_for_placeholders(nfields)
 
@@ -689,7 +708,11 @@ def _get_urls(proc_path, proc_name, full_proc_path, placeholders, replacements, 
 
    col_prefixes = { 'signature':'c',
                     'url':'stc',
-                    'fatal_message':'str'}
+                    'fatal_message':'str',
+                    'address':'stc',
+                    'pluginfilename':'stc',
+                    'pluginversion':'stc',
+                    'exploitability':'stc' }
 
    _set_dates_for_placeholders(nfields)
 
@@ -830,7 +853,7 @@ def _build_new_rep(nfields, col_prefixes):
 
 def _get_date_range():
 
-   start_date = datetime.date.today() - datetime.timedelta(hours=120)
+   start_date = datetime.date.today() - datetime.timedelta(hours=24)
    end_date = datetime.date.today() + datetime.timedelta(hours=24)
 
    return start_date, end_date
@@ -945,7 +968,11 @@ NAMED_FIELDS = set( ['signature',
                      'start_date',
                      'end_date',
                      'new_signatures',
-                     'socorro_id'] )
+                     'socorro_id',
+                     'address',
+                     'pluginfilename',
+                     'pluginversion',
+                     'exploitability'] )
 
 VIEW_PAGES = set([ 'bhview' ])
 

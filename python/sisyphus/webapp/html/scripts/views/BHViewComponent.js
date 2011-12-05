@@ -1043,11 +1043,11 @@ var BHViewView = new Class({
       this.cellMenuTargetClass = 'bh-menu-target';
 
       //Signal display ids
-      this.signalDirectionDisplaySel = '#bh_signal_direction_c';
-      this.signalDataDisplaySel = '#bh_signal_data_c';
+      this.signalDataSentDisplaySel = '#bh_signal_data_sent_c';
+      this.signalDataReceivedDisplaySel = '#bh_signal_data_received_c';
       this.signalDateRangeDisplaySel = '#bh_signal_date_range_c';
       this.signalHelpBtSel = '#bh_signal_help_bt_c';
-      this.maxSignalDataLength = 60;
+      this.maxSignalDataLength = 50;
 
       //Date range selectors
       this.startDateSel = '#bh_start_date';
@@ -1395,31 +1395,30 @@ var BHViewView = new Class({
    },
    displaySignalData: function(direction, signalData, bhviewIndex){
 
-      var signalDirectionDisplaySel = this.getIdSelector(this.signalDirectionDisplaySel, bhviewIndex);
-      var signalDataDisplaySel = this.getIdSelector(this.signalDataDisplaySel, bhviewIndex);
       var signalDateRangeDisplaySel = this.getIdSelector(this.signalDateRangeDisplaySel, bhviewIndex);
 
-      //Show direction of signal
-      if(direction == 'receive'){
-         $(signalDirectionDisplaySel).text(' Received');
-      }else if(direction == 'send'){
-         $(signalDirectionDisplaySel).text(' Sent');
-      }
       //Show data range sent if we have one
       if(signalData.date_range){
-         var dateRange = 'date range:' + signalData.date_range.start_date + ' to ' + signalData.date_range.end_date;
+         var dateRange = signalData.date_range.start_date + ' to ' + signalData.date_range.end_date;
          $(signalDateRangeDisplaySel).text(dateRange); 
       }
       //Show signal type and associated data
+      var data = BHPAGE.unescapeForUrl(signalData.data);
+      var displayData = data;
       if(signalData.data && signalData.signal){
-         var data = BHPAGE.unescapeForUrl(signalData.data);
-         var displayData = data;
          if(data.length >= this.maxSignalDataLength){
             displayData = data.substring(0, this.maxSignalDataLength - 3) + '...';
          }
-         var signalDisplayData = signalData.signal + ':' + displayData;
-         $(signalDataDisplaySel).text(signalDisplayData);
-         $(signalDataDisplaySel).attr('title', data);
+      }
+      //Show direction of signal
+      if(direction == 'receive'){
+         var signalDataReceivedDisplaySel = this.getIdSelector(this.signalDataReceivedDisplaySel, bhviewIndex);
+         $(signalDataReceivedDisplaySel).text(displayData);
+         $(signalDataReceivedDisplaySel).attr('title', data);
+      }else if(direction == 'send'){
+         var signalDataSentDisplaySel = this.getIdSelector(this.signalDataSentDisplaySel, bhviewIndex);
+         $(signalDataSentDisplaySel).text(displayData);
+         $(signalDataSentDisplaySel).attr('title', data);
       }
    },
    showNoDataMessage: function(bhviewIndex){
