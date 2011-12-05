@@ -19,13 +19,11 @@ class Command(BaseCommand):
    help = 'Builds the bughunter navigation menu and lookup json'
 
    nav_lookup_hash = {}
-   nav_ui = []
 
    @staticmethod
    def build_nav(json_nav, children=0, target=[]):
       """
-      Recursive function that translates views.json into two datastructures
-      that are required by the user interface:
+      Recursive function that translates views.json into a lookup hash.
 
        nav_lookup_hash - An associative array used to lookup items
                          in the unordered HTML list that makes up the
@@ -33,38 +31,18 @@ class Command(BaseCommand):
 
                          key:name, value:view associative array
 
-       nav_ui - A list of lists that will work directly with the django unordered_list
-                filter to build the navigation HTML.
       """
       if type(json_nav) == list:
          ##Examine all elements of any list##
          for i in json_nav:
             Command.build_nav(i, children, target)
 
-      elif type(json_nav) == dict:
+      else:
 
          if 'read_name' in json_nav:
             ##Child Element##
             Command.nav_lookup_hash[ json_nav['name'] ] = json_nav
             target.append( { 'read_name':json_nav['read_name'], 'name':json_nav['name'] } )
-         else:
-            for key in json_nav:
-               count          = len(target) 
-               lastTarget     = target #last list appended to
-               target         = list()
-
-               if children != count:
-                  ##Nested Parent##
-                  lastTarget.append(key)
-                  lastTarget.append(target)
-               else:
-                  ##Parent##
-                  Command.nav_ui.append(key)
-                  Command.nav_ui.append(target)
-
-               if type(json_nav[key]) == list:
-                  children = len( json_nav[key] )
-                  Command.build_nav(json_nav[key], children, target)
 
    def handle(self, *args, **options):
 
@@ -82,11 +60,11 @@ class Command(BaseCommand):
 
       #Uncomment to see datastructure for debugging
       #pp = pprint.PrettyPrinter(indent=3)
-      #self.stdout.write( pp.pformat(Command.nav_ui) ) 
+      #self.stdout.write( pp.pformat(data_views) ) 
 
       menu_file_obj = open("%s%s" % (settings.ROOT, "/html/nav/nav_menu.html"), 'w+')
       try:
-         menu_file_obj.write( '<ul class="bh-viewtext">\n%s\n</ul>' % (bh_unorderedlist(Command.nav_ui)) )
+         menu_file_obj.write( '<ul class="bh-viewtext">\n%s\n</ul>' % (bh_unorderedlist(data_views)) )
       finally:
          menu_file_obj.close()
 

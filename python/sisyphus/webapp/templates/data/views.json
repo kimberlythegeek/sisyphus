@@ -1,142 +1,183 @@
 [
-   { "Crashes": [
-
-      { "name":"crashes_st",
-        "read_name":"Crashes",
-        "signals":{ "signature":"1", 
-                    "fatal_message":"1",
-                    "address":"1", 
-                    "pluginfilename":"1", 
-                    "pluginversion":"1", 
-                    "exploitability":"1" },
-        "control_panel":"crashes.html",
-        "default":1,
-        "data_adapter":"crashes",
-        "charts":[ { "name":"table" }, 
-                   { "name":"pie" }, 
-                   { "name":"bar" }, 
-                   { "name":"tree" } ]
-      },
+   "Site Tests", 
+   [  "Crashes", 
+      [ { "name":"crashes_st",
+           "read_name":"Site Crashes",
+           "signals":{ "signature":"1", 
+                       "fatal_message":"1",
+                       "address":"1", 
+                       "pluginfilename":"1", 
+                       "pluginversion":"1", 
+                       "exploitability":"1" },
+           "control_panel":"crashes.html",
+           "default":1,
+           "data_adapter":"crashes",
+           "charts":[ { "name":"table" }, 
+                      { "name":"pie" }, 
+                      { "name":"bar" }, 
+                      { "name":"tree" } ]
+         },
    
-      { "name":"crash_urls_st",
-        "read_name":"Crash URL Summary",
-        "signals":{ "url":"1", 
-                    "signature":"1", 
-                    "fatal_message":"1",
-                    "address":"1", 
-                    "pluginfilename":"1", 
-                    "pluginversion":"1", 
-                    "exploitability":"1" },
-        "control_panel":"named_fields.html",
-        "data_adapter":"urls",
-        "charts":[ { "name":"table" }, 
-                   { "name":"pie" }, 
-                   { "name":"bar" }, 
-                   { "name":"tree" } ]
-      },
-
-      { "name":"crash_detail_st",
-        "read_name":"Related Crashes",
-        "signals":{ "url":"1", 
-                    "signature":"1", 
-                    "fatal_message":"1", 
-                    "socorro_id":"1", 
-                    "address":"1", 
-                    "pluginfilename":"1", 
-                    "pluginversion":"1", 
-                    "exploitability":"1" },
-        "control_panel":"named_fields.html",
-        "data_adapter":"named_fields",
-        "hidden_columns":{ "changeset":"18", "bug_list":"19", "steps":"20", "exitstatus":"21", "priority":"22" },
-        "charts":[ { "name":"table" }, 
-                   { "name":"pie" }, 
-                   { "name":"bar" }, 
-                   { "name":"tree"} ]
-      }
-   ] },
-
-  { "Assertions": [
-
-      { "name":"assertions_st",
-        "read_name":"Assertions",
-        "signals":{ "assertion":"1", "location":"1" },
-        "control_panel":"assertions.html",
-        "data_adapter":"crashes",
-        "charts":[ { "name":"table" }, 
-                   { "name":"pie" }, 
-                   { "name":"bar" }, 
-                   { "name":"tree" } ]
-      },
-
-      { "name":"assertion_urls_st",
-        "read_name":"Assertion URL Summary",
-        "signals":{ "assertion":"1", 
-                    "url":"1" },
-        "control_panel":"assertion_urls.html",
-        "data_adapter":"urls",
-        "charts":[ { "name":"table" }, 
-                   { "name":"pie" }, 
-                   { "name":"bar" }, 
-                   { "name":"tree" } ]
-      },
-
-      { "name":"assertion_detail_st",
-        "read_name":"Related Assertions",
-        "signals":{ "assertion":"1", 
-                    "location":"1",
-                    "url":"1"},
-        "control_panel":"assertion_urls.html",
-        "data_adapter":"named_fields",
-        "hidden_columns":{ "changeset":"13", "bug_list":"14", "steps":"15", "exitstatus":"16", "priority":"17" },
-        "charts":[ { "name":"table" }, 
-                   { "name":"pie" }, 
-                   { "name":"bar" }, 
-                   { "name":"tree"} ]
-      }
-
-  ] },
-
-  { "Admin": [
-
-         { "name":"workers_summary",
-           "read_name":"Worker Summary",
-           "page_target":"/HASHadmin/workersummary",
+         { "name":"crash_urls_st",
+           "read_name":"Site Crash URL Summary",
+           "signals":{ "url":"1", 
+                       "signature":"1", 
+                       "fatal_message":"1",
+                       "address":"1", 
+                       "pluginfilename":"1", 
+                       "pluginversion":"1", 
+                       "exploitability":"1" },
+           "control_panel":"named_fields.html",
+           "data_adapter":"urls",
            "charts":[ { "name":"table" }, 
                       { "name":"pie" }, 
                       { "name":"bar" }, 
                       { "name":"tree" } ]
          },
 
-         { "name":"worker_list",
-           "read_name":"Worker List",
-           "page_target":"/HASHadmin/workers",
+         { "name":"crash_detail_st",
+           "read_name":"Site Related Crashes",
+           "signals":{ "url":"1", 
+                       "signature":"1", 
+                       "fatal_message":"1", 
+                       "socorro_id":"1", 
+                       "address":"1", 
+                       "pluginfilename":"1", 
+                       "pluginversion":"1", 
+                       "exploitability":"1" },
+           "control_panel":"named_fields.html",
+           "data_adapter":"named_fields",
+           "hidden_columns":{ "changeset":"18", "bug_list":"19", "steps":"20", "exitstatus":"21", "priority":"22" },
            "charts":[ { "name":"table" }, 
                       { "name":"pie" }, 
                       { "name":"bar" }, 
-                      { "name":"tree" } ]
-         },
-
-         { "name":"worker_logs",
-           "read_name":"Worker Log",
-           "page_target":"/HASHadmin/logs",
-           "charts":[ { "name":"table" }, 
-                      { "name":"pie" }, 
-                      { "name":"bar" }, 
-                      { "name":"tree" } ]
+                      { "name":"tree"} ]
          }
-   ] },
+      ],
 
-  { "Crash Tables": [
+      "Assertions",
+      [ { "name":"assertions_st",
+           "read_name":"Site Assertions",
+           "signals":{ "assertion":"1", "location":"1" },
+           "control_panel":"assertions.html",
+           "data_adapter":"crashes",
+           "charts":[ { "name":"table" }, 
+                      { "name":"pie" }, 
+                      { "name":"bar" }, 
+                      { "name":"tree" } ]
+         },
 
-     { "name":"socorro_record",
-       "read_name":"Soccorro Record",
+        { "name":"assertion_urls_st",
+          "read_name":"Site Assertion URL Summary",
+          "signals":{ "assertion":"1", 
+                      "url":"1" },
+          "control_panel":"assertion_urls.html",
+          "data_adapter":"urls",
+          "charts":[ { "name":"table" }, 
+                     { "name":"pie" }, 
+                     { "name":"bar" }, 
+                     { "name":"tree" } ]
+         },
+
+         { "name":"assertion_detail_st",
+           "read_name":"Site Related Assertions",
+           "signals":{ "assertion":"1", 
+                       "location":"1",
+                       "url":"1"},
+           "control_panel":"assertion_urls.html",
+           "data_adapter":"named_fields",
+           "hidden_columns":{ "changeset":"13", "bug_list":"14", "steps":"15", "exitstatus":"16", "priority":"17" },
+           "charts":[ { "name":"table" }, 
+                      { "name":"pie" }, 
+                      { "name":"bar" }, 
+                      { "name":"tree"} ]
+         }
+
+      ]
+   ], 
+
+  "Unit Tests",
+  [
+      "Assertions",
+      [ { "name":"assertions_ut",
+           "read_name":"Unit Assertions",
+           "signals":{ "assertion":"1", "location":"1" },
+           "control_panel":"assertions.html",
+           "data_adapter":"crashes",
+           "charts":[ { "name":"table" }, 
+                      { "name":"pie" }, 
+                      { "name":"bar" }, 
+                      { "name":"tree" } ]
+         },
+
+        { "name":"assertion_urls_ut",
+          "read_name":"Unit Assertion URL Summary",
+          "signals":{ "assertion":"1", 
+                      "url":"1" },
+          "control_panel":"assertion_urls.html",
+          "data_adapter":"urls",
+          "charts":[ { "name":"table" }, 
+                     { "name":"pie" }, 
+                     { "name":"bar" }, 
+                     { "name":"tree" } ]
+         },
+
+         { "name":"assertion_detail_ut",
+           "read_name":"Unit Related Assertions",
+           "signals":{ "assertion":"1", 
+                       "location":"1",
+                       "url":"1"},
+           "control_panel":"assertion_urls.html",
+           "data_adapter":"named_fields",
+           "hidden_columns":{ "changeset":"13", "bug_list":"14", "steps":"15", "exitstatus":"16", "priority":"17" },
+           "charts":[ { "name":"table" }, 
+                      { "name":"pie" }, 
+                      { "name":"bar" }, 
+                      { "name":"tree"} ]
+         }
+
+      ]
+  ],
+
+  "Admin",
+  [ { "name":"workers_summary",
+      "read_name":"Worker Summary",
+      "page_target":"/HASHadmin/workersummary",
+      "charts":[ { "name":"table" }, 
+                 { "name":"pie" }, 
+                 { "name":"bar" }, 
+                 { "name":"tree" } ]
+    },
+
+    { "name":"worker_list",
+      "read_name":"Worker List",
+      "page_target":"/HASHadmin/workers",
+      "charts":[ { "name":"table" }, 
+                 { "name":"pie" }, 
+                 { "name":"bar" }, 
+                 { "name":"tree" } ]
+    },
+
+    { "name":"worker_logs",
+      "read_name":"Worker Log",
+      "page_target":"/HASHadmin/logs",
+      "charts":[ { "name":"table" }, 
+                 { "name":"pie" }, 
+                 { "name":"bar" }, 
+                 { "name":"tree" } ]
+    }
+   ],
+
+   "Crash Tables",
+   [ { "name":"socorro_record",
+       "read_name":"Socorro Record",
        "signals":{ "url":"1", "socorro_id":"1" },
        "data_adapter":"named_fields",
-       "control_panel":"date_url.html",
+       "control_panel":"socorro.html",
        "charts":[ { "name":"table" }, 
                   { "name":"pie" }, 
                   { "name":"bar" }, 
                   { "name":"tree" } ]
      }
-   ] }
+   ]
 ]

@@ -725,7 +725,7 @@ def _get_assertion_detail_st(proc_path, proc_name, full_proc_path, nfields):
                          debug_show=settings.DEBUG,
                          replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
 
-   ##Get the crashdetails##
+   ##Get the assertiondetails##
    data = settings.DHUB.execute(proc=full_proc_path,
                                 debug_show=settings.DEBUG,
                                 replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
@@ -744,6 +744,125 @@ def _get_assertion_detail_st(proc_path, proc_name, full_proc_path, nfields):
 #####
 #UNIT TESTING ADAPTERS
 #####
+def _get_crashes_ut(proc_path, proc_name, full_proc_path, nfields):
+
+   col_prefixes = { 'signature':'c',
+                    'url':'sr',
+                    'fatal_message':'str',
+                    'address':'stc',
+                    'pluginfilename':'stc',
+                    'pluginversion':'stc',
+                    'exploitability':'stc' }
+
+   _set_dates_for_placeholders(nfields)
+
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
+      full_proc_path = proc_path + 'new_crash_signatures_ut'
+
+   table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                       debug_show=settings.DEBUG,
+                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                       return_type='table')
+
+   response_data = _aggregate_crashes_platform_data(table_struct)
+   
+   columns = [ 'signature', 
+               'fatal_message', 
+               'Total Count', 
+               'Platform' ]
+
+   return simplejson.dumps( { 'columns':columns, 
+                              'data':response_data,
+                              'start_date':nfields['start_date'], 
+                              'end_date':nfields['end_date'] } )
+
+def _get_assertions_ut(proc_path, proc_name, full_proc_path, nfields):
+
+   col_prefixes = { 'assertion':'a',
+                    'location':'a' }
+
+   _set_dates_for_placeholders(nfields)
+
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
+      full_proc_path = proc_path + 'new_assertions_ut'
+
+   table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                       debug_show=settings.DEBUG,
+                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                       return_type='table')
+
+   response_data = _aggregate_assertion_platform_data(table_struct)
+   
+   columns = [ 'assertion', 
+               'location', 
+               'Occurence Count',
+               'Total Count', 
+               'Platform' ]
+
+   return simplejson.dumps( { 'columns':columns, 
+                              'data':response_data,
+                              'start_date':nfields['start_date'], 
+                              'end_date':nfields['end_date'] } )
+
+def _get_assertion_detail_ut(proc_path, proc_name, full_proc_path, nfields):
+
+   col_prefixes = { 'assertion':'a',
+                    'location':'a', 
+                    'url':'uta' }
+
+   _set_dates_for_placeholders(nfields)
+
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   temp_table_name = 'temp_assertion_urls_ut_' + get_rand_str(8)
+
+   ##Build temp table##
+   settings.DHUB.execute(proc=proc_path + 'temp_assertion_urls_ut',
+                         debug_show=settings.DEBUG,
+                         replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
+
+   ##Get the assertiondetails##
+   data = settings.DHUB.execute(proc=full_proc_path,
+                                debug_show=settings.DEBUG,
+                                replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
+                                return_type='table')
+
+   ##Remove temp table##
+   settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
+                         debug_show=settings.DEBUG,
+                         replace=[ temp_table_name ])
+
+   return simplejson.dumps( {'columns':data['columns'], 
+                             'data':data['data'], 
+                             'start_date':nfields['start_date'], 
+                             'end_date':nfields['end_date']} )
+
+def _get_assertion_urls_ut(proc_path, proc_name, full_proc_path, nfields):
+
+   col_prefixes = { 'url':'uta',
+                    'assertion':'a' }
+
+   _set_dates_for_placeholders(nfields)
+
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                       debug_show=settings.DEBUG,
+                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                       return_type='table')
+
+   response_data = _aggregate_url_platform_data(table_struct)
+
+   columns = ['url', 'Occurence Count', 'Total Count', 'Platform']
+
+   return simplejson.dumps( { 'columns':columns, 
+                              'data':response_data,
+                              'start_date':nfields['start_date'], 
+                              'end_date':nfields['end_date'] } )
 
 #####
 #CRASH TABLE ADAPTERS
@@ -1065,10 +1184,17 @@ def _get_json(nfields, col_prefixes, path):
 VIEW_ADAPTERS = dict( crashes_st=_get_crashes_st,
                       crash_urls_st=_get_crash_urls_st,
                       crash_detail_st=_get_crash_detail_st,
+
                       assertions_st=_get_assertions_st,
                       assertion_urls_st=_get_assertion_urls_st,
                       assertion_detail_st=_get_assertion_detail_st,
-                      socorro_record=_get_socorro_record)
+
+                      crashes_ut=_get_crashes_ut,
+                      assertions_ut=_get_assertions_ut,
+                      assertion_urls_ut=_get_assertion_urls_ut,
+                      assertion_detail_ut=_get_assertion_detail_ut,
+
+                      socorro_record=_get_socorro_record )
 
 NAMED_FIELDS = set( ['signature',
                      'url',

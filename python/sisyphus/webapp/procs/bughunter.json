@@ -25,7 +25,6 @@
                  FROM SocorroRecord AS sr
                  JOIN SiteTestRun AS str ON sr.id = str.socorro_id
                  WHERE (str.datetime >= 'REP0' AND str.datetime <= 'REP1') REP2 
-                 ORDER BY str.datetime DESC
                  LIMIT 1000",
 
          "host_type":"master_host"
@@ -54,7 +53,6 @@
                  FROM SocorroRecord AS sr
                  JOIN SiteTestRun AS str ON sr.id = str.socorro_id
                  WHERE REP0 
-                 ORDER BY str.datetime DESC
                  LIMIT 1000",
 
          "host_type":"master_host"
@@ -365,6 +363,129 @@
                     LIMIT 1000",
 
             "host_type":"master_host"
+      },
+      "assertions_ut":{
+
+         "sql":"SELECT a.assertion,
+                       a.location,
+                       a.branch,
+                       a.os_name,
+                       a.os_version,
+                       a.cpu_name,
+                       a.build_cpu_name,
+                       COUNT( a.id ) AS 'total_count',
+                       SUM( uta.count ) AS 'assertion_count'
+                FROM Assertion AS a
+                JOIN UnitTestAssertion AS uta ON a.id = uta.assertion_id
+                WHERE (uta.datetime >= 'REP0' AND uta.datetime <= 'REP1') REP2
+                GROUP BY a.assertion,
+                         a.location,
+                         a.branch,
+                         a.os_name,
+                         a.os_version,
+                         a.cpu_name,
+                         a.build_cpu_name
+                ORDER BY a.assertion ASC
+                LIMIT 1000",
+
+         "host_type":"master_host"
+
+      },
+
+      "new_assertions_ut":{
+
+            "sql":"SELECT a.assertion,
+                          a.location,
+                          a.branch,
+                          a.os_name,
+                          a.os_version,
+                          a.cpu_name,
+                          a.build_cpu_name,
+                          COUNT( a.id ) AS 'total_count',
+                          SUM( uta.count ) AS 'assertion_count'
+                    FROM Assertion AS a
+                    JOIN UnitTestAssertion AS uta ON a.id = uta.assertion_id
+                    WHERE (uta.datetime >= 'REP0' AND uta.datetime <= 'REP1') AND 
+                           a.id NOT IN (
+                              SELECT a.id
+                              FROM Assertion AS a
+                              JOIN SiteTestAssertion AS uta ON a.id = uta.assertion_id
+                              WHERE (uta.datetime < 'REP0')) REP2
+                    GROUP BY a.assertion,
+                             a.location,
+                             a.branch,
+                             a.os_name,
+                             a.os_version,
+                             a.cpu_name,
+                             a.build_cpu_name
+                    ORDER BY a.assertion ASC
+                    LIMIT 1000",
+
+            "host_type":"master_host"
+      },
+
+      "assertion_urls_ut":{
+
+         "sql":"SELECT DISTINCT(uta.url),
+                       a.branch,
+                       a.os_name,
+                       a.os_version,
+                       a.cpu_name,
+                       a.build_cpu_name,
+                       DATE_FORMAT(uta.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
+                       COUNT(uta.url) AS 'total_count',
+                       SUM( uta.count ) AS 'assertion_count'
+                 FROM Assertion AS a
+                 JOIN UnitTestAssertion AS uta ON a.id = uta.assertion_id
+                 WHERE (uta.datetime >= 'REP0' AND uta.datetime <= 'REP1') REP2
+                 GROUP BY uta.url, a.branch, a.os_name, a.os_version, a.build_cpu_name
+                 ORDER BY uta.datetime DESC
+                 LIMIT 1000",
+
+         "host_type":"master_host"
+      },
+
+      "temp_assertion_urls_ut":{
+
+            "sql":"CREATE TEMPORARY TABLE IF NOT EXISTS REP3 AS 
+                   SELECT DISTINCT uta.url AS url
+                   FROM Assertion AS a
+                   JOIN UnitTestAssertion AS uta ON a.id = uta.assertion_id
+                   WHERE (uta.datetime >= 'REP0' AND uta.datetime <= 'REP1') REP2",
+
+            "host_type":"master_host"
+      },
+
+      "assertion_detail_ut":{
+
+         "sql":"SELECT a.assertion, 
+                       a.location,
+                       a.os_name,
+                       a.os_version,
+                       a.cpu_name,
+                       a.build_cpu_name,
+                       a.product,
+                       a.branch,
+                       uta.url,
+                       DATE_FORMAT(uta.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
+                       uta.stack,
+                       uta.count,
+                       str.log,
+                       str.changeset,
+                       str.bug_list,
+                       str.steps,
+                       str.exitstatus,
+                       str.priority,
+                       str.socorro_id
+               FROM Assertion AS a 
+               JOIN UnitTestAssertion AS uta ON a.id = uta.assertion_id
+               JOIN SiteTestRun AS str ON uta.testrun_id = str.id
+               WHERE uta.url IN (
+                  SELECT url FROM REP2
+               ) AND (uta.datetime >= 'REP0' AND uta.datetime <= 'REP1')
+               LIMIT 1000",
+
+         "host_type":"master_host"
       }
    }
 }

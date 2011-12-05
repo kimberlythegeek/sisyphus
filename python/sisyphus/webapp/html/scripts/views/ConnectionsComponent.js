@@ -158,13 +158,10 @@ var ConnectionsView = new Class({
       }
    },
    sortOptionMenu: function(a, b){
-
-      if(a.name.match('assertion')){
-         return 1;
-      }else if(a.name.match('crash')){
-         return 1;
+      if( a.read_name.search(/^Site/) && b.read_name.search(/^Unit/) ){
+         return 1;   
       }else{
-         return 0;
+         return -1;
       }
    },
    setTabSelections: function(){
