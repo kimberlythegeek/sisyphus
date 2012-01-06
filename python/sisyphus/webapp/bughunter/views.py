@@ -1239,7 +1239,10 @@ def _build_new_rep(nfields, col_prefixes):
             if field == 'socorro_id':
                rep += " AND %s.%s=%s " % (col_prefixes[field], field, int(nfields[field]))
             else: 
-               rep += " AND %s.%s='%s' " % (col_prefixes[field], field, nfields[field])
+               if (nfields[field][0] == '%') or (nfields[field][ len( nfields[field] )-1 ] == '%'): 
+                  rep += " AND %s.%s LIKE '%s' " % (col_prefixes[field], field, nfields[field])
+               else:
+                  rep += " AND %s.%s='%s' " % (col_prefixes[field], field, nfields[field])
 
    return rep
 
