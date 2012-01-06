@@ -174,11 +174,8 @@ def ordered_ffversion(versionstring):
 def load_waiting_testruns():
 
     testrun_counter  = 0
-    locktimeout      = 300
     waiting_testruns = {}
-
-    while not utils.getLock('sisyphus.bughunter.sitetestrun', locktimeout):
-        continue
+    starttime        = datetime.datetime.now()
 
     try:
         cursor = connection.cursor()
@@ -210,12 +207,7 @@ def load_waiting_testruns():
                 waiting_testruns[key] = 1
                 row = cursor.fetchone()
     finally:
-        try:
-            lockDuration = utils.releaseLock('sisyphus.bughunter.sitetestrun')
-        except:
-            exceptionType, exceptionValue, errorMessage = utils.formatException()
-            print '%s, %s' % (exceptionValue, errorMessage)
-        print("downloaded %d waiting testruns in %s" % (testrun_counter, lockDuration))
+        print("downloaded %d waiting testruns in %s" % (testrun_counter, datetime.datetime.now() - starttime))
 
     return waiting_testruns
 
@@ -448,27 +440,11 @@ def create_socorro_rows(pending_socorro, waiting_testruns):
     socorro_counter = 0
     duplicate_counter = 0
     unsupported_counter = 0
-    locktimeout = 300
-    waittime = 30
-    locktime = datetime.timedelta(seconds=30)
 
     keys = [key for key in pending_socorro]
 
-    # lock the table to prevent contention with running workers.
-    while not utils.getLock('sisyphus.bughunter.sitetestrun', locktimeout):
-        continue
-    lasttime = datetime.datetime.now()
-
     try:
         for key in keys:
-
-            # temporarily unlock the table to allow workers processing time.
-            if datetime.datetime.now() - lasttime > locktime:
-                utils.releaseLock('sisyphus.bughunter.sitetestrun')
-                time.sleep(waittime)
-                while not utils.getLock('sisyphus.bughunter.sitetestrun', locktimeout):
-                    continue
-                lasttime = datetime.datetime.now()
 
             socorro_row = pending_socorro[key]
 
@@ -583,6 +559,8 @@ def create_socorro_rows(pending_socorro, waiting_testruns):
                                         test_run.save()
                                         waiting_testruns[sitetestrun_key] = 1
                                         testrun_counter += 1
+                                        if test_run.socorro is None:
+                                            print "SiteTestRun id = %s has a Null saved related SocorroRecord" % test_run.id
                                     except Exception, e:
                                         print "%s saving SiteTestRun: %s, %s : %s : %s : %s : %s : %s" % (
                                             e,
@@ -606,17 +584,12 @@ def create_socorro_rows(pending_socorro, waiting_testruns):
                                         socorro_row.product
                                         )
     finally:
-        try:
-            lockDuration = utils.releaseLock('sisyphus.bughunter.sitetestrun')
-        except:
-            exceptionType, exceptionValue, errorMessage = utils.formatException()
-            print '%s, %s' % (exceptionValue, errorMessage)
         print(("eliminated %d unsupported records, %d duplicate testruns; uploaded %d socorro records, " +
-              "%d testruns in %s") % (unsupported_counter,
-                                      duplicate_counter,
-                                      socorro_counter,
-                                      testrun_counter,
-                                      datetime.datetime.now() - starttime))
+               "%d testruns in %s") % (unsupported_counter,
+                                       duplicate_counter,
+                                       socorro_counter,
+                                       testrun_counter,
+                                       datetime.datetime.now() - starttime))
 
 def main():
     global options
@@ -650,9 +623,20 @@ Example:
 
     load_supported_products()
     load_operating_systems()
+
+    while not utils.getLock('sisyphus.bughunter.sitetestrun', 300):
+        continue
+
     waiting_testruns = load_waiting_testruns()
     pending_socorro = load_crashdata(crashlogfile)
     create_socorro_rows(pending_socorro, waiting_testruns)
+
+    try:
+        lockDuration = utils.releaseLock('sisyphus.bughunter.sitetestrun')
+        print "Total lock time %s" % lockDuration
+    except:
+        exceptionType, exceptionValue, errorMessage = utils.formatException()
+        print '%s, %s' % (exceptionValue, errorMessage)
 
 if __name__ == '__main__':
     main()

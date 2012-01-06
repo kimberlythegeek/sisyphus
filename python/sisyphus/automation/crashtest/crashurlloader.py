@@ -154,21 +154,12 @@ def main():
     # lock the table to prevent contention with running workers.
     while not utils.getLock('sisyphus.bughunter.sitetestrun', locktimeout):
         continue
-    lasttime = datetime.datetime.now()
 
     urlsfilehandle = open(options.urlsfile, 'r')
     try:
         for url in urlsfilehandle:
 
             url_counter += 1
-
-            # temporarily unlock the table to allow workers processing time.
-            if datetime.datetime.now() - lasttime > locktime:
-                utils.releaseLock('sisyphus.bughunter.sitetestrun')
-                time.sleep(waittime)
-                while not utils.getLock('sisyphus.bughunter.sitetestrun', locktimeout):
-                    continue
-                lasttime = datetime.datetime.now()
 
             url = url.rstrip('\n')
             if url.find('http') != 0:
