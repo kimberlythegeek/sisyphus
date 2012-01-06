@@ -29,10 +29,8 @@
            "control_panel":"crashes.html",
            "default_load":1,
            "data_adapter":"crashes",
-           "charts":[ { "name":"table" }, 
-                      { "name":"pie" }, 
-                      { "name":"bar" }, 
-                      { "name":"tree" } ]
+           "charts":[ { "name":"table", "read_name":"Table" }, 
+                      { "name":"platform_tree", "read_name":"Platform Tree" } ]
          },
    
          { "name":"crash_urls_st",
@@ -46,10 +44,7 @@
                        "exploitability":"1" },
            "control_panel":"named_fields.html",
            "data_adapter":"urls",
-           "charts":[ { "name":"table" }, 
-                      { "name":"pie" }, 
-                      { "name":"bar" }, 
-                      { "name":"tree" } ]
+           "charts":[ { "name":"table", "read_name":"Table" } ]
          },
 
          { "name":"crash_detail_st",
@@ -65,10 +60,7 @@
            "control_panel":"named_fields.html",
            "data_adapter":"named_fields",
            "hidden_columns":{ "changeset":"18", "bug_list":"19", "steps":"20", "exitstatus":"21", "priority":"22" },
-           "charts":[ { "name":"table" }, 
-                      { "name":"pie" }, 
-                      { "name":"bar" }, 
-                      { "name":"tree"} ]
+           "charts":[ { "name":"table", "read_name":"Table" } ]
          }
       ],
 
@@ -79,10 +71,8 @@
            "control_panel":"assertions.html",
            "default_load":1,
            "data_adapter":"crashes",
-           "charts":[ { "name":"table" }, 
-                      { "name":"pie" }, 
-                      { "name":"bar" }, 
-                      { "name":"tree" } ]
+           "charts":[ { "name":"table", "read_name":"Table" }, 
+                      { "name":"platform_tree", "read_name":"Platform Tree" } ]
          },
 
         { "name":"assertion_urls_st",
@@ -91,10 +81,7 @@
                       "url":"1" },
           "control_panel":"assertion_urls.html",
           "data_adapter":"urls",
-          "charts":[ { "name":"table" }, 
-                     { "name":"pie" }, 
-                     { "name":"bar" }, 
-                     { "name":"tree" } ]
+          "charts":[ { "name":"table", "read_name":"Table" } ]
          },
 
          { "name":"assertion_detail_st",
@@ -106,10 +93,7 @@
            "control_panel":"assertion_urls.html",
            "data_adapter":"named_fields",
            "hidden_columns":{ "changeset":"13", "bug_list":"14", "steps":"15", "exitstatus":"16", "priority":"17" },
-           "charts":[ { "name":"table" }, 
-                      { "name":"pie" }, 
-                      { "name":"bar" }, 
-                      { "name":"tree"} ]
+           "charts":[ { "name":"table", "read_name":"Table" } ]
          }
 
       ]
@@ -138,10 +122,8 @@
            "signals":{ "assertion":"1", "location":"1" },
            "control_panel":"assertions.html",
            "data_adapter":"crashes",
-           "charts":[ { "name":"table" }, 
-                      { "name":"pie" }, 
-                      { "name":"bar" }, 
-                      { "name":"tree" } ]
+           "charts":[ { "name":"table", "read_name":"Table" }, 
+                      { "name":"platform_tree", "read_name":"Platform Tree" } ]
          },
 
         { "name":"assertion_urls_ut",
@@ -150,10 +132,7 @@
                       "url":"1" },
           "control_panel":"assertion_urls.html",
           "data_adapter":"urls",
-          "charts":[ { "name":"table" }, 
-                     { "name":"pie" }, 
-                     { "name":"bar" }, 
-                     { "name":"tree" } ]
+          "charts":[ { "name":"table", "read_name":"Table" } ]
          },
 
          { "name":"assertion_detail_ut",
@@ -165,10 +144,7 @@
            "control_panel":"assertion_urls.html",
            "data_adapter":"named_fields",
            "hidden_columns":{ "changeset":"13", "bug_list":"14", "steps":"15", "exitstatus":"16", "priority":"17" },
-           "charts":[ { "name":"table" }, 
-                      { "name":"pie" }, 
-                      { "name":"bar" }, 
-                      { "name":"tree"} ]
+           "charts":[ { "name":"table", "read_name":"Table" } ]
          }
 
       ],
@@ -180,10 +156,8 @@
            "signals":{ "signature":"1", "message":"1" },
            "control_panel":"valgrinds.html",
            "data_adapter":"crashes",
-           "charts":[ { "name":"table" }, 
-                      { "name":"pie" }, 
-                      { "name":"bar" }, 
-                      { "name":"tree" } ]
+           "charts":[ { "name":"table", "read_name":"Table" }, 
+                      { "name":"platform_tree", "read_name":"Platform Tree" } ]
          },
 
          { "name":"valgrind_urls_ut",
@@ -193,10 +167,7 @@
                       "url":"1" },
            "control_panel":"valgrind_urls.html",
            "data_adapter":"urls",
-           "charts":[ { "name":"table" }, 
-                      { "name":"pie" }, 
-                      { "name":"bar" }, 
-                      { "name":"tree" } ]
+           "charts":[ { "name":"table", "read_name":"Table" } ]
           },
 
           { "name":"valgrind_detail_ut",
@@ -208,10 +179,7 @@
             "control_panel":"valgrind_urls.html",
             "data_adapter":"named_fields",
             "hidden_columns":{ "changeset":"13", "bug_list":"14", "steps":"15", "exitstatus":"16", "priority":"17" },
-            "charts":[ { "name":"table" }, 
-                       { "name":"pie" }, 
-                       { "name":"bar" }, 
-                       { "name":"tree"} ]
+            "charts":[ { "name":"table", "read_name":"Table" } ]
          }
      ]
   ],

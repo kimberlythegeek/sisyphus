@@ -49,7 +49,10 @@ var BHViewComponent = new Class({
       this.model = new BHViewModel('#BHViewModel', {bhviewName:this.options.bhview_name,
                                                     dataAdapters:this.dataAdapters});
 
-      this.view = new BHViewView('#BHViewView', {});
+      this.visCollection = new VisualizationCollection('#VisualizationCollection', {});
+      this.visName = 'table';
+
+      this.view = new BHViewView('#BHViewView', { vis_read_name:'Table'});
 
       //The parent view index, it will be defined when this window
       //was spawned from another.
@@ -222,6 +225,7 @@ var BHViewComponent = new Class({
       delete(this.buttonHandlers);
       delete(this.model);
       delete(this.view);
+      delete(this.visCollection);
       delete(this.dataAdapters);
       delete(this.closeEvent);
       delete(this.addBHViewEvent);
@@ -429,7 +433,6 @@ var BHViewComponent = new Class({
 
       //Set up component events
       this.setMenuEv();
-      this.setVisEv();
       this.setButtonEv();
 
    },
@@ -539,6 +542,8 @@ var BHViewComponent = new Class({
 
    initializeBHView: function(data, textStatus, jqXHR){
 
+      this.data = data;
+
       if(data.aoColumns.length > 0){
          //Load the data into the table
          var tableSel = this.view.getIdSelector(this.view.tableSel, this.bhviewIndex);
@@ -553,6 +558,9 @@ var BHViewComponent = new Class({
 
          //Get a new clone of the table
          this.view.getNewTableClone(this.bhviewIndex, tableSel);
+
+         //Set the chart types
+         this.setVisEv();
 
          //Load the table data
          this.dataTable = $(tableSel).dataTable( data );
@@ -587,7 +595,9 @@ var BHViewComponent = new Class({
          this.dataTable.fnDraw();
          this.dataTable.fnAdjustColumnSizing();
 
-         this.view.setMinimumHeight(tableSel);
+         this.view.setHeight(tableSel, this.view.minScrollPanelSize);
+
+         this.setVisualization();
 
       }else{
          this.view.showNoDataMessage(this.bhviewIndex);
@@ -770,7 +780,65 @@ var BHViewComponent = new Class({
       var newHeight = this.view.changeViewHeight(this.bhviewIndex, 'decrease');
       this.dataTable.fnSettings().oScroll.sY = newHeight + 'px';
    },
-   setVisualization: function( item ){
+   setVisualization: function(item){
+
+      var charts = this.model.getBHViewAttribute('charts');
+      if(charts.length == 1){
+         //No visualization other than table
+         this.visName = "table";
+         this.view.visReadName = "Table";
+      }
+
+      if(item){
+         this.visName = $(item).attr('href').replace('#', '');
+      }
+
+      this._setVisReadName(charts);
+
+      var bhviewReadName = this.model.getBHViewAttribute('read_name');
+      this.view.displayBHViewName(this.bhviewIndex, bhviewReadName);
+
+      var datatableWrapperSel = this.view.getIdSelector(this.view.tableSel, this.bhviewIndex) + 
+                                this.view.wrapperSuffix;
+
+      var visContainerSel = this.view.getIdSelector(this.view.visContainerSel, this.bhviewIndex);
+
+      var spacerSel = this.view.getIdSelector(this.view.spacerSel, this.bhviewIndex);
+
+      if(this.visName == 'table'){
+
+         this.view.displayVisualization(datatableWrapperSel, visContainerSel, spacerSel, this.visName);
+
+      }else{
+         
+         var detailSelectors = this.view.getVisDetailSelectors(this.bhviewIndex);
+
+         this.view.displayVisualization(datatableWrapperSel, visContainerSel, spacerSel, this.visName);
+
+         //Prepare a signalData structure for the visCollection to use if
+         //a user selects a signal
+         var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
+                                                               this.bhviewIndex);
+         var adapterName = this.model.getBHViewAttribute('data_adapter');
+         var a = this.dataAdapters.getAdapter(adapterName);
+         var dateRange = a.getDateRangeParams(controlPanelDropdownSel, this.signalData);
+
+         var signalData = { parent_bhview_index:this.bhviewIndex,
+                            data:"",
+                            date_range:dateRange,
+                            signal:"" };
+
+         var callback = _.bind( function(signalData){
+                                    this.view.displaySignalData('send', signalData, this.bhviewIndex);
+                                }, this);
+
+         this.visCollection.display(this.visName, 
+                                    this.dataTable.fnGetData(),
+                                    detailSelectors,
+                                    signalData,
+                                    callback);
+      }
+
       this.view.closeMenu();
    },
     
@@ -1017,6 +1085,14 @@ var BHViewComponent = new Class({
 
       this.view.showNoDataMessage(this.bhviewIndex, 'error', messageText); 
    },
+   _setVisReadName: function(charts){
+      for(var i=0; i<charts.length; i++){
+         if(charts[i].name == this.visName){
+            this.view.visReadName = charts[i].read_name;
+            break;
+         }
+      }
+   }
 });
 var BHViewView = new Class({
 
@@ -1054,6 +1130,9 @@ var BHViewView = new Class({
       //Cloned Containers
       this.viewWrapperSel = '#bh_view_wrapper_c';
       this.singleViewContainerSel = '#bh_view_c';
+
+      //table wrapper suffix
+      this.wrapperSuffix = '_wrapper';
 
       //Spinners
       this.spinnerSel = '#bh_spinner_c';
@@ -1111,6 +1190,25 @@ var BHViewView = new Class({
       this.parentIndexDisplaySel = '#bh_parent_display_c';
       this.viewIndexDisplaySel = '#bh_view_display_c';
       this.parentBHViewIndexSel = '#bh_parent_bhview_index';
+
+      //Visualization containers
+      this.visContainerSel = '#bh_vis_container_c';
+      this.graphContainerSel = '#bh_vis_graph_c';
+      this.graphDetailsContainerSel = '#bh_vis_details_c';
+      this.visLiCloneSel = '#bh_vis_li_clone';
+
+      this.visDetailSelectors = { sig_detail:'#bh_signature_detail_c',
+                                  message_detail:'#bh_message_detail_c',
+                                  count_detail:'#bh_count_detail_c',
+                                  platform_detail:'#bh_platform_detail_c',
+                                  primary_label_detail:'#bh_primary_detail_label_c',
+                                  secondary_label_detail:'#bh_secondary_detail_label_c' };
+      this.visReadName = options.vis_read_name;
+
+      //Spacer div between bhviews
+      this.spacerSel = "#bh_spacer_c";
+      this.tableSpacerHeight = 10;
+      this.visSpacerHeight = 550;
 
       //Clone id selector, finds all elements with an id attribute ending in _c
       this.cloneIdSelector = '*[id$="_c"]';
@@ -1221,23 +1319,13 @@ var BHViewView = new Class({
       return el;
    },
    setBHViewChartTypes: function(charts, bhVisMenuSel){
-      /***************
-       * Takes an array of chart objects and adds them to
-       * the visualization ul in the top bar of the bhview.
-       *
-       * Parameters:
-       *    charts - chart object
-       *    bhVisMenSel - The ul id selector
-       ***************/
+
       var menuChildren = $(bhVisMenuSel).children();
-      var liCloneEl = "";
+      var liCloneEl = $(this.visLiCloneSel).get(0);
 
       for(var i=0; i<menuChildren.length; i++){
          var liEl = menuChildren[i]; 
-         if($(liEl).css('display')){
-            //This is the clone target
-            liCloneEl = liEl;
-         }else{
+         if( !$(liEl).attr('id') ){
             //Pre-existing li from another view type, delete it
             $(liEl).remove();
          }
@@ -1251,11 +1339,12 @@ var BHViewView = new Class({
 
             //clone the li
             var newLiEl = $(liCloneEl).clone();
+            newLiEl.attr('id', '');
 
             //get anchor and set attributes and show the new li
             var anchor = $(newLiEl).find('a');
             $(anchor).attr('href', '#' + c.name);
-            $(anchor).text(c.name.capitalize());
+            $(anchor).text(c.read_name);
             $(bhVisMenuSel).append(newLiEl);
             newLiEl.css('display', 'block');
          }
@@ -1399,12 +1488,14 @@ var BHViewView = new Class({
 
       return hPix;
    },
-   setMinimumHeight: function(tableSel){
+   setHeight: function(tableSel, targetHeight){
       var scrollBody = $(tableSel).parent();
       var h = parseInt( $(scrollBody).css('height') );
-      if( h < this.minScrollPanelSize ){
+      if( h < targetHeight ){
          var newHeight = this.minScrollPanelSize + 'px';
          $(scrollBody).css('height', newHeight);
+      }else{
+
       }
    },
    /*******************
@@ -1423,9 +1514,39 @@ var BHViewView = new Class({
    /*******************
     *TOGGLE METHODS
     *******************/
+   displayVisualization: function(datatableWrapperSel, visContainerSel, spacerSel, visName){
+
+      if(visName == 'table'){
+
+         $(spacerSel).css('height', this.tableSpacerHeight);
+         $(datatableWrapperSel).css('display', 'block');
+         $(visContainerSel).css('display', 'none');
+
+      }else {
+
+         $(datatableWrapperSel).css('display', 'none');
+         $(visContainerSel).css('display', 'block');
+         $(spacerSel).css('height', this.visSpacerHeight);
+      }
+   },
+   getVisDetailSelectors: function(bhviewIndex){
+
+      var detailSelectors = {};
+      var graphContainerSel = this.getIdSelector(this.graphContainerSel, bhviewIndex);
+      var graphDetailsContainerSel = this.getIdSelector(this.graphDetailsContainerSel, bhviewIndex);
+
+      for(var detailKey in this.visDetailSelectors){
+         var detailSelector = this.getIdSelector(this.visDetailSelectors[detailKey], bhviewIndex);
+         detailSelectors[detailKey] = detailSelector;
+      }
+      detailSelectors.detail_container = graphDetailsContainerSel;
+      detailSelectors.graph_container = graphContainerSel;
+
+      return detailSelectors;
+   },
    displayBHViewName: function(bhviewIndex, bhviewReadName){
       var topbarTitleSel = this.getIdSelector(this.topBarTitleSel, bhviewIndex);
-      $(topbarTitleSel).text(bhviewReadName);
+      $(topbarTitleSel).text(bhviewReadName + ' ' + this.visReadName);
    },
    displaySignalData: function(direction, signalData, bhviewIndex){
 
@@ -1548,6 +1669,10 @@ var BHViewView = new Class({
       var viewWrapperSel = this.getIdSelector(this.viewWrapperSel, bhviewIndex);
       $(viewWrapperSel).removeClass('hidden');
 
+      //Hide visualization
+      var visContainerSel = this.getIdSelector(this.visContainerSel, bhviewIndex);
+      $(visContainerSel).css('display', 'none');
+
       //Show spinner
       var spinnerSel = this.getIdSelector(this.spinnerSel, bhviewIndex);
       $(spinnerSel).css('display', 'block');
@@ -1558,9 +1683,13 @@ var BHViewView = new Class({
                                          bhviewIndex);
       $(noDataSel).css('display', 'none');
 
-      var tableSel = this.getIdSelector(this.tableSel, bhviewIndex) + '_wrapper';
+      var tableSel = this.getIdSelector(this.tableSel, bhviewIndex) + this.wrapperSuffix;
       $(tableSel).css('display', 'none');
 
+      //Hide visualization
+      var visContainerSel = this.getIdSelector(this.visContainerSel, bhviewIndex);
+      $(visContainerSel).css('display', 'none');
+      
       //Show spinner
       var spinnerSel = this.getIdSelector(this.tableSpinnerSel, bhviewIndex);
       $(spinnerSel).css('display', 'block');
@@ -1575,7 +1704,7 @@ var BHViewView = new Class({
       var spinnerSel = this.getIdSelector(this.tableSpinnerSel, bhviewIndex);
       $(spinnerSel).css('display', 'none');
 
-      var tableSel = this.getIdSelector(this.tableSel, bhviewIndex) + '_wrapper';
+      var tableSel = this.getIdSelector(this.tableSel, bhviewIndex) + this.wrapperSuffix;
       $(tableSel).css('display', 'block');
    }
 });
@@ -1730,7 +1859,6 @@ var BHViewModel = new Class({
       var a = this.dataAdapters.getAdapter(adapterName);
       a.processData(dataObject, datatableObject, signals);
 
-      //return datatableObject;
       return JSON.stringify(datatableObject);
    },
    modelAjaxSend: function(){

@@ -107,9 +107,8 @@ div.bh-nodata {
    color: #4F4F4F;
    font-weight: bold;
    font-size:1.750em;
+   text-align:center;
    margin-top: 100px;
-   margin-bottom: 100px;
-   margin-left: 300px;
 }
 
 /********
@@ -199,6 +198,9 @@ div.bh-modal {
 hr.bh-horz-line {
    background-color:#197F29;
 }
+hr.bh-light-horz-line {
+   background-color:#0D2054;
+}
 div.bh-modal-element {
    margin-top:25px;
    margin-bottom:25px;
@@ -278,4 +280,30 @@ div.bh-spinner {
 
 .contextMenu div.separator {
 	border-top: solid 1px #CCC;
+}
+div.tip {
+   text-align: left;
+   min-width:150px;
+   max-width:350px;
+   background:white;
+   cursor: help; text-decoration: none;
+   position: relative;
+}
+div.tip-title {
+   font-size: 11px;
+   text-align:left;
+   padding:10px;
+}
+div.bh-vis-detail {
+   position:absolute;
+   left:750px;
+   top:200px;
+   padding:25px;
+   height:450px;
+   width:260px;
+}
+div.bh-vis-detail-panel {
+  margin-top: 5px; 
+  padding: 0.5em;
+  overflow: auto;
 }

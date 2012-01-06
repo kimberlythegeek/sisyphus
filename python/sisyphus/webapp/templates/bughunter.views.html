@@ -15,6 +15,7 @@
     <script src="/scripts/jquery.url.js"></script>
     <script src="/scripts/jquery.contextMenu-1.01/jquery.contextMenu.js"></script>
     <script src="/scripts/underscore-min.js"></script>
+    <script src="/scripts/Jit/jit-yc.js"></script>
 
     <!-- Gives core mootools class functionality to jQuery -->
     <script src="/scripts/mootools-core-1.4.0.js"></script>
@@ -34,6 +35,7 @@
     <script src="/scripts/views/Bases.js"></script>
     <script src="/scripts/views/ConnectionsComponent.js"></script>
     <script src="/scripts/views/DataAdapterCollection.js"></script>
+    <script src="/scripts/views/VisualizationCollection.js"></script>
     <script src="/scripts/views/BHViewComponent.js"></script>
     <script src="/scripts/views/BHViewCollection.js"></script>
     <script src="/scripts/views/BughunterPage.js"></script>
@@ -118,9 +120,9 @@
 <!--Cloned Elements-->
 <div id="bh_view_wrapper_c" class="ui-helper-clearfix hidden">
 
-   <div id="bh_spinner_c" class="bh-spinner ui-widget"></div>
+   <div id="bh_spinner_c" class="bh-spinner ui-widget ui-helper-clearfix"></div>
 
-   <div id="bh_view_c" class="ui-helper-clearfix hidden">
+   <div id="bh_view_c" style="height:350px;" class="ui-helper-clearfix hidden">
       <!-- View Container -->
       <div id="bh_topbar_c" class="ui-widget ui-toobar ui-corner-all bh-toolbar-base bh-toolpanel ui-helper-clearfix hidden">
          <!-- View Top Menu Bar -->
@@ -149,10 +151,10 @@
             </a>
 
             <a id="bh_visualization_c" tabindex="0" href="#" class="fg-button fg-button-icon-right ui-widget ui-state-default ui-corner-all css-right bh-flatmenu" style="background:#FFFFFF">
-               <span class="">Visualization</span><span class="ui-icon ui-icon-triangle-2-n-s css-right"></span>
+               <span>Visualization</span><span class="ui-icon ui-icon-triangle-2-n-s css-right"></span>
             </a>
             <ul id="bh_vis_menu_c" class=" hidden">
-               <li style="display:none;"><a href="#" class=""></a></li>
+               <li id="bh_vis_li_clone" style="display:none;"><a href="#" class=""></a></li>
             </ul>
             <span style="margin-right:5px;" class="fg-toolbar css-right">Parent:<span id="bh_parent_display_c">None</span></span>
             <span style="margin-right:5px;" class="fg-toolbar css-right">View:<span id="bh_view_display_c">1</span></span>
@@ -178,12 +180,40 @@
             <span id="bh_signal_help_bt_c" class="css-right ui-icon ui-icon-help" title="Help"></span>
          </div>
         
-         <div id="bh_table_nodata_c" class="bh-nodata hidden"></div>
-         <div id="bh_table_spinner_c" class="bh-spinner ui-widget"></div>
+         <div id="bh_table_nodata_c" class="bh-nodata hidden ui-helper-clearfix"></div>
+         <div id="bh_table_spinner_c" class="bh-spinner ui-widget ui-helper-clearfix"></div>
+
+         <div id="bh_vis_container_c" style="display:none;" class="ui-helper-clearfix">
+            <div id="bh_vis_graph_c" style="float:left;"></div> 
+            <div id="bh_vis_details_c" class="ui-widget ui-corner-all bh-vis-detail">
+               <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+                  <h2 style="text-align:center;">Data Detail</h2>
+               </div>
+               <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+                  <p><strong>NOTE</strong>:&nbsp;Select any slice to see the data detail.  Select the innermost slices to send signals to other data views.</p>
+               </div>
+               <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+                  <strong><span id="bh_primary_detail_label_c">Signature</span>:</strong>&nbsp;Total Count&nbsp;<span id="bh_count_detail_c" style="color:#225186;"></span>
+                  <hr class="bh-light-horz-line" style="margin-top:10px; margin-bottom:10px;" />
+                  <div id="bh_signature_detail_c" style="overflow:auto;"></div>
+               </div>
+               <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+                  <strong><span id="bh_secondary_detail_label_c">Fatal Message</span></strong>
+                  <hr class="bh-light-horz-line" style="margin-top:10px; margin-bottom:10px;" />
+                  <div id="bh_message_detail_c" style="overflow:auto;"></div>
+               </div>
+               <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+                  <strong>Platform</strong>
+                  <hr class="bh-light-horz-line" style="margin-top:10px; margin-bottom:10px;" />
+                  <div id="bh_platform_detail_c" style="color:#225186; overflow:auto;"></div>
+               </div>
+            </div> 
+         </div>
+
          <table id="bh_tview_c" cellpadding="0" cellspacing="0" border="0" class="display"></table>
    </div>
-   <div style="margin-bottom:350px;"></div>
 </div>
+<div id="bh_spacer_c" class="ui-helper-clearfix" style="height:10px;"></div>
 
 </body>
 </html>
