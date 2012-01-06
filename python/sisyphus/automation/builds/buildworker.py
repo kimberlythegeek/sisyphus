@@ -145,6 +145,10 @@ def main():
 
     parser = OptionParser(usage=usage)
 
+    parser.add_option('--no-upload', action='store_true',
+                      dest='no_upload',
+                      default=False, help='Do not upload completed builds')
+
     parser.add_option('--nodebug', action='store_false',
                       dest='debug',
                       default=False,

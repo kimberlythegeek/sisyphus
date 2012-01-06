@@ -91,6 +91,7 @@ class Worker(object):
 
         try:
             self.isBuilder = options.build
+            self.uploadBuild = not options.no_upload
         except AttributeError:
             self.isBuilder = False
 
@@ -1357,7 +1358,7 @@ class Worker(object):
                 self.clobberProduct()
             else:
                 self.packageProduct()
-                if self.build_row.packagesuccess:
+                if self.build_row.packagesuccess and self.uploadBuild:
                     self.uploadProduct()
 
         except KeyboardInterrupt, SystemExit:

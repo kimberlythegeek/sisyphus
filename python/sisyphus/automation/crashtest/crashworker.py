@@ -746,7 +746,12 @@ def main():
                       default=False)
 
     parser.add_option('--build', action='store_true',
+                      dest='build',
                       default=False, help='Perform own builds')
+
+    parser.add_option('--no-upload', action='store_true',
+                      dest='no_upload',
+                      default=False, help='Do not upload completed builds')
 
     parser.add_option('--nodebug', action='store_false',
                       dest='debug',
