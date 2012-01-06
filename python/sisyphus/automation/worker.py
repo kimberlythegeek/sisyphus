@@ -1112,17 +1112,29 @@ class Worker(object):
 
         self.logMessage("begin building %s %s %s" % (self.product, self.branch, self.buildtype))
 
+        builder_command_list =  [
+            sisyphus_dir + "/bin/builder.sh",
+            "-p", self.product,
+            "-b", self.branch,
+            "-T", self.buildtype,
+            "-B", buildsteps
+            ]
+
+        if self.cpu_name != self.build_cpu_name:
+            if self.build_cpu_name == "x86":
+                build_cpu_name = "intel32"
+            elif self.build_cpu_name == "x86_64":
+                build_cpu_name = "intel64"
+            else:
+                build_cpu_name = self.build_cpu_name
+            builder_command_list.extend(["-X", build_cpu_name])
+
         proc = subprocess.Popen(
-            [
-                sisyphus_dir + "/bin/builder.sh",
-                "-p", self.product,
-                "-b", self.branch,
-                "-T", self.buildtype,
-                "-B", buildsteps
-                ],
+            builder_command_list,
             preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE,
+            close_fds=True)
 
         try:
             stdout, stderr = proc.communicate()

@@ -59,9 +59,16 @@ def buildProduct(db, product, branch, buildtype):
             ]
 
     if self.cpu_name != self.build_cpu_name:
-        builder_command_list.extend(["-X", self.build_cpu_name])
+        if self.build_cpu_name == "x86":
+            build_cpu_name = "intel32"
+        elif self.build_cpu_name == "x86_64":
+            build_cpu_name = "intel64"
+        else:
+            build_cpu_name = self.build_cpu_name
+        builder_command_list.extend(["-X", build_cpu_name])
 
     proc = subprocess.Popen(builder_command_list,
+                            preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE,
                             close_fds=True)
