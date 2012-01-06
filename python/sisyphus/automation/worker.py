@@ -881,12 +881,29 @@ class Worker(object):
 
         return build_row
 
+    def isBuildClaimed(self):
+        # Return True if the current row in the Build table has been
+        # claimed by another worker.
+        #
+        # A build is claimed by another worker if its worker is
+        # different than this worker and if its state is not building.
+        # This will prevent conflicts between two different build
+        # workers with the same operating system and build_cpu_name.
+
+        current_build_row = self.getBuild()
+        if (current_build_row.worker_id == self.build_row.worker_id or
+            current_build_row.state != 'building'):
+            return False
+
+        return True
+
     def saveBuild(self):
 
         if not self.isBuilder:
             raise Exception('WorkerNotBuilder')
 
-        self.build_row.save()
+        if not self.isBuildClaimed():
+            self.build_row.save()
 
     def installBuild(self):
 
@@ -1002,42 +1019,60 @@ class Worker(object):
         needs to be created and uploaded or to be downloaded and installed.
         """
 
-        if self.build_row:
-            # We already have a build row, we just need to update it.
-            self.build_row = models.Build.objects.get(build_id = self.build_id)
-        else:
-            try:
+        try:
+            if not utils.getLock('sisyphus.bughunter.build', 300):
+                raise Exception('Can not obtain lock on build table')
+
+            if self.build_row:
+                # We already have a build row, we just need to update it.
                 self.build_row = models.Build.objects.get(build_id = self.build_id)
-            except models.Build.DoesNotExist:
-                return True
+            else:
+                try:
+                    self.build_row = models.Build.objects.get(build_id = self.build_id)
+                except models.Build.DoesNotExist:
+                    return True
 
-        if self.isBuilder:
+            if self.isBuilder:
 
+                if not self.build_date:
+                    return True # Don't have a local build
+
+                if self.build_row.state == "error":
+                    return True # Most recent attempt to build and upload to database failed
+
+                if self.build_date.day != datetime.date.today().day:
+                    return True # Local build is too old
+
+                if self.build_row.builddate.day != datetime.date.today().day:
+                    return True # Uploaded build is too old
+
+                if self.build_row.state == "building":
+                    # someone else is building it.
+                    if datetime.datetime.now() - self.build_row.datetime > build_checkup_interval:
+                        # Overwrite and steal build from other worker.
+                        self.build_row.worker = self.worker_row
+                        self.build_row.state  = 'error'
+                        self.build_row.build_cpu_name = self.build_cpu_name
+                        self.build_row.os_name = self.os_name
+                        self.build_row.os_version = self.os_version
+                        self.build_row.cpu_name = self.cpu_name
+                        self.build_row.worker_id = self.worker_row.id
+                        self.build_row.save()
+                        return True # the build has been "in process" for too long. Consider it dead.
+
+                return False
+
+            # We are not a builder
             if not self.build_date:
                 return True # Don't have a local build
 
-            if self.build_row.state == "error":
-                return True # Most recent attempt to build and upload to database failed
+            if self.build_date < self.build_row.builddate:
+                return True # Available build from database is newer than the local build
 
-            if self.build_date.day != datetime.date.today().day:
-                return True # Local build is too old
-
-            if self.build_row.builddate.day != datetime.date.today().day:
-                return True # Uploaded build is too old
-
-            if self.build_row.state == "building":
-                # someone else is building it.
-                if datetime.datetime.now() - self.build_row.datetime > build_checkup_interval:
-                    return True # the build has been "in process" for too long. Consider it dead.
-
-            return False
-
-        # We are not a builder
-        if not self.build_date:
-            return True # Don't have a local build
-
-        if self.build_date < self.build_row.builddate:
-            return True # Available build from database is newer than the local build
+        finally:
+            lockDuration = utils.releaseLock('sisyphus.bughunter.build')
+            if lockDuration > datetime.timedelta(seconds=5):
+                self.logMessage("Worker.isNewBuildNeeded: releaseLock('sisyphus.bughunter.build') duration: %s" % lockDuration)
 
         return False
 
@@ -1050,14 +1085,27 @@ class Worker(object):
         builddate       = datetime.datetime.now()
         executablepath  = ''
 
-        self.state = "building"
-        self.build_date = None
-        # use worker's build_date to signify availability of local build
-        # and to determine freshness of the uploaded build
-        self.save()
+        try:
+            if not utils.getLock('sisyphus.bughunter.build', 300):
+                raise Exception('Can not obtain lock on build table')
 
-        self.build_row.state = "building"
-        self.build_row.save()
+            self.state = "building"
+            self.build_date = None
+            # use worker's build_date to signify availability of local build
+            # and to determine freshness of the uploaded build
+            self.save()
+
+            self.build_row.state = "building"
+            self.build_row.build_cpu_name = self.build_cpu_name
+            self.build_row.os_name = self.os_name
+            self.build_row.os_version = self.os_version
+            self.build_row.cpu_name = self.cpu_name
+            self.build_row.worker_id = self.worker_row.id
+            self.saveBuild()
+        finally:
+            lockDuration = utils.releaseLock('sisyphus.bughunter.build')
+            if lockDuration > datetime.timedelta(seconds=5):
+                self.logMessage("Worker.buildProduct: releaseLock('sisyphus.bughunter.build') duration: %s" % lockDuration)
 
         # kill any test processes still running.
         self.killTest()
@@ -1136,22 +1184,24 @@ class Worker(object):
             self.build_row.state = "error"
             self.logMessage("failure building %s %s %s changeset %s" % (self.product, self.branch, self.buildtype, buildchangeset))
 
+        if not self.isBuildClaimed():
+            uploader = utils.FileUploader(post_files_url,
+                                          'Build', self.build_row, self.build_row.build_id,
+                                          'builds')
 
-        uploader = utils.FileUploader(post_files_url,
-                                      'Build', self.build_row, self.build_row.build_id,
-                                      'builds')
+            if checkoutlogpath:
+                uploader.add('checkout_log', os.path.basename(checkoutlogpath), checkoutlogpath, True)
 
-        if checkoutlogpath:
-            uploader.add('checkout_log', os.path.basename(checkoutlogpath), checkoutlogpath, True)
+            if buildlogpath:
+                uploader.add('build_log', os.path.basename(buildlogpath), buildlogpath, True)
 
-        if buildlogpath:
-            uploader.add('build_log', os.path.basename(buildlogpath), buildlogpath, True)
-
-        if checkoutlogpath or buildlogpath:
-            self.build_row = uploader.send()
+            if checkoutlogpath or buildlogpath:
+                self.build_row = uploader.send()
 
         if buildsuccess:
             self.build_date = builddate
+
+        self.saveBuild()
 
     def clobberProduct(self):
         """
@@ -1209,7 +1259,7 @@ class Worker(object):
 
         self.build_row.clobbersuccess = clobbersuccess
 
-        if clobberlogpath:
+        if not self.isBuildClaimed() and clobberlogpath:
             uploader = utils.FileUploader(post_files_url,
                                           'Build', self.build_row, self.build_row.build_id,
                                           'builds')
@@ -1274,7 +1324,7 @@ class Worker(object):
             packagelog.write(packagelogtext)
             packagelog.close()
 
-        if packagelogpath:
+        if not self.isBuildClaimed() and packagelogpath:
             uploader = utils.FileUploader(post_files_url,
                                           'Build', self.build_row, self.build_row.build_id,
                                           'builds')
@@ -1282,6 +1332,9 @@ class Worker(object):
             self.build_row = uploader.send()
 
     def uploadProduct(self):
+
+        if self.isBuildClaimed():
+            return
 
         self.logMessage('begin uploading %s %s %s' % (self.product, self.branch, self.buildtype))
 
