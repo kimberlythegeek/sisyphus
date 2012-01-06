@@ -22,7 +22,8 @@ var BHViewCollection = new Class({
 
       this.subscriptionTargets = { CLOSE_BHVIEW:this.closeBHView,
                                    ADD_BHVIEW:this.addBHView,
-                                   SIGNAL_BHVIEW:this.sendSignalToChildWindows};
+                                   SIGNAL_BHVIEW:this.sendSignalToChildWindows,
+                                   OPEN_COLLECTION_BHVIEW:this.openBHViewCollection };
 
       BHPAGE.registerSubscribers(this.subscriptionTargets, 
                                  this.view.allViewsContainerSel,
@@ -30,6 +31,40 @@ var BHViewCollection = new Class({
 
       //reset column widths when window resizes
       $(window).resize( _.bind( this.resizeWindow, this ) );
+   },
+   openBHViewCollection: function(data){
+
+      var parentToIndexMap = {};
+
+      for(var i=0; i < data.collection.length; i++){
+
+         var bhviewChild = data.collection[i].bhview;
+         var bhviewParent = data.collection[i].parent;
+
+         var bhviewData = {  selected_bhview:bhviewChild,
+                             display_type:'pane',
+                             parent_bhview_index:parentToIndexMap[bhviewParent] };
+
+         if( i === 0 ){
+            //User has selected a collection from the Navigation
+            //menu.  Change parent view to the first view in the 
+            //collection
+            if( data.parent_bhview_index != undefined ){
+
+               parentToIndexMap[bhviewChild] = data.parent_bhview_index;
+
+            } else {
+               //Collection is set as the default item to display
+               var newIndex = this.addBHView(bhviewData);
+               parentToIndexMap[bhviewChild] = newIndex;
+
+            }
+
+         }else{
+            var newIndex = this.addBHView(bhviewData);
+            parentToIndexMap[bhviewChild] = newIndex;
+         }
+      }
    },
    resizeWindow: function(event){
 
@@ -65,10 +100,10 @@ var BHViewCollection = new Class({
          //Check for any page targets
          var url = bhviewHash.page_target.replace('HASH', '#');
          window.open(url);
-
          return false;
       }
 
+      //Open new page for bhview
       if(data.display_type == 'page'){
          this.view.submitPostForm(this.model.newViewUrl, 
                                   data.params, 
@@ -76,19 +111,34 @@ var BHViewCollection = new Class({
                                   data.parent_bhview_index);
 
       }else {
+         //Open bhview in current page
          var defaultView = false;
 
+         //First view created, mark as default so the bhview
+         //can disable close button to prevent a state of 
+         //no views displayed
          if(!this.model.hasBHView(data.selected_bhview)){
             bhviewName = this.defaultBHViewName;
             defaultView = true;
+
+            bhviewHash = BHPAGE.navLookup[bhviewName];
+
+            if(bhviewHash.collection != undefined){
+               //Default view is a collection let openBHViewCollection handle it
+               var data = { parent_bhview_index:undefined,
+                            collection:bhviewHash.collection };
+
+               this.openBHViewCollection(data);
+               return false;
+            }
          }
 
          var bhviewIndex = this.model.getBHViewIndex();
 
          var bhviewComponent = new BHViewComponent('#bhviewComponent', 
-                                                 { bhviewName:bhviewName, 
-                                                   bhviewParentIndex:data.parent_bhview_index,
-                                                   bhviewIndex:bhviewIndex }); 
+                                                 { bhview_name:bhviewName, 
+                                                   bhview_parent_index:data.parent_bhview_index,
+                                                   bhview_index:bhviewIndex }); 
 
          //Record parent/child relationships
          this.model.addParentChildRelationship(data.parent_bhview_index, bhviewIndex);
@@ -98,6 +148,8 @@ var BHViewCollection = new Class({
          }
 
          this.model.addBHView(bhviewComponent);
+
+         return bhviewIndex;
       }
    },
    closeBHView: function(data){

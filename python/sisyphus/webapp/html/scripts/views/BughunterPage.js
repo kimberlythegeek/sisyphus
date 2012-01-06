@@ -11,6 +11,8 @@ var BughunterPage = new Class( {
       this.parent(options);
       this.allViewsContainerSel = '#bh_view_container';
       this.addBHViewEvent = 'ADD_BHVIEW';
+      this.addBHViewEvent = 'ADD_BHVIEW';
+      this.openCollectionEvent = 'OPEN_COLLECTION_BHVIEW';
 
       this.windowBaseName = "Bughunter ";
       this.pageCountName = 'bughunter_win_count';
@@ -27,12 +29,17 @@ var BughunterPage = new Class( {
    getPageCount: function(){
       return parseInt(localStorage[this.pageCountName]);
    },
+   getWindowName: function(baseName){
+      return baseName + this.getPageCount();
+   },
+   getTargetOrigin: function(){
+      var protocol = window.location.protocol;
+      var hostname = window.location.host;
+      return protocol + '//' + hostname;
+   },
    addPageToLocalDB: function(){
       var pageCount = parseInt(localStorage[this.pageCountName] || 0);
       localStorage[this.pageCountName] = 1 + pageCount;
-   },
-   getWindowName: function(baseName){
-      return baseName + this.getPageCount();
    },
    closeWindow: function(){
       var pCount = this.getPageCount();
@@ -42,11 +49,6 @@ var BughunterPage = new Class( {
          //last page delete out of local storage
          delete(localStorage[this.pageCountName]);
       }
-   },
-   getTargetOrigin: function(){
-      var protocol = window.location.protocol;
-      var hostname = window.location.host;
-      return protocol + '//' + hostname;
    },
    escapeForUrl: function(s, signal){
       return encodeURIComponent( BHPAGE.unescapeHtmlEntities(s) );

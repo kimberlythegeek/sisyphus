@@ -17,8 +17,8 @@ var BHViewComponent = new Class({
    jQuery:'BHViewComponent',
 
    options: {
-      bhviewName:'',
-      bhviewIndex:0
+      bhview_name:'',
+      bhview_index:0
    },
 
    initialize: function(selector, options){
@@ -29,8 +29,8 @@ var BHViewComponent = new Class({
 
       //This index is dynamically appended
       //to every id in a view clone.
-      this.bhviewIndex = this.options.bhviewIndex;
-      this.bhviewParentIndex = this.options.bhviewParentIndex;
+      this.bhviewIndex = this.options.bhview_index;
+      this.bhviewParentIndex = this.options.bhview_parent_index;
       this.parentWindowName = window.document.title;
 
       //The defaultBHView is the first view initialized
@@ -49,7 +49,7 @@ var BHViewComponent = new Class({
       //Adapters to manage idiosynchratic view behavior
       this.dataAdapters = new DataAdapterCollection();
 
-      this.model = new BHViewModel('#BHViewModel', {bhviewName:this.options.bhviewName,
+      this.model = new BHViewModel('#BHViewModel', {bhviewName:this.options.bhview_name,
                                                     dataAdapters:this.dataAdapters});
 
       this.view = new BHViewView('#BHViewView', {});
@@ -68,6 +68,7 @@ var BHViewComponent = new Class({
       this.processControlPanelEvent = 'PROCESS_CONTROL_PANEL';
       this.signalEvent = 'SIGNAL_BHVIEW';
       this.signalTypeEvent = 'SET_SIGNALING_TYPE_BHVIEW';
+      this.openCollectionEvent = 'OPEN_COLLECTION_BHVIEW';
 
       //Set up subscriptions
       this.subscriptionTargets = {};
@@ -112,14 +113,25 @@ var BHViewComponent = new Class({
       //view and initialize it.
       this.getBHViewClone();
 
-      //Select view and load the data
-      this.selectBHView();
+      //Display parent/child relationship
+      this.view.displayParentChild(this.bhviewParentIndex, 
+                                   this.bhviewIndex, 
+                                   this.parentWindowName);
 
-      //Set up the update of the date range in the page every 5 minutes
+      var defaultLoad = this.model.getBHViewAttribute('default_load')
+      if((defaultLoad == 1) || (this.bhviewIndex == 0)){
+         //Select view and load the data
+         this.selectBHView();
+      }else{
+         this.setControlPanelEv();
+         this.view.showNoDataMessage(this.bhviewIndex, 'sendsignal');
+      }
+
+      //Set up the update of the date range in the page every 60 minutes
       //and only run it if we are the first bhview.  The first bhview
       //cannot be deleted.
       if(this.bhviewIndex == 0){
-         this.updateDateRangeInterval = setInterval( _.bind(this.updateDateRange, this), 300000 );
+         this.updateDateRangeInterval = setInterval( _.bind(this.updateDateRange, this), 3600000 );
       }
    },
    notifyBHViewCollection: function(){
@@ -229,7 +241,7 @@ var BHViewComponent = new Class({
 
       var bhviewName = "";
 
-      if(item){
+      if(item != undefined){
          //Called from callback
          bhviewName = item.href.replace(/^.*?\#/, '');
       }else{
@@ -252,8 +264,27 @@ var BHViewComponent = new Class({
       //Set data for new view
       this.model.setBHViewHash(bhviewName);
 
-      //Display new view's name
+      //Check if we have a collection
+      var collection = this.model.getBHViewAttribute('collection')
+
+      if( collection != undefined ){
+         var data = { parent_bhview_index:this.bhviewIndex,
+                      collection:collection };
+
+         //Set the name to the 0 collection element
+         bhviewName = collection[0].bhview;
+
+         //Set data for the new collection view
+         this.model.setBHViewHash(bhviewName);
+
+         //Fire event to load the rest of the collection
+         $(this.view.allViewsContainerSel).trigger(this.openCollectionEvent, data);
+
+      }
+
       var bhviewReadName = this.model.getBHViewAttribute('read_name');
+
+      //Display new view's name
       this.view.displayBHViewName(this.bhviewIndex, bhviewReadName);
 
       this.view.showTableSpinner(this.bhviewIndex);
@@ -265,11 +296,6 @@ var BHViewComponent = new Class({
 
       //Display signal data
       this.view.displaySignalData('', this.signalData, this.bhviewIndex);
-
-      //Display parent/child relationship
-      this.view.displayParentChild(this.bhviewParentIndex, 
-                                   this.bhviewIndex, 
-                                   this.parentWindowName);
 
       var adapterName = this.model.getBHViewAttribute('data_adapter');
       var a = this.dataAdapters.getAdapter(adapterName);
@@ -443,7 +469,6 @@ var BHViewComponent = new Class({
 
       var controlPanel = this.model.getBHViewAttribute('control_panel');
       var bhcontrolPanelUrl = this.view.controlPanelHtmlUrl + controlPanel;
-
       $.ajax(bhcontrolPanelUrl, { 
          accepts:'text/html',
          dataType:'html',
@@ -1070,6 +1095,9 @@ var BHViewView = new Class({
       //Signal base id
       this.signalBaseSel = '#bh_post_';
 
+      //Messages
+      this.nodataMessage = 'No data available.';
+      this.sendSignalMessage = 'Select a link in the parent view to send a signal.';
    },
    updateDateRange: function(data, textStatus, jqXHR){
 
@@ -1421,7 +1449,7 @@ var BHViewView = new Class({
          $(signalDataSentDisplaySel).attr('title', data);
       }
    },
-   showNoDataMessage: function(bhviewIndex){
+   showNoDataMessage: function(bhviewIndex, messageType){
 
       //Hide main pane spinner
       this.hideSpinner(bhviewIndex);
@@ -1445,6 +1473,12 @@ var BHViewView = new Class({
       //Show message
       var noDataSel = this.getIdSelector(this.tableNoDataSel, 
                                          bhviewIndex);
+
+      var message = this.nodataMessage;
+      if(messageType == 'sendsignal'){
+         message = this.sendSignalMessage;
+      }
+      $(noDataSel).text(message);
       $(noDataSel).css('display', 'block');
 
    },
