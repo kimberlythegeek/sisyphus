@@ -83,6 +83,7 @@
            "read_name":"Site Related Assertions",
            "signals":{ "assertion":"1", 
                        "location":"1",
+                       "socorro_id":"1", 
                        "url":"1"},
            "control_panel":"assertion_urls.html",
            "data_adapter":"named_fields",
@@ -126,6 +127,7 @@
            "read_name":"Unit Related Assertions",
            "signals":{ "assertion":"1", 
                        "location":"1",
+                       "socorro_id":"1", 
                        "url":"1"},
            "control_panel":"assertion_urls.html",
            "data_adapter":"named_fields",
@@ -136,7 +138,48 @@
                       { "name":"tree"} ]
          }
 
-      ]
+      ],
+
+      "Valgrinds",
+      [ { "name":"valgrinds_ut",
+           "read_name":"Unit Valgrinds",
+           "signals":{ "signature":"1", "message":"1" },
+           "control_panel":"valgrinds.html",
+           "data_adapter":"crashes",
+           "charts":[ { "name":"table" }, 
+                      { "name":"pie" }, 
+                      { "name":"bar" }, 
+                      { "name":"tree" } ]
+         },
+
+         { "name":"valgrind_urls_ut",
+           "read_name":"Unit Valgrind URL Summary",
+           "signals":{ "signature":"1", 
+                      "message":"1",
+                      "url":"1" },
+           "control_panel":"valgrind_urls.html",
+           "data_adapter":"urls",
+           "charts":[ { "name":"table" }, 
+                      { "name":"pie" }, 
+                      { "name":"bar" }, 
+                      { "name":"tree" } ]
+          },
+
+          { "name":"valgrind_detail_ut",
+            "read_name":"Unit Related Valgrinds",
+            "signals":{ "signature":"1", 
+                        "message":"1",
+                        "socorro_id":"1", 
+                        "url":"1"},
+            "control_panel":"valgrind_urls.html",
+            "data_adapter":"named_fields",
+            "hidden_columns":{ "changeset":"13", "bug_list":"14", "steps":"15", "exitstatus":"16", "priority":"17" },
+            "charts":[ { "name":"table" }, 
+                       { "name":"pie" }, 
+                       { "name":"bar" }, 
+                       { "name":"tree"} ]
+         }
+     ]
   ],
 
   "Admin",

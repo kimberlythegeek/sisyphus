@@ -676,7 +676,7 @@ def _get_assertions_st(proc_path, proc_name, full_proc_path, nfields):
    
    columns = [ 'assertion', 
                'location', 
-               'Occurence Count',
+               'Occurrence Count',
                'Total Count', 
                'Platform' ]
 
@@ -701,7 +701,7 @@ def _get_assertion_urls_st(proc_path, proc_name, full_proc_path, nfields):
 
    response_data = _aggregate_url_platform_data(table_struct)
 
-   columns = ['url', 'Occurence Count', 'Total Count', 'Platform']
+   columns = ['url', 'Occurrence Count', 'Total Count', 'Platform']
 
    return simplejson.dumps( { 'columns':columns, 
                               'data':response_data,
@@ -799,7 +799,7 @@ def _get_assertions_ut(proc_path, proc_name, full_proc_path, nfields):
    
    columns = [ 'assertion', 
                'location', 
-               'Occurence Count',
+               'Occurrence Count',
                'Total Count', 
                'Platform' ]
 
@@ -857,12 +857,101 @@ def _get_assertion_urls_ut(proc_path, proc_name, full_proc_path, nfields):
 
    response_data = _aggregate_url_platform_data(table_struct)
 
-   columns = ['url', 'Occurence Count', 'Total Count', 'Platform']
+   columns = ['url', 'Occurrence Count', 'Total Count', 'Platform']
 
    return simplejson.dumps( { 'columns':columns, 
                               'data':response_data,
                               'start_date':nfields['start_date'], 
                               'end_date':nfields['end_date'] } )
+
+#####
+#UNIT TESTING VALGRIND ADAPTERS
+#####
+def _get_valgrinds_ut(proc_path, proc_name, full_proc_path, nfields):
+
+   col_prefixes = { 'signature':'v',
+                    'message':'v' }
+
+   _set_dates_for_placeholders(nfields)
+
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
+      full_proc_path = proc_path + 'new_valgrinds_ut'
+
+   table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                       debug_show=settings.DEBUG,
+                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                       return_type='table')
+
+   response_data = _aggregate_valgrind_platform_data(table_struct)
+   
+   columns = [ 'signature', 
+               'message', 
+               'Total Count', 
+               'Platform' ]
+
+   return simplejson.dumps( { 'columns':columns, 
+                              'data':response_data,
+                              'start_date':nfields['start_date'], 
+                              'end_date':nfields['end_date'] } )
+
+def _get_valgrind_urls_ut(proc_path, proc_name, full_proc_path, nfields):
+
+   col_prefixes = { 'url':'utv',
+                    'message':'v',
+                    'signature':'v' }
+
+   _set_dates_for_placeholders(nfields)
+
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                       debug_show=settings.DEBUG,
+                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                       return_type='table')
+
+   response_data = _aggregate_url_platform_data(table_struct)
+
+   columns = ['url', 'Total Count', 'Platform']
+
+   return simplejson.dumps( { 'columns':columns, 
+                              'data':response_data,
+                              'start_date':nfields['start_date'], 
+                              'end_date':nfields['end_date'] } )
+
+def _get_valgrind_detail_ut(proc_path, proc_name, full_proc_path, nfields):
+
+   col_prefixes = { 'signature':'v',
+                    'message':'v', 
+                    'url':'utv' }
+
+   _set_dates_for_placeholders(nfields)
+
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   temp_table_name = 'temp_valgrind_urls_ut_' + get_rand_str(8)
+
+   ##Build temp table##
+   settings.DHUB.execute(proc=proc_path + 'temp_valgrind_urls_ut',
+                         debug_show=settings.DEBUG,
+                         replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
+
+   ##Get the assertiondetails##
+   data = settings.DHUB.execute(proc=full_proc_path,
+                                debug_show=settings.DEBUG,
+                                replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
+                                return_type='table')
+
+   ##Remove temp table##
+   settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
+                         debug_show=settings.DEBUG,
+                         replace=[ temp_table_name ])
+
+   return simplejson.dumps( {'columns':data['columns'], 
+                             'data':data['data'], 
+                             'start_date':nfields['start_date'], 
+                             'end_date':nfields['end_date']} )
 
 #####
 #CRASH TABLE ADAPTERS
@@ -950,22 +1039,54 @@ def _aggregate_assertion_platform_data(table_struct):
 
       platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
       data[row['assertion']][row['location']][row['branch']][platform]['total_count'] += int(row['total_count'])
-      data[row['assertion']][row['location']][row['branch']][platform]['assertion_count'] += int(row['assertion_count'])
+      data[row['assertion']][row['location']][row['branch']][platform]['occurrence_count'] += int(row['occurrence_count'])
 
    response_data = []
    for assertion, matches in data.iteritems():
 
-      assertion_count = 0
+      occurrence_count = 0
 
       for location, branches in matches.iteritems():
 
-         total_count, formated_platform, assertion_count = _format_branch_data(branches)
+         total_count, formated_platform, occurrence_count = _format_branch_data(branches)
 
          crash = { 'assertion': assertion,
                    'location': location,
                    'Platform': formated_platform,
                    'Total Count':total_count,
-                   'Occurence Count':assertion_count}
+                   'Occurrence Count':occurrence_count}
+
+         response_data.append(crash)
+
+   return response_data
+
+def _aggregate_valgrind_platform_data(table_struct):
+
+   #####
+   #Aggregate the os_name, os_version, and cpu_name by branch
+   #####
+   data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int)))))
+
+   for row in table_struct['data']:
+
+      cpu_data = _format_cpu_data(row)
+
+      platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
+      data[row['signature']][row['message']][row['branch']][platform]['total_count'] += int(row['total_count'])
+
+   response_data = []
+   for signature, matches in data.iteritems():
+
+      occurrence_count = 0
+
+      for message, branches in matches.iteritems():
+
+         total_count, formated_platform, occurrence_count = _format_branch_data(branches)
+
+         crash = { 'signature': signature,
+                   'message': message,
+                   'Platform': formated_platform,
+                   'Total Count':total_count }
 
          response_data.append(crash)
 
@@ -985,15 +1106,15 @@ def _aggregate_url_platform_data(table_struct):
       platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
       data[row['url']][row['branch']][platform]['total_count'] += int(row['total_count'])
 
-      if 'assertion_count' in row:
-         data[row['url']][row['branch']][platform]['assertion_count'] += int(row['assertion_count'])
+      if 'occurrence_count' in row:
+         data[row['url']][row['branch']][platform]['occurrence_count'] += int(row['occurrence_count'])
 
    response_data = []
    for url, branches in data.iteritems():
 
       total_count, platform, occurence_count = _format_branch_data(branches)
 
-      url_summary = { 'Occurence Count': occurence_count,
+      url_summary = { 'Occurrence Count': occurence_count,
                       'Total Count':total_count, 
                       'url': url,
                       'Platform': platform }
@@ -1007,7 +1128,7 @@ def _format_branch_data(branches):
    platform = "" 
    counts_broken_down = "" 
    total_count = 0
-   assertion_count = 0
+   occurrence_count = 0
 
    ##Build the platform string, sort branches alphabetically##
    for branch in sorted(branches.keys()):
@@ -1018,14 +1139,14 @@ def _format_branch_data(branches):
          if 'total_count' in branches[branch][line]:
             total_count += branches[branch][line]['total_count']
 
-         if 'assertion_count' in branches[branch][line]:
-            assertion_count += branches[branch][line]['assertion_count']
+         if 'occurrence_count' in branches[branch][line]:
+            occurrence_count += branches[branch][line]['occurrence_count']
 
       counts_broken_down += "<br />"
       platform += counts_broken_down
       counts_broken_down = ""
 
-   return total_count, platform, assertion_count
+   return total_count, platform, occurrence_count
 
 def _format_cpu_data(row):
 
@@ -1194,6 +1315,10 @@ VIEW_ADAPTERS = dict( crashes_st=_get_crashes_st,
                       assertion_urls_ut=_get_assertion_urls_ut,
                       assertion_detail_ut=_get_assertion_detail_ut,
 
+                      valgrinds_ut=_get_valgrinds_ut,
+                      valgrind_urls_ut=_get_valgrind_urls_ut,
+                      valgrind_detail_ut=_get_valgrind_detail_ut,
+
                       socorro_record=_get_socorro_record )
 
 NAMED_FIELDS = set( ['signature',
@@ -1208,7 +1333,8 @@ NAMED_FIELDS = set( ['signature',
                      'pluginversion',
                      'exploitability',
                      'assertion',
-                     'location'] )
+                     'location',
+                     'message'] )
 
 VIEW_PAGES = set([ 'bhview' ])
 

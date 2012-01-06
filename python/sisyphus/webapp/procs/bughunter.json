@@ -195,7 +195,7 @@
                        a.cpu_name,
                        a.build_cpu_name,
                        COUNT( a.id ) AS 'total_count',
-                       SUM( sta.count ) AS 'assertion_count'
+                       SUM( sta.count ) AS 'occurrence_count'
                 FROM Assertion AS a
                 JOIN SiteTestAssertion AS sta ON a.id = sta.assertion_id
                 WHERE (sta.datetime >= 'REP0' AND sta.datetime <= 'REP1') REP2
@@ -223,7 +223,7 @@
                           a.cpu_name,
                           a.build_cpu_name,
                           COUNT( a.id ) AS 'total_count',
-                          SUM( sta.count ) AS 'assertion_count'
+                          SUM( sta.count ) AS 'occurrence_count'
                     FROM Assertion AS a
                     JOIN SiteTestAssertion AS sta ON a.id = sta.assertion_id
                     WHERE (sta.datetime >= 'REP0' AND sta.datetime <= 'REP1') AND 
@@ -255,7 +255,7 @@
                        a.build_cpu_name,
                        DATE_FORMAT(sta.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
                        COUNT(sta.url) AS 'total_count',
-                       SUM( sta.count ) AS 'assertion_count'
+                       SUM( sta.count ) AS 'occurrence_count'
                  FROM Assertion AS a
                  JOIN SiteTestAssertion AS sta ON a.id = sta.assertion_id
                  WHERE (sta.datetime >= 'REP0' AND sta.datetime <= 'REP1') REP2
@@ -374,7 +374,7 @@
                        a.cpu_name,
                        a.build_cpu_name,
                        COUNT( a.id ) AS 'total_count',
-                       SUM( uta.count ) AS 'assertion_count'
+                       SUM( uta.count ) AS 'occurrence_count'
                 FROM Assertion AS a
                 JOIN UnitTestAssertion AS uta ON a.id = uta.assertion_id
                 WHERE (uta.datetime >= 'REP0' AND uta.datetime <= 'REP1') REP2
@@ -402,7 +402,7 @@
                           a.cpu_name,
                           a.build_cpu_name,
                           COUNT( a.id ) AS 'total_count',
-                          SUM( uta.count ) AS 'assertion_count'
+                          SUM( uta.count ) AS 'occurrence_count'
                     FROM Assertion AS a
                     JOIN UnitTestAssertion AS uta ON a.id = uta.assertion_id
                     WHERE (uta.datetime >= 'REP0' AND uta.datetime <= 'REP1') AND 
@@ -434,7 +434,7 @@
                        a.build_cpu_name,
                        DATE_FORMAT(uta.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
                        COUNT(uta.url) AS 'total_count',
-                       SUM( uta.count ) AS 'assertion_count'
+                       SUM( uta.count ) AS 'occurrence_count'
                  FROM Assertion AS a
                  JOIN UnitTestAssertion AS uta ON a.id = uta.assertion_id
                  WHERE (uta.datetime >= 'REP0' AND uta.datetime <= 'REP1') REP2
@@ -483,6 +483,125 @@
                WHERE uta.url IN (
                   SELECT url FROM REP2
                ) AND (uta.datetime >= 'REP0' AND uta.datetime <= 'REP1')
+               LIMIT 1000",
+
+         "host_type":"master_host"
+      },
+
+      "valgrinds_ut":{
+
+         "sql":"SELECT v.signature,
+                       v.message,
+                       v.branch,
+                       v.os_name,
+                       v.os_version,
+                       v.cpu_name,
+                       v.build_cpu_name,
+                       COUNT( v.id ) AS 'total_count'
+                FROM Valgrind AS v 
+                JOIN UnitTestValgrind AS utv ON v.id = utv.valgrind_id
+                WHERE (utv.datetime >= 'REP0' AND utv.datetime <= 'REP1') REP2
+                GROUP BY v.signature,
+                         v.message,
+                         v.branch,
+                         v.os_name,
+                         v.os_version,
+                         v.cpu_name,
+                         v.build_cpu_name
+                LIMIT 1000",
+
+         "host_type":"master_host"
+
+      },
+
+      "new_valgrinds_ut":{
+
+            "sql":"SELECT v.signature,
+                          v.message,
+                          v.branch,
+                          v.os_name,
+                          v.os_version,
+                          v.cpu_name,
+                          v.build_cpu_name,
+                          COUNT( v.id ) AS 'total_count'
+                    FROM Valgrind AS v 
+                    JOIN UnitTestValgrind AS utv ON v.id = utv.valgrind_id
+                    WHERE (utv.datetime >= 'REP0' AND utv.datetime <= 'REP1') AND 
+                           v.id NOT IN (
+                              SELECT v.id
+                              FROM Valgrind AS v 
+                              JOIN SiteTestValgrind AS utv ON v.id = utv.valgrind_id
+                              WHERE (utv.datetime < 'REP0')) REP2
+                    GROUP BY v.signature,
+                             v.message,
+                             v.branch,
+                             v.os_name,
+                             v.os_version,
+                             v.cpu_name,
+                             v.build_cpu_name
+                    LIMIT 1000",
+
+            "host_type":"master_host"
+      },
+
+      "valgrind_urls_ut":{
+
+         "sql":"SELECT DISTINCT(utv.url),
+                       v.branch,
+                       v.os_name,
+                       v.os_version,
+                       v.cpu_name,
+                       v.build_cpu_name,
+                       DATE_FORMAT(utv.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
+                       COUNT(utv.url) AS 'total_count'
+                 FROM Valgrind AS v
+                 JOIN UnitTestValgrind AS utv ON v.id = utv.valgrind_id
+                 WHERE (utv.datetime >= 'REP0' AND utv.datetime <= 'REP1') REP2
+                 GROUP BY utv.url, v.branch, v.os_name, v.os_version, v.build_cpu_name
+                 ORDER BY utv.datetime DESC
+                 LIMIT 1000",
+
+         "host_type":"master_host"
+      },
+
+      "temp_valgrind_urls_ut":{
+
+            "sql":"CREATE TEMPORARY TABLE IF NOT EXISTS REP3 AS 
+                   SELECT DISTINCT utv.url AS url
+                   FROM Valgrind AS v
+                   JOIN UnitTestValgrind AS utv ON v.id = utv.valgrind_id
+                   WHERE (utv.datetime >= 'REP0' AND utv.datetime <= 'REP1') REP2",
+
+            "host_type":"master_host"
+      },
+
+      "valgrind_detail_ut":{
+
+         "sql":"SELECT v.signature, 
+                       v.message,
+                       v.os_name,
+                       v.os_version,
+                       v.cpu_name,
+                       v.build_cpu_name,
+                       v.product,
+                       v.branch,
+                       utv.url,
+                       DATE_FORMAT(utv.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
+                       utv.stack,
+                       utv.count,
+                       str.log,
+                       str.changeset,
+                       str.bug_list,
+                       str.steps,
+                       str.exitstatus,
+                       str.priority,
+                       str.socorro_id
+               FROM Valgrind AS v
+               JOIN UnitTestValgrind AS utv ON v.id = utv.valgrind_id
+               JOIN SiteTestRun AS str ON utv.testrun_id = str.id
+               WHERE utv.url IN (
+                  SELECT url FROM REP2
+               ) AND (utv.datetime >= 'REP0' AND utv.datetime <= 'REP1')
                LIMIT 1000",
 
          "host_type":"master_host"
