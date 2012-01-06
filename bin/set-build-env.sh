@@ -290,7 +290,7 @@ for step in step1; do # dummy loop for handling exits
             # msys environment from cygwin.
             cmdbat=`echo $startbat | sed 's|start|msys-command|'`;
             if [[ ! -e "$cmdbat" || "$startbat" -nt "$cmdbat" ]]; then
-                sed 's|\(^cd.*USERPROFILE.*\)|rem \1|; s|^start /d.*|cmd /c %MOZILLABUILD%\\msys\\bin\\bash --login -i  -c %1|' $startbat > $cmdbat
+                sed 's|\(^cd.*USERPROFILE.*\)|rem \1|; s|^start /d.*|cmd /c %MOZILLABUILD%\\msys\\bin\\bash --login -i  -c %1|; s|^"%MOZILLABUILD%\\msys\\bin\\bash" --login -i|cmd /c %MOZILLABUILD%\\msys\\bin\\bash --login -i  -c %1|' $startbat > $cmdbat
             fi
 
             echo moztools Location: $MOZ_TOOLS
