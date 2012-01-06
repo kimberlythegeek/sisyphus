@@ -102,10 +102,20 @@ def main():
             skipurls.append(skipurl)
         skipurlsfilehandle.close()
 
-    branches_rows = models.Branch.objects.all()
+    branches_rows = models.Branch.objects.all().order_by('major_version')
 
     if len(branches_rows) == 0:
         raise Exception('Branch table is empty.')
+
+    # Eliminate any duplicate mappings in the Version to Branch mapping
+    # By picking the row with highest major_version. The ascending sort
+    # guarantees the branch row with the highest major_version will be kept.
+    branches_dict = {}
+    for branch_row in branches_rows:
+        branches_dict[branch_row.branch] = branch_row
+    branches_list = []
+    for branch in branches_dict:
+        branches_list.append(branches_dict[branch])
 
     operating_systems = {}
 
@@ -184,7 +194,7 @@ def main():
                     skip_counter += 1
                     continue
 
-            for branch_row in branches_rows:
+            for branch_row in branches_list:
                 product       = branch_row.product
                 branch        = branch_row.branch
                 major_version = branch_row.major_version

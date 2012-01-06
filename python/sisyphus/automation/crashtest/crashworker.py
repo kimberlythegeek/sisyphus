@@ -413,7 +413,16 @@ class CrashTestWorker(worker.Worker):
                                  filter(worker_type__exact = self.worker_type).
                                  exclude(state__exact = 'disabled').
                                  exclude(state__exact = 'dead'))
-                branches_rows = models.Branch.objects.all()
+                branches_rows = models.Branch.objects.all().order_by('major_version')
+                # Eliminate any duplicate mappings in the Version to Branch mapping
+                # By picking the row with highest major_version. The ascending sort
+                # guarantees the branch row with the highest major_version will be kept.
+                branches_dict = {}
+                for branch_row in branches_rows:
+                    branches_dict[branch_row.branch] = branch_row
+                branches_list = []
+                for branch in branches_dict:
+                    branches_list.append(branches_dict[branch])
 
                 # record each worker's os, and cpu information in a hash
                 # so that we only emit one signature per combination rather
@@ -438,7 +447,7 @@ class CrashTestWorker(worker.Worker):
 
                     os_cpu_hash[worker_os_cpu_key] = 1
 
-                    for branch_row in branches_rows:
+                    for branch_row in branches_list:
                         if branch_row.product != self.product:
                             continue
 
