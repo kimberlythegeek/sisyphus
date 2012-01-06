@@ -368,15 +368,20 @@ var BHViewAdapter = new Class({
 
                         if(s == 'socorro_id'){
                            dataObject.data[i][s] = '<div style="display:inline;"><a class="' + eclass + 
-                                                   '" href="#' + s + '">' + BHPAGE.escapeHtmlEntities(String(dataObject.data[i][s])) + 
+                                                   '" href="#' + s + '">' + 
+                                                   BHPAGE.escapeHtmlEntities(String(dataObject.data[i][s])) + 
                                                    '</a></div>';
                         }else{
                            var cmenu = "bh_table_contextmenu";
                            if(s == 'url'){
                               cmenu = "bh_url_contextmenu";
+                           }else if(s == 'fatal_message'){
+                              cmenu = "bh_fm_contextmenu";
                            }
-                           dataObject.data[i][s] = '<div contextmenu="' + cmenu + '" style="display:inline;"><a class="' + eclass + 
-                                                   '" href="#' + s + '">' + BHPAGE.escapeHtmlEntities(dataObject.data[i][s]) + 
+                           dataObject.data[i][s] = '<div contextmenu="' + cmenu + 
+                                                   '" style="display:inline;"><a class="' + eclass + 
+                                                   '" href="#' + s + 
+                                                   '">' + BHPAGE.escapeHtmlEntities(dataObject.data[i][s]) + 
                                                    '</a></div>';
                         }
                      }
@@ -386,7 +391,8 @@ var BHViewAdapter = new Class({
                if(mediaFound){
                   for(var m in this.mediaColumns){
                      if(dataObject.data[i][m] != undefined){
-                        var mediaHref = "/bughunter/media" + dataObject.data[i][m].replace(/^.*media/, '').replace(/\.gz$/, '');
+                        var mediaHref = "/bughunter/media" + 
+                                        dataObject.data[i][m].replace(/^.*media/, '').replace(/\.gz$/, '');
                         dataObject.data[i][m] = '<a target="_blank" href="' + mediaHref + '">view</a>';
                      }
                   }

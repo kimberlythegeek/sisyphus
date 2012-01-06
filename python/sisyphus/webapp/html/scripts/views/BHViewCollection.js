@@ -171,7 +171,28 @@ var BHViewCollection = new Class({
       $('menuitem').bind('click', _.bind( this._cellMenuClickHandler, this ) );
    },
    _setContextMenu: function(event){
+
       this.contextMenuTarget = event.target;  
+
+      //See if the selection matches the cell contents
+      var cellText = $(this.contextMenuTarget).text();
+
+      var sel = document.getSelection();
+
+      if(sel){
+         if(sel.focusNode){
+            if(sel.focusNode.parentElement != this.contextMenuTarget){
+               //Selection parentElement does not match the element 
+               //that the context menu was opened on, clear the selection
+               //to avoid confusion
+               if (sel.removeAllRanges) {
+                  sel.removeAllRanges();
+               } else if (sel.empty) {
+                  sel.empty();
+               }
+            }
+         }
+      }
    },
    _cellMenuClickHandler: function(event){
 
@@ -476,11 +497,13 @@ var ExternalLink = new Class({
 
    initialize: function(selector, options){
 
-      this.bugzillaBase = 'https://bugzilla.mozilla.org/buglist.cgi?quicksearch=classification:"Client Software" OR classification:"Components" AND ';
+      this.bugzillaBase = 'https://bugzilla.mozilla.org/buglist.cgi?quicksearch=ALL classification:"Client Software" OR classification:"Components" AND ';
       this.crashstatsBase = "http://crash-stats.mozilla.com/query/query?do_query=1&query_type=contains&query=";
 
-      this.bugzillaFieldMap = { summary:'summary:',
-                                content:'content:' };
+      this.bugzillaFieldMap = { sig: { value:'sig:REP' },
+                                url: { value:'url:REP' },
+                                summary: { value:'summary:REP' },
+                                content: { value:'summary:REP OR comment:REP' } };
    },
    getUrl: function(action, text){
 
@@ -506,28 +529,14 @@ var ExternalLink = new Class({
    },
    getBugzillaUrl: function(fieldType, searchType, text){
       
-      var url = "";
-      if(fieldType == 'sig'){
+      var key = searchType;
+      var rep = '"' + text + '"'; 
 
-         if(searchType == 'sig'){
-            url += this.bugzillaBase + 'sig:"' + text + '"'; 
-         }else {
-            url += this.bugzillaBase + this.bugzillaFieldMap[searchType] + '"' + text + '"'; 
-         }
-
-      }else if(fieldType == 'url'){
-
-         if(searchType == 'url'){
-            url += this.bugzillaBase + 'url:"' + text + '"'; 
-         }else {
-            url += this.bugzillaBase + this.bugzillaFieldMap[searchType] + '"' + text + '"'; 
-         }
-
-      }else{
-
-         url += this.bugzillaBase + 'content:"' + text + '"'; 
-
+      if(this.bugzillaFieldMap[searchType] === undefined){
+         searchType = 'content';
       }
+
+      var url = this.bugzillaBase + this.bugzillaFieldMap[searchType].value.replace(/REP/g, rep);
       return url;
    },
    getCrashstatsUrl: function(fieldType, searchType, text){
