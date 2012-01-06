@@ -79,9 +79,6 @@ var BHViewAdapter = new Class({
       this.endDateSel = '#bh_end_date';
       this.currentDateSel = '#bh_current_date';
 
-      this.cellAnchorClassSel = '.bh-cell-contextanchor';
-      this.cellMenuClassSel = '.bh-cell-contextmenu';
-
       this.ignoreKeyCodes = { 37:1,    //left arrow
                               39:1 };  //right arrow
    },
@@ -370,15 +367,13 @@ var BHViewAdapter = new Class({
                      if(dataObject.data[i][s] != undefined){
 
                         if(s == 'socorro_id'){
-                           var contextMenuHtml = $(this.cellAnchorClassSel).html();
-                           dataObject.data[i][s] = '<div style="display:inline;"><a class="' + eclass + 
+                           dataObject.data[i][s] = '<div class="context-menu-target" style="display:inline;"><a class="' + eclass + 
                                                    '" href="#' + s + '">' + BHPAGE.escapeHtmlEntities(String(dataObject.data[i][s])) + 
-                                                   '</a>' + contextMenuHtml + '</div>';
+                                                   '</a></div>';
                         }else{
-                           var contextMenuHtml = $(this.cellAnchorClassSel).html();
-                           dataObject.data[i][s] = '<div style="display:inline;"><a class="' + eclass + 
+                           dataObject.data[i][s] = '<div class="context-menu-target" style="display:inline;"><a class="' + eclass + 
                                                    '" href="#' + s + '">' + BHPAGE.escapeHtmlEntities(dataObject.data[i][s]) + 
-                                                   '</a>' + contextMenuHtml + '</div>';
+                                                   '</a></div>';
                         }
                      }
                   }

@@ -13,6 +13,7 @@
     <script src="/scripts/jquery-1.6.3.min.js"></script>
     <script src="/scripts/jquery-ui-1.8.13.custom.min.js"></script>
     <script src="/scripts/jquery.url.js"></script>
+    <script src="/scripts/jquery.contextMenu-1.01/jquery.contextMenu.js"></script>
     <script src="/scripts/underscore-min.js"></script>
 
     <!-- Gives core mootools class functionality to jQuery -->
@@ -58,41 +59,21 @@
       <span class="ui-icon ui-icon-triangle-2-n-s css-right"></span>
    </a>
 </span>
-<!-- Cell Context Menu -->
-<div class="bh-cell-contextmenu hidden">
-   <div class="ui-widget ui-corner-all ui-helper-clearfix" style="font-size:12px;">
-      <div class="ui-widget">
-         <div class="ui-state-highlight ui-corner-all" style="margin-top:5px; padding:0.5em;"> 
-            <p><strong>Note:</strong> The default action when clicking a link is to send signals to receiver views in the page. The options below open links in new pages.
-            </p>
-         </div>
-      </div>
-      <div class="ui-widget">
-         <div class="ui-state-highlight ui-corner-all" style="margin-top:5px; padding:0.5em;"> 
-            <p>
-               <strong>Open Link In:</strong>
-               <select class="bh-signal-views">
-               </select>
-               <button class="ui-button ui-widget ui-corner-all ui-button-text-only ui-state-hover bh-open-bhpage-link" style="color:#000080; margin-left:5px; padding:0.3em;">Open</button>
-            </p>
-         </div>
-      </div>
-      <div class="ui-widget bh-url-cell-menu-panel">
-         <div class="ui-state-error ui-corner-all" style="margin-top:5px; margin-bottom:5px; padding:0.5em;"> 
-            <p>
-               <div>
-                  <span class="ui-icon ui-icon-alert" style="float:left; margin-right:.3em;"></span>
-                  <strong>WARNING:</strong> Page may contain disturbing content! Shut the door, cover your eyes, use caution...
-               </div>
-               <div style="margin-top:10px; margin-bottom:8px;">
-                  <strong>Open Link In:</strong><button class="ui-button ui-widget ui-button-text-only ui-corner-all ui-state-hover bh-open-page-link" style="margin-left:5px; color:#CD0000; padding:0.3em;">New page</button> 
-               </div>
-            </p>
-         </div>
+<!--Right Click Context Menu-->
+<div id="bh_context_menu" class="contextMenu ui-corner-all">
+   <div class="select"><a href="#select" style="padding-right:65%;">Select Cell Data</a></div>
+   <div id="bh_cm_open" class="separator hidden">
+      <a href="#open">Open in New Window</a>:<select id="bh_signal_views" style="margin-left:3px;"></select>
+   </div>
+   <div id="bh_cm_url_message" class="separator hidden">
+      <div class="ui-state-error ui-corner-all" style="margin-top:5px; margin-bottom:5px; padding:1.0em;"> 
+         <span class="ui-icon ui-icon-alert" style="float:left; margin-right:.3em;"></span>
+         <strong>WARNING:</strong> Page may crash your browser or contain disturbing content! Shut the door, cover your eyes, use caution...
       </div>
    </div>
+   <div id="bh_cm_url" class="hidden"><a href="#openurl" style="padding-right:46%;">Open URL in New Window</a></div>
+   <div class="separator"><a href="#quit" style="padding-right:86%;">Quit</a></div>
 </div>
-<!--End -->
 
 <!-- Connections Modal -->
 <div class="bh-connections-modal ui-widget ui-corner-top hidden" title="Configure Connections">

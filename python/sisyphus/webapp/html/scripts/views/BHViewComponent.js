@@ -56,7 +56,8 @@ var BHViewComponent = new Class({
 
       //The parent view index, it will be defined when this window
       //was spawned from another.
-      if((window.opener != null) && (this.bhviewIndex == 0)){
+      if(( (window.opener != undefined) && (window.opener.document != undefined) ) && 
+         (this.bhviewIndex == 0)){
          //get the parent bhview index embedded in the page
          this.bhviewParentIndex = this.view.getParentBHViewIndex();
          this.parentWindowName = window.opener.document.title;
@@ -133,10 +134,11 @@ var BHViewComponent = new Class({
       if(this.bhviewIndex == 0){
          this.updateDateRangeInterval = setInterval( _.bind(this.updateDateRange, this), 3600000 );
       }
+
    },
    notifyBHViewCollection: function(){
 
-      if(window.opener != null){
+      if( (window.opener != undefined) && (window.opener.document != undefined) ){
          //If we have an opener we're a child on a new page
          window.opener.BHPAGE.BHViewCollection.loadNewChildWindow(window);
          //Register listener for signals from parent
@@ -148,7 +150,7 @@ var BHViewComponent = new Class({
 
       var data = this.validateMessageData(event);
 
-      if(window.opener != null){
+      if( (window.opener != undefined) && (window.opener.document != undefined) ){
          if(!_.isEmpty(data)){
             //Make sure the window/view sender are the appropriate parents
             if((data.window_sender == window.opener.document.title) && 
@@ -459,6 +461,9 @@ var BHViewComponent = new Class({
                content: data,
                flyOut: true,
                showSpeed: 150,
+               onOpen: _.bind(function(event){
+                              this.view.hideContextMenu();
+                       }, this),
                callback:{ method:this.selectBHView, 
                           context:this }
             });
@@ -491,6 +496,9 @@ var BHViewComponent = new Class({
       $(visualizationSel).menu({
          content: $(visMenuSel).html(),
          showSpeed: 50,
+         onOpen: _.bind(function(event){
+                           this.view.hideContextMenu();
+                        }, this),
          callback: { method:this.setVisualization, context:this }
       });
    },
@@ -647,15 +655,6 @@ var BHViewComponent = new Class({
          this._bindCellContextMenu();
       }, this));
 
-      /**********************
-       * NOTE: This click handler was originally in the live() call below.
-       *       According to the datatables.js docs that is the prefered method
-       *       for catching click events inside the table.
-       *
-       *       However, when cell menu's were added and removed, the datatable
-       *       ceased to trigger an event for the menu anchor click.  This problem
-       *       was removed by directly binding to the anchor taggle click.
-       ***********************/
       this._bindCellContextMenu();
 
       //if the table is scrolled make sure we close any open menus
@@ -667,6 +666,7 @@ var BHViewComponent = new Class({
 
       //Catch click events on the datatable
       $(this.dataTable).live("click", _.bind(function(event){
+
 
          //close any open menus
          this.view.closeMenu();
@@ -709,96 +709,6 @@ var BHViewComponent = new Class({
          }
       }, this));
 
-   },
-   openCellContextMenu: function(menuAnchorEl){
-
-      //Get the row element user clicked on
-      var selectedTrEl = $(menuAnchorEl).parent().parent().parent();
-
-      if( $(selectedTrEl).is('tr') ){
-
-         //Remove pre-existing menus
-         this.view.removeFgmenuByClass(this.view.cellMenuTargetClass, menuAnchorEl);
-
-         var menuAnchorToggleEl = $(this.cellAnchorClassSel).children()[0];
-
-         var cellChildElements = $(menuAnchorEl).parent().children();
-         var signal = $(cellChildElements[0]).attr('href').replace(/\#/, '');
-
-         //Get the BHViews that listen for the signal
-         var signalBHViews = BHPAGE.BHViewCollection.getBHViewsBySignal(signal);
-         this.view.loadCellMenuOptions(signalBHViews);
-
-         if(signal == 'url'){
-            //Display url warning panel
-            $(this.view.cellUrlMenuPanelClassSel).removeClass('hidden');
-         } else {
-            //Hide the url warning panel
-            $(this.view.cellUrlMenuPanelClassSel).addClass('hidden');
-         }
-
-         //Clone the cell menu
-         var cellMenuClone = this.view.cloneCellMenu();
-
-         $(menuAnchorEl).menu({ 
-            content: $(cellMenuClone).html(),
-            showSpeed: 150,
-            classTarget:this.view.cellMenuTargetClass,
-            width: this.view.cellContextPanelWidth,
-
-            clickHandler:_.bind(function(event){
-
-               if($(event.target).hasClass(this.view.cellOpenBHViewBtClass)){
-
-                  //Get the dateRange
-                  var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
-                                                                         this.bhviewIndex);
-                  var adapterName = this.model.getBHViewAttribute('data_adapter');
-                  var a = this.dataAdapters.getAdapter(adapterName);
-                  var dateRange = a.getDateRangeParams(controlPanelDropdownSel, this.signalData);
-                  var dateParams = "start_date=" + dateRange.start_date + "&end_date=" + dateRange.end_date + "&";
-
-                  //Get the signal
-                  var cellChildElements = $(menuAnchorEl).parent().children();
-                  var cellText = $(cellChildElements[0]).text();
-                  var bhview = this.view.getCellMenuBHViewSelection(event.target);
-
-                  //Build the data object for the event
-
-                  //Get the bhviewIndex from the table, we cannot use this.bhviewIndex here because
-                  //it will be the last view created.
-                  var tableId = $( $(menuAnchorEl).parent() ).closest( 'table' ).attr('id');
-                  var indexMatch = tableId.match(/(\d+)$/);
-
-                  if(indexMatch != null){
-                     var bhviewIndex = parseInt(indexMatch[1]);
-
-                     var data = { selected_bhview:bhview,
-                                  parent_bhview_index:bhviewIndex,
-                                  display_type:'page',
-                                  params:dateParams + signal + '=' + cellText};
-
-                     $(this.view.allViewsContainerSel).trigger(this.addBHViewEvent, data);
-                  }
-
-               }else if($(event.target).hasClass(this.view.cellOpenPageBtClass)){
-
-                  //Open the url in a new window
-                  var cellChildElements = $(menuAnchorEl).parent().children();
-                  var href = $(cellChildElements[0]).text();
-                  this.view.closeMenu();
-                  window.open(href);
-               }
-
-            }, this) //end bind
-         });
-
-         //Access menu created through allUIMenus in fg.menu
-         //to display.  THis is an fg.menu hack.  fg.menu
-         //needs to be adapted to directly manage multiple 
-         //menus in a better way.
-         allUIMenus[ allUIMenus.length - 1 ].showMenu();
-      }
    },
    /**************
     *BUTTON CLICK HANDLERS
@@ -874,6 +784,8 @@ var BHViewComponent = new Class({
          width: this.view.controlPanelWidth,
 
          onOpen: _.bind(function(event){
+
+            this.view.hideContextMenu();
 
             //Make sure we don't have any extra keydown event bindings
             $(document).unbind('keydown');
@@ -974,22 +886,95 @@ var BHViewComponent = new Class({
    },
 
    _bindCellContextMenu: function(){
-      $(this.view.cellMenuTogglerClassSel).bind('click', _.bind(function(event){
-         event.stopPropagation();
 
-         if(this.view != undefined){
-            //See if the user has selected the cell context menu
-            var menuAnchorEl;
-            if($(event.target).attr('href') == this.view.cellMenuHref){
-               menuAnchorEl = $(event.target);
-            }else if($(event.target).parent().attr('href') == this.view.cellMenuHref){
-               menuAnchorEl = $(event.target).parent();
-            }
-            if(menuAnchorEl != undefined){
-               this.openCellContextMenu(menuAnchorEl);
-            }
+      var tableSel = this.view.getIdSelector(this.view.tableSel, this.bhviewIndex);
+      var tableCells = $(tableSel).find('td');
+      for(var i=0; i<tableCells.length; i++){
+         $(tableCells[i]).contextMenu({
+               menu:this.view.contextMenuId,
+               onOpen:_.bind( function(el){
+                  this._configureContextMenuOnOpen(el);
+               }, this)
+            },
+            _.bind( function(action, el, pos){
+               switch(action){
+                  case 'select':
+
+                     this._selectTextFromContextMenu(el);
+                     break;
+
+                  case 'open':
+
+                     this._openSignalFromContextMenu(el);
+                     break;
+
+                  case 'openurl':
+
+                     this._openUrlFromContextMenu(el);
+                     break;
+
+               }
+         }, this) );
+      }
+   },
+   _configureContextMenuOnOpen: function(el){
+      var anchor = $(el).find('a');
+      if(anchor.get(0)){
+         $(this.view.contextMenuOpenPanelSel).removeClass('hidden');
+         var href = $(anchor).attr('href');
+         if(href.match(/url/)){
+            $(this.view.contextMenuUrlPanelMessageSel).removeClass('hidden');
+            $(this.view.contextMenuUrlPanelSel).removeClass('hidden');
+         }else{
+            $(this.view.contextMenuUrlPanelSel).addClass('hidden');
+            $(this.view.contextMenuUrlPanelMessageSel).addClass('hidden');
          }
-      }, this));
+      }else{
+         $(this.view.contextMenuOpenPanelSel).addClass('hidden');
+         $(this.view.contextMenuUrlPanelSel).addClass('hidden');
+         $(this.view.contextMenuUrlPanelMessageSel).addClass('hidden');
+       }
+       //Set context select menu
+       var signals = this.model.getBHViewAttribute('signals');
+       BHPAGE.ConnectionsComponent.setAllViewsOptionMenu(this.view.contextSelectMenuSel, signals);
+   },
+   _openSignalFromContextMenu: function(el){
+      //Get the dateRange
+      var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
+                                                            this.bhviewIndex);
+      var adapterName = this.model.getBHViewAttribute('data_adapter');
+      var a = this.dataAdapters.getAdapter(adapterName);
+      var dateRange = a.getDateRangeParams(controlPanelDropdownSel, this.signalData);
+      var dateParams = "start_date=" + dateRange.start_date + "&end_date=" + dateRange.end_date + "&";
+
+      //Get the signal
+      var anchor = $(el).find('a');
+      var signal = $(anchor).attr('href').replace('#', '');
+      var cellText = anchor.text();
+      var bhview = this.view.getCellMenuBHViewSelection();
+
+      //Build the data object for the event
+      var data = { selected_bhview:bhview,
+                   parent_bhview_index:this.bhviewIndex,
+                   display_type:'page',
+                   params:dateParams + signal + '=' + cellText};
+
+      $(this.view.allViewsContainerSel).trigger(this.addBHViewEvent, data);
+   },
+   _selectTextFromContextMenu: function(el){
+      var anchor = $(el).find('a').get(0);
+      if(anchor){
+         this.view.selectText(anchor);
+      }else{
+         this.view.selectText(el.get(0));
+      }
+   },
+   _openUrlFromContextMenu: function(el){
+      //Open the url in a new window
+      var anchor = $(el).find('a');
+      var href = anchor.text()
+      this.view.closeMenu();
+      window.open(href);
    }
 });
 var BHViewView = new Class({
@@ -1057,15 +1042,12 @@ var BHViewView = new Class({
       this.controlPanelResetDatesSel = '#bh_reset_dates_c';
 
       //Cell context menu class selectors
-      this.cellAnchorClassSel = '.bh-cell-contextanchor';
-      this.cellMenuClassSel = '.bh-cell-contextmenu';
-      this.cellMenuHref = '#cellmenu';
-      this.cellOpenBHViewBtClass = 'bh-open-bhpage-link';
-      this.cellOpenPageBtClass = 'bh-open-page-link';
-      this.cellBHViewOptionsClassSel = '.bh-signal-views';
-      this.cellUrlMenuPanelClassSel = '.bh-url-cell-menu-panel';
-      this.cellMenuTogglerClassSel = '.bh-cell-menu-toggle';
-      this.cellMenuTargetClass = 'bh-menu-target';
+      this.contextMenuId = 'bh_context_menu';
+      this.contextMenuClassSel = '.contextMenu';
+      this.contextSelectMenuSel = '#bh_signal_views';
+      this.contextMenuOpenPanelSel = '#bh_cm_open';
+      this.contextMenuUrlPanelSel = '#bh_cm_url';
+      this.contextMenuUrlPanelMessageSel = '#bh_cm_url_message';
 
       //Signal display ids
       this.signalDataSentDisplaySel = '#bh_signal_data_sent_c';
@@ -1302,39 +1284,8 @@ var BHViewView = new Class({
    /************************
     * CELL CONTEXT MENU METHODS
     * **********************/
-   getCellMenuBHViewSelection: function(el){
-      return $( el ).parent().find('select').attr('value');
-   },
-   removeFgmenuByClass: function(className, menuAnchorEl){
-
-      /***********
-       * Removes an fg.menu using the same recipe described in removeControlPanel
-       * but takes a clasname and the toggler anchor element as
-       * arguments.
-       * *********/
-      for(var i=0; i<allUIMenus.length; i++){
-         if(allUIMenus[i].menuExists){
-            if(allUIMenus[i].classTarget == className){
-
-               //close the menu
-               allUIMenus[i].kill();
-               allUIMenus[i].menuExists = false;
-               //remove it from allUIMenus
-               allUIMenus = _.without( allUIMenus, allUIMenus[i] );
-            }
-         }
-      }
-      $(menuAnchorEl).unbind('click');
-      var classSel = '.' + className;
-      $(classSel).unbind('click');
-      var pD = $('.positionHelper').find(classSel);
-      var positionHelper = pD.parent().parent();
-      $(positionHelper).remove();
-   },
-   cloneCellMenu: function(){
-      var cellMenuClone = $(this.cellMenuClassSel).clone();
-      $(cellMenuClone.children()[0]).addClass(this.cellMenuTargetClass);
-      return cellMenuClone;
+   getCellMenuBHViewSelection: function(){
+      return $(this.contextSelectMenuSel).attr('value');
    },
    /************************
     *BHVIEW MODIFICATION METHODS
@@ -1492,6 +1443,10 @@ var BHViewView = new Class({
             allUIMenus[i].kill();
          }
       }
+      this.hideContextMenu();
+   },
+   hideContextMenu: function(){
+      $(this.contextMenuClassSel).hide();
    },
    showBHView: function(bhviewIndex, bhviewReadName){
 
@@ -1699,7 +1654,7 @@ var BHViewModel = new Class({
                               aLengthMenu:[[25, 50, 100, 500, 1000], [25, 50, 100, 500, 1000]],
                               aaData:dataObject.data,
                               aoColumns:[],
-                              
+
                               oColVis:{
                                  buttonText: "&nbsp;",
                                  bRestore: true,

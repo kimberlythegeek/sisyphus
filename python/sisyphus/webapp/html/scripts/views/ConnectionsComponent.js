@@ -16,13 +16,15 @@ var ConnectionsComponent = new Class({
    },
    open: function(tab, signalingType, signals){
 
-      var bhviewNames = BHPAGE.BHViewCollection.getBHViewsBySignalHash(signals);
-
-      //Set up all views option menu
-      this.view.setAllViewsOptionMenu(bhviewNames);
+      this.setAllViewsOptionMenu(this.view.viewListSel, signals);
 
       this.view.setSignalingType(signalingType);
       this.view.open(tab, signalingType);
+   },
+   setAllViewsOptionMenu: function(selectSel, signals){
+      var bhviewNames = BHPAGE.BHViewCollection.getBHViewsBySignalHash(signals);
+      //Set up all views option menu
+      this.view.setAllViewsOptionMenu(selectSel, bhviewNames);
    },
    setBHViewIndex: function(index){
       this.view.bhviewIndex = index;
@@ -139,10 +141,10 @@ var ConnectionsView = new Class({
          }
       }
    },
-   setAllViewsOptionMenu: function(bhviewNames){
+   setAllViewsOptionMenu: function(listSel, bhviewNames){
 
       //Clear out any existing options
-      $(this.viewListSel).empty();
+      $(listSel).empty();
 
       bhviewNames.sort(this.sortOptionMenu);
 
@@ -154,7 +156,7 @@ var ConnectionsView = new Class({
             $(optionEl).attr('selected', 1);
          }
          $(optionEl).css('display', 'block');
-         $(this.viewListSel).append(optionEl);
+         $(listSel).append(optionEl);
       }
    },
    sortOptionMenu: function(a, b){
