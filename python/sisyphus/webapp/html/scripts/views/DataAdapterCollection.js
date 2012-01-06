@@ -367,11 +367,15 @@ var BHViewAdapter = new Class({
                      if(dataObject.data[i][s] != undefined){
 
                         if(s == 'socorro_id'){
-                           dataObject.data[i][s] = '<div class="context-menu-target" style="display:inline;"><a class="' + eclass + 
+                           dataObject.data[i][s] = '<div style="display:inline;"><a class="' + eclass + 
                                                    '" href="#' + s + '">' + BHPAGE.escapeHtmlEntities(String(dataObject.data[i][s])) + 
                                                    '</a></div>';
                         }else{
-                           dataObject.data[i][s] = '<div class="context-menu-target" style="display:inline;"><a class="' + eclass + 
+                           var cmenu = "bh_table_contextmenu";
+                           if(s == 'url'){
+                              cmenu = "bh_url_contextmenu";
+                           }
+                           dataObject.data[i][s] = '<div contextmenu="' + cmenu + '" style="display:inline;"><a class="' + eclass + 
                                                    '" href="#' + s + '">' + BHPAGE.escapeHtmlEntities(dataObject.data[i][s]) + 
                                                    '</a></div>';
                         }

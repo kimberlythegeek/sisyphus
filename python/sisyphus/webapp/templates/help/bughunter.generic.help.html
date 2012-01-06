@@ -1,0 +1,208 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!--<html xmlns="http://www.w3.org/1999/xhtml">-->
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>Bughunter Help</title>
+    <link rel="stylesheet" href="/css/Aristo/jquery-ui-1.8.7.custom.css" type="text/css"/>
+    <link rel="stylesheet" href="/css/bughunter.css" type="text/css"/>
+</head>
+<body>
+   <div>
+      <div class="ui-widget ui-corner-all bh-vis-detail-panel">
+         <h2>Help Contents</h2>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#data">Understanding the Data</a></li>
+            <li><a href="#view_navigation">View Navigation</a></li>
+            <li><a href="#control_panel">Control Panel</a></li>
+            <li><a href="#parent_child">Parent/Child Relationships</a></li>
+            <li><a href="#visualization">Visualization</a></li>
+            <li><a href="#button_controls">Button Controls</a></li>
+            <li><a href="#signals">Signals</a></li>
+            <li><a href="#table_filters">Table Filters</a></li>
+            <li>
+               <a href="#data_descriptions">Data</a>
+               <ul>
+                  <li><a href="#site_test_data">Site Test Data</a>
+                     <ul>
+                        <li>
+                           <a href="#site_crashes_overview">Site Crashes Overview</a>
+                           <ul>
+                              <li><a href="#crashes_st">Site Crashes</a></li>
+                              <li><a href="#crash_urls_st">Site Crashes URL Summary</a></li>
+                              <li><a href="crash_detail_st">Site Related Crashes</a></li>
+                           </ul>
+                        </li>
+
+                        <li>
+                           <a href="#site_assertions_overview">Site Assertions</a>
+                           <ul>
+                              <li><a href="#assertions_st">Site Assertions</a></li>
+                              <li><a href="#assertion_urls_st">Site Assertion URL Summary</a></li>
+                              <li><a href="#assertion_detail_st">Site Related Assertions</a></li>
+                           </ul>
+                        </li>
+                     </ul>
+                  </li>
+                  <li><a href="#unit_test_data">Unit Test Data</a>
+                     <ul>
+                        <li>
+                           <a href="#unit_assertions_overview">Unit Assertions</a>
+                           <ul>
+                              <li><a href="#assertions_ut">Unit Assertions</a></li>
+                              <li><a href="#assertion_urls_ut">Unit Assertion URL Summary</a></li>
+                              <li><a href="#assertion_detail_ut">Unit Related Assertions</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="#unit_valgrind_data">Unit Valgrinds</a>
+                           <ul>
+                              <li><a href="#valgrind_ut">Unit Valgrinds</a></li>
+                              <li><a href="#valgrind_urls_ut">Unit Valgrind URL Summary</a></li>
+                              <li><a href="#valgrind_detail_ut">Unit Valgrind Assertions</a></li>
+                           </ul>
+                        </li>
+                     </ul>
+                  </li>
+               </ul>
+            </li>
+         </ul>
+      </div>
+      <div class="ui-corner-all bh-vis-detail-panel">
+         <a name="overview"></a>
+         <h3>Overview</h3>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>The purpose of bughunter is to help find bugs by collecting extensive meta data associated with crash reports, assertions, and valgrind data.  This user interface enables a user to browse this meta data by connecting datasets together.  You can find detailed info about the application architecture <a class="bh-help-link" href="https://wiki.mozilla.org/Auto-tools/Projects/BugHunter" target="_blank">here</a>. The application presents data in data views.  Data views can be presented in multiple panes within a single browser page or displayed in a separate pages depending on what works best for a user's display.  Data views can be connected to each other when they share a data type or identifier allowing a user to explore deep relationships in the data.</p>
+         </div>
+         <a name="data"></a>
+         <h3>Understanding the Data</h3>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Bughunter data is grouped into two broad categories: site test and unit test data.  Site test data is derived from reproducing crashes using data from socorro... BC can you fill in details here? I'm thinking top level details on how the data is generated... that sort of thing </p>
+         </div>
+         <a name="view_navigation"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">View Navigation</h3>
+            <div class="css-left bh-help-sprite bh-nav-help"></div>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Each data view has a navigation menu displayed in the top left panel. When a new navigation position is chosen the associated view will initialize accordingling.  If a data collection is selected the browser page will be cleared of all open views and replaced with the view collection that was selected.</p>
+         </div>
+         <a name="control_panel"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Control Panel</h3>
+            <div class="css-left bh-help-sprite bh-controlpanel-help"></div>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>The control panel is composed of a form with fields that pertain to the view displayed.  The form values can be modified and the view reloaded by selecting the load button at the bottom of the control panel.  The control panel form values are only applied to the associated view, with the exception of the date range.</p><p>The date range is passed on as signal data to any child view, so you can control the date range of a set of child views by making a single modification in the parent's control panel.</p><p>To look for similiarity in a particular field, first edit the field to contain the target text then insert a '%' at the beginning, end, or both beginning and end of the field data.</p>
+         </div>
+         <a name="parent_child"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Parent/Child Relationships</h3>
+            <div class="css-left bh-help-sprite bh-parentchild-help"></div>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Data views in bughunter have a parent/child relationship that is indicated in the top panel of each view.  A view's parent can send signals to its child views when the user selects links or graphical representations of data that can send signals.  The parent/child relationship of any view is identified by a data view number "View:Some Number" that refers to the data view seleted and its parent "Parent:Some Page Name, Some View Name".  Anytime a new view is opened from an existing view, that view becomes the parent.  Parents can send signals to child views that exist on different browser tabs or pages and there is no limit to the number of child views a parent can have.</p>
+         </div>
+         <a name="visualization"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Visualization</h3>
+            <div class="css-left bh-help-sprite bh-visualization-help"></div>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>View data can be visualized in a tabular or graphical form.  Different visualizations of the data from a view can be accessed using the Visualization menu, some views will only have a tabular presentation.</p>
+         </div>
+         <a name="button_controls"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Button Controls</h3>
+            <div class="css-left bh-help-sprite bh-bcontrols-help"></div>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Each view has a set of button controls displayed in the top panel.  The following is a description of each button from left to right.</p>
+            <p><strong>Decrease View Panel Size:</strong> Decrease the display size of a view's data table.  This may or may not apply to a graphical representation.</p>
+            <p><strong>Increase View Panel Size:</strong> Increase the display size of a view's data table.  This may or may not apply to a graphical representation.</p>
+            <p><strong>Open New View:</strong> This button opens a modal window that presents the user with options for opening new child views.  The child views opened will be parented to the view from which they were opened.</p>
+            <p><strong>Help:</strong> Clearly you understand this button...</p>
+            <p><strong>Refresh:</strong> Reload the data from its original source in the view.</p>
+            <p><strong>Move To New Window:</strong> Move the view data to a new browser tab or window.</p>
+            <p><strong>Close:</strong> Close the view.</p>
+         </div>
+         <a name="signals"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Signals</h3>
+            <div class="css-left bh-help-sprite bh-signals-help"></div>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Signals can be sent from a parent view to its children by selecting links displayed in tabular data or graphical representations of data that can send signals.  When a signal is sent, it's displayed in the parent view in the middle panel and prefixed with "Sent:", when a signal is received by a child view it's displayed in the parent view in the middle panel and prefixed with "Received:".  A date range is always displayed in the signal display panel and is prefixed with "Range:".  The date range can be set by opening the control panel and modifying the date range displayed.</p>
+         </div>
+         <a name="site_test_data"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Site Test Data</h3>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Site test data is generated by reproducing crash reports deposited in the socorro database.  BC - please fill in any other worthy details...</p>
+         </div>
+         <a name="site_crashes_overview"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Site Crashes Overview</h3>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Site crash data is organized into three different types of data representations: Crashes, URL summary, and Related Crashes.  These datasets enable a user to explore crash data within a time range.</p>
+         </div>
+         <a name="crashes_st"></a>
+         <h3>Site Crashes</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p><strong>signature:</strong> When a crash occurs, a minidump file is created by <a class="bh-help-link" href="http://kb.mozillazine.org/Breakpad" target="_blank">breakpad</a>. The minidump file is uploaded to the database server and the path to the raw file is saved in the minidump field.  This minidump file is processed by a stack walking program that creates a crash report.  The crash signature is created by taking the stack frames from the stack in the crash report and munging it to produce a signature which can be used to group similar crashes. Extraneous addresses, numbers, and non-alpha characters have been removed to improve reproducibility.</p>
+            <p><strong>fatal message:</strong> The warning/error message found in the log.</p>
+            <p><strong>Total Count:</strong> The total number of times this particular signature has occured.</p>
+            <p><strong>Platform:</strong> The platform field is split into the following pieces of data: source tree, operating system, version, architecture, and number of occurances.  Any number of platforms can be associated with a given crash signature.</p>
+         </div>
+         <a name="crash_urls_st"></a>
+         <h3>Site Crash URL Summary</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p><strong>url:</strong> The url associated with the crash report.</p>
+            <p><strong>Total Count:</strong> The total number of times this url has caused a crash in the database.</p>
+            <p><strong>Platform:</strong> The platform field is split into the following pieces of data: source tree, operating system, version, architecture, and number of occurences.  Any number of platforms can be associated with a given crash signature.</p>
+         </div>
+         <a name="crash_detail_st"></a>
+         <h3>Site Related Crashes</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p><strong>signature:</strong> When a crash occurs, a minidump file is created by <a class="bh-help-link" href="http://kb.mozillazine.org/Breakpad" target="_blank">breakpad</a>. The minidump file is uploaded to the database server and the path to the raw file is saved in the minidump field.  This minidump file is processed by a stack walking program that creates a crash report.  The crash signature is created by taking the stack frames from the stack in the crash report and munging it to produce a signature which can be used to group similar crashes.  Extraneous addresses, numbers, and non-alpha characters have been removed to improve reproducibility.</p>
+            <p><strong>fatal message:</strong> The warning/error message found in the log.</p>
+            <p><strong>os name:</strong> The name of the operating system associated with the detail data.</p>
+            <p><strong>os version:</strong> The version of the operating system associated with the detail data.</p>
+            <p><strong>cpu name:</strong> The cpu name associated with the detail data.</p>
+            <p><strong>build cpu name:</strong> The cpu that the source was build on.</p>
+            <p><strong>product:</strong> The name of the product associated with the data.</p>
+            <p><strong>branch:</strong> The source branch used in the build.</p>
+            <p><strong>url:</strong> The url associated with the detail.</p>
+            <p><strong>datetime:</strong> The date and time the detail was generated.</p>
+            <p><strong>reason:</strong>BC help</p>
+            <p><strong>address:</strong>BC help </p>
+            <p><strong>crashreport:</strong>BC help </p>
+            <p><strong>crashtype:</strong>BC help </p>
+            <p><strong>pluginfilename:</strong>Name of the plugin used in the product.</p>
+            <p><strong>pluginversion:</strong>Version of the plugin used in the product.</p>
+            <p><strong>exploitability:</strong> This field is populated by a program that processes a minidump file to determine its probable exploitability, this is currently only available for windows.</p>
+            <p><strong>log:</strong>The log generated when producing the data associated with the detail.</p>
+            <p><strong>changeset:</strong>BC help </p>
+            <p><strong>bug list:</strong>BC help </p>
+            <p><strong>steps:</strong>BC help </p>
+            <p><strong>exitstatus:</strong> The exit status of the product program run.</p>
+            <p><strong>priority:</strong>BC help </p>
+            <p><strong>socorro id:</strong> An identifier used to link this data to some of the original data derived from the socorro database.  It can be use in conjunction with the Socorro Record data view which can be found in the navigation menu under Crash Tables. </p>
+         </div>
+      </div>
+   </div>
+</body>

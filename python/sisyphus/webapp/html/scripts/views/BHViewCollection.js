@@ -17,6 +17,11 @@ var BHViewCollection = new Class({
       this.model = new BHViewCollectionModel('#BHViewCollectionModel', {});
       this.view = new BHViewCollectionView('#BHViewCollectionView', {});
 
+      //This is dynamically set to the 
+      //DOM element that a user right clicks
+      //on in any table associated with a view.
+      this.contextMenuTarget;  
+
       //Get the view marked as default in json structure
       this.defaultBHViewName = this.model.getDefaultBHView();
 
@@ -31,6 +36,9 @@ var BHViewCollection = new Class({
 
       //reset column widths when window resizes
       $(window).resize( _.bind( this.resizeWindow, this ) );
+
+      this._bindCellContextMenu();
+
    },
    openBHViewCollection: function(data){
 
@@ -157,6 +165,53 @@ var BHViewCollection = new Class({
             this.model.childWindows[i].postMessage(JSON.stringify(data), targetOrigin);
          }
       }
+   },
+   _bindCellContextMenu: function(){
+      document.addEventListener('contextmenu', _.bind( this._setContextMenu, this ) );
+      $('menu').bind('click', _.bind( this._cellMenuClickHandler, this ) );
+   },
+   _setContextMenu: function(event){
+      this.contextMenuTarget = event.target;  
+   },
+   _cellMenuClickHandler: function(event){
+
+      var action = $(event.target).attr('name');
+      switch(action){
+         case 'select':
+            this._selectTextFromContextMenu();
+            break;
+         case 'copy':
+            this._copyTextFromContextMenu();
+            break
+         case 'openurl':
+            this._openUrlFromContextMenu();
+            break;
+       }
+   },
+   _selectTextFromContextMenu: function(){
+      if(this.contextMenuTarget){
+         this.view.selectText(this.contextMenuTarget);
+      }
+   },
+   _copyTextFromContextMenu: function(el){
+      var text = "";
+      if(this.contextMenuTarget){
+         text = $(this.contextMenuTarget).text();
+      }
+      try {
+         netscape.security.PrivilegeManager.enablePrivilege('UniversalXPConnect');
+         const gClipboardHelper = Components.classes["@mozilla.org/widget/clipboardhelper;1"].
+         getService(Components.interfaces.nsIClipboardHelper);
+         gClipboardHelper.copyString(text);
+      } catch(e) {
+         alert("Javascript does not have access to the clipboard in your browser.  You can allow access by entering 'about:config' in the location bar in the browser and setting 'signed.applets.codebase_principal_support=true' or installing the AllowClipboard addon.  NOTE: This will only work in firefox.");
+         return false;
+      }
+   },
+   _openUrlFromContextMenu: function(el){
+      //Open the url in a new window
+      var href = $(this.contextMenuTarget).text();
+      window.open(href);
    }
 });
 var BHViewCollectionView = new Class({

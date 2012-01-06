@@ -13,7 +13,7 @@
     <script src="/scripts/jquery-1.6.3.min.js"></script>
     <script src="/scripts/jquery-ui-1.8.13.custom.min.js"></script>
     <script src="/scripts/jquery.url.js"></script>
-    <script src="/scripts/jquery.contextMenu-1.01/jquery.contextMenu.js"></script>
+    <!--<script src="/scripts/jquery.contextMenu-1.01/jquery.contextMenu.js"></script>-->
     <script src="/scripts/underscore-min.js"></script>
     <script src="/scripts/Jit/jit-yc.js"></script>
 
@@ -61,22 +61,17 @@
       <span class="ui-icon ui-icon-triangle-2-n-s css-right"></span>
    </a>
 </span>
+
 <!--Right Click Context Menu-->
-<div id="bh_context_menu" class="contextMenu ui-corner-all">
-   <div class="select"><a href="#select" style="padding-right:65%;">Select Cell Data</a></div>
-   <div class="select"><a href="#copy" style="padding-right:65%;">Copy Cell Data</a></div>
-   <div id="bh_cm_open" class="separator hidden">
-      <a href="#open">Open in New Window</a>:<select id="bh_signal_views" style="margin-left:3px;"></select>
-   </div>
-   <div id="bh_cm_url_message" class="separator hidden">
-      <div class="ui-state-error ui-corner-all" style="margin-top:5px; margin-bottom:5px; padding:1.0em;"> 
-         <span class="ui-icon ui-icon-alert" style="float:left; margin-right:.3em;"></span>
-         <strong>WARNING:</strong> Page may crash your browser or contain disturbing content! Shut the door, cover your eyes, use caution...
-      </div>
-   </div>
-   <div id="bh_cm_url" class="hidden"><a href="#openurl" style="padding-right:46%;">Open URL in New Window</a></div>
-   <div class="separator"><a href="#quit" style="padding-right:86%;">Quit</a></div>
-</div>
+<menu type="context" id="bh_url_contextmenu">
+   <menuitem label="Select Cell Data" name="select"></menuitem>
+   <menuitem label="Copy Cell Data" name="copy"></menuitem>
+   <menuitem label="Open URL In New Window" name="openurl"></menuitem>
+</menu>
+<menu type="context" id="bh_table_contextmenu">
+   <menuitem label="Select Cell Data" name="select"></menuitem>
+   <menuitem label="Copy Cell Data" name="copy"></menuitem>
+</menu>
 
 <!-- Connections Modal -->
 <div class="bh-connections-modal ui-widget ui-corner-top hidden" title="Open New View">
@@ -128,7 +123,7 @@
          <!-- View Top Menu Bar -->
          <div class="fg-toolbar ui-toolbar ui-widget-header ui-corner-top bh-viewtext ui-helper-clearfix">
 
-            <a id="bh_closetable_bt_c" class="css-right bh-viewbutton fg-button ui-state-default fg-button-icon-left ui-corner-all" href="#closetable" title="Close Table">
+            <a id="bh_closetable_bt_c" class="css-right bh-viewbutton fg-button ui-state-default fg-button-icon-left ui-corner-all" href="#closetable" title="Close">
                <span class="css-right ui-icon ui-icon-closethick"></span>
             </a>
             <a id="bh_newwindow_bt_c" class="css-right bh-viewbutton fg-button ui-state-default fg-button-icon-left ui-corner-all" href="#newwindow" title="Move To New Window">

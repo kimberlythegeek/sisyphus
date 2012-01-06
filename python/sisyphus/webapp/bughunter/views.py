@@ -482,6 +482,11 @@ def bhview(request, target=settings.VIEW_LOGIN_PAGE):
     return render_to_response('bughunter.views.html', data)
 
 @login_required
+def get_help(request, target=settings.VIEW_LOGIN_PAGE):
+   data = {}
+   return render_to_response('help/bughunter.generic.help.html', data)
+
+@login_required
 def get_date_range(request, **kwargs):
 
    start_date, end_date = _get_date_range()

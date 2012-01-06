@@ -38,7 +38,7 @@ var BHViewComponent = new Class({
                               openwindow:this.openWindow,
                               refresh:this.refresh,
                               help:this.help,
-                              signal_help:this.getSignalHelp,
+                              signal_help:this.getDataHelp,
                               newwindow:this.moveToNewWindow,
                               increasesize:this.increaseSize,
                               decreasesize:this.decreaseSize };
@@ -451,9 +451,6 @@ var BHViewComponent = new Class({
                content: data,
                flyOut: true,
                showSpeed: 150,
-               onOpen: _.bind(function(event){
-                              this.view.hideContextMenu();
-                       }, this),
                callback:{ method:this.selectBHView, 
                           context:this }
             });
@@ -486,9 +483,6 @@ var BHViewComponent = new Class({
       $(visualizationSel).menu({
          content: $(visMenuSel).html(),
          showSpeed: 50,
-         onOpen: _.bind(function(event){
-                           this.view.hideContextMenu();
-                        }, this),
          callback: { method:this.setVisualization, context:this }
       });
    },
@@ -643,19 +637,6 @@ var BHViewComponent = new Class({
    },
    setDataTableSignals: function(){
 
-      /********************
-       * NOTE: Binding of the context menu must be done every time a new page of 
-       *       the data table is loaded.  There is no pagination event model in
-       *       datatables.js.  It's supposed to be released in vs 2 and is being
-       *       actively developed now.  For the moment use hacky click listener.
-       *********************/
-      var paginationSel = this.view.getTablePaginationSel(this.bhviewIndex);
-      $(paginationSel).bind('click', _.bind(function(e){
-         this._bindCellContextMenu();
-      }, this));
-
-      this._bindCellContextMenu();
-
       //if the table is scrolled make sure we close any open menus
       $(this.view.tableScrollClassSel).bind('scroll', _.bind(function(e){
          if(this.view != undefined){
@@ -676,7 +657,8 @@ var BHViewComponent = new Class({
 
       //If user selected an anchor in the main cell content
       //selectedTrEl will be a tr element
-      var selectedTrEl = $(event.target).parent().parent().parent();
+      //var selectedTrEl = $(event.target).parent().parent().parent();
+      var selectedTrEl = $(event.target).closest('tr');
 
       //Make sure a table row was retrieved
       if( $(selectedTrEl).is('tr') ){
@@ -720,6 +702,7 @@ var BHViewComponent = new Class({
       }
    },
    moveToNewWindow: function(){
+
       this.view.closeMenu();
       if(this.bhviewIndex != 0){
 
@@ -744,10 +727,12 @@ var BHViewComponent = new Class({
       }
    },
    openWindow: function(){
+
       this.view.closeMenu();
       var signals = this.model.getBHViewAttribute('signals');
       BHPAGE.ConnectionsComponent.setBHViewIndex(this.bhviewIndex);
       BHPAGE.ConnectionsComponent.open('open', signals);
+
    },
    refresh: function(){
 
@@ -762,11 +747,23 @@ var BHViewComponent = new Class({
 
    },
    help: function(){
+
       this.view.closeMenu();
-      alert("I'm so confused.  Please help me by writing some help messaging. Thanks!");
+      var src = "/bughunter/views/help";
+      var dialogHtml = this.view.getHelpModal(src);
+
+      $(dialogHtml).dialog('open');
+      return false;
    },
-   getSignalHelp: function(){
-      alert("Please tell me all about sending and receiving signals, i'm a bit confused. Thanks!");
+   getDataHelp: function(){
+
+      this.view.closeMenu();
+      var name = this.model.getBHViewAttribute('name')
+      var src = "/bughunter/views/help#" + name;
+      var dialogHtml = this.view.getHelpModal(src);
+      $(dialogHtml).dialog('open');
+
+      return false;
    },
    increaseSize: function(){
 
@@ -871,7 +868,6 @@ var BHViewComponent = new Class({
       });
    },
    _controlPanelOnOpen: function(event){
-      this.view.hideContextMenu();
 
       //Make sure we don't have any extra keydown event bindings
       $(document).unbind('keydown');
@@ -916,7 +912,7 @@ var BHViewComponent = new Class({
       //This is really dangerous, it will clear all keydown events
       //assigned at the document level... which really should not be 
       //any.  When passing a function to unbind it fails probably because
-      //_.bind() is used for context management...
+      //_.bind() is used for context management... Ughhhh
       $(document).unbind('keydown');
 
    },
@@ -965,119 +961,6 @@ var BHViewComponent = new Class({
       }
    },
 
-   _bindCellContextMenu: function(){
-
-      var tableSel = this.view.getIdSelector(this.view.tableSel, this.bhviewIndex);
-      var tableCells = $(tableSel).find('td');
-      for(var i=0; i<tableCells.length; i++){
-         $(tableCells[i]).contextMenu({
-               menu:this.view.contextMenuId,
-               onOpen:_.bind( function(el){
-                  this._configureContextMenuOnOpen(el);
-               }, this)
-            },
-            _.bind( function(action, el, pos){
-               switch(action){
-                  case 'select':
-
-                     this._selectTextFromContextMenu(el);
-                     break;
-
-                  case 'copy':
-                     this._copyTextFromContextMenu(el);
-                     break
-
-                  case 'open':
-
-                     this._openSignalFromContextMenu(el);
-                     break;
-
-                  case 'openurl':
-
-                     this._openUrlFromContextMenu(el);
-                     break;
-
-               }
-         }, this) );
-      }
-   },
-   _copyTextFromContextMenu: function(el){
-      var anchor = $(el).find('a').get(0);
-      var text = "";
-      if(anchor){
-         text = $(anchor).text();
-      }else{
-         text = $(el).text();
-      }
-      try {
-         netscape.security.PrivilegeManager.enablePrivilege('UniversalXPConnect');
-         const gClipboardHelper = Components.classes["@mozilla.org/widget/clipboardhelper;1"].
-         getService(Components.interfaces.nsIClipboardHelper);
-         gClipboardHelper.copyString(text);
-      } catch(e) {
-         alert("Javascript does not have access to the clipboard in your browser.  You can allow access by entering 'about:config' in the location bar in the browser and setting 'signed.applets.codebase_principal_support=true' or installing the AllowClipboard addon.  NOTE: This will only work in firefox.");
-         return false;
-      }
-   },
-   _configureContextMenuOnOpen: function(el){
-      var anchor = $(el).find('a');
-      if(anchor.get(0)){
-         $(this.view.contextMenuOpenPanelSel).removeClass('hidden');
-         var href = $(anchor).attr('href');
-         if(href.match(/url/)){
-            $(this.view.contextMenuUrlPanelMessageSel).removeClass('hidden');
-            $(this.view.contextMenuUrlPanelSel).removeClass('hidden');
-         }else{
-            $(this.view.contextMenuUrlPanelSel).addClass('hidden');
-            $(this.view.contextMenuUrlPanelMessageSel).addClass('hidden');
-         }
-      }else{
-         $(this.view.contextMenuOpenPanelSel).addClass('hidden');
-         $(this.view.contextMenuUrlPanelSel).addClass('hidden');
-         $(this.view.contextMenuUrlPanelMessageSel).addClass('hidden');
-       }
-       //Set context select menu
-       var signals = this.model.getBHViewAttribute('signals');
-       BHPAGE.ConnectionsComponent.setAllViewsOptionMenu(this.view.contextSelectMenuSel, signals);
-   },
-   _openSignalFromContextMenu: function(el){
-      //Get the dateRange
-      var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
-                                                            this.bhviewIndex);
-      var adapterName = this.model.getBHViewAttribute('data_adapter');
-      var a = this.dataAdapters.getAdapter(adapterName);
-      var dateRange = a.getDateRangeParams(controlPanelDropdownSel, this.signalData);
-      var dateParams = "start_date=" + dateRange.start_date + "&end_date=" + dateRange.end_date + "&";
-
-      //Get the signal
-      var anchor = $(el).find('a');
-      var signal = $(anchor).attr('href').replace('#', '');
-      var cellText = anchor.text();
-      var bhview = this.view.getCellMenuBHViewSelection();
-
-      //Build the data object for the event
-      var data = { selected_bhview:bhview,
-                   parent_bhview_index:this.bhviewIndex,
-                   display_type:'page',
-                   params:dateParams + signal + '=' + cellText};
-
-      $(this.view.allViewsContainerSel).trigger(this.addBHViewEvent, data);
-   },
-   _selectTextFromContextMenu: function(el){
-      var anchor = $(el).find('a').get(0);
-      if(anchor){
-         this.view.selectText(anchor);
-      }else{
-         this.view.selectText(el.get(0));
-      }
-   },
-   _openUrlFromContextMenu: function(el){
-      //Open the url in a new window
-      var anchor = $(el).find('a');
-      var href = anchor.text()
-      this.view.closeMenu();
-      window.open(href);
-   },
    _fnError: function(data, textStatus, jqXHR){
       var messageText = 'Ohhh no, something has gone horribly wrong! ';
       messageText += ' HTTP status:' + data.status + ', ' + textStatus +
@@ -1117,7 +1000,6 @@ var BHViewView = new Class({
       this.helpHtmlUrl = '/help/';
 
       this.controlPanelWidth = 475;
-      this.cellContextPanelWidth = 360;
 
       //Scrolling params
       this.minScrollPanelSize = 200;
@@ -1164,14 +1046,6 @@ var BHViewView = new Class({
       this.controlPanelDropdownSel = '#bh_cp_dropdown_c';
       this.controlPanelResetDatesSel = '#bh_reset_dates_c';
 
-      //Cell context menu class selectors
-      this.contextMenuId = 'bh_context_menu';
-      this.contextMenuClassSel = '.contextMenu';
-      this.contextSelectMenuSel = '#bh_signal_views';
-      this.contextMenuOpenPanelSel = '#bh_cm_open';
-      this.contextMenuUrlPanelSel = '#bh_cm_url';
-      this.contextMenuUrlPanelMessageSel = '#bh_cm_url_message';
-
       //Signal display ids
       this.signalDataSentDisplaySel = '#bh_signal_data_sent_c';
       this.signalDataReceivedDisplaySel = '#bh_signal_data_received_c';
@@ -1203,6 +1077,7 @@ var BHViewView = new Class({
                                   platform_detail:'#bh_platform_detail_c',
                                   primary_label_detail:'#bh_primary_detail_label_c',
                                   secondary_label_detail:'#bh_secondary_detail_label_c' };
+
       this.visReadName = options.vis_read_name;
 
       //Spacer div between bhviews
@@ -1237,28 +1112,6 @@ var BHViewView = new Class({
    },
    getTablePaginationSel: function(bhviewIndex){
       return this.tablePaginationSel.replace('BHVIEW_INDEX', bhviewIndex);
-   },
-   loadCellMenuOptions: function(signalBHViews){
-
-      //Remove any options from the select menu
-      var childOptions = $(this.cellBHViewOptionsClassSel).children();
-      for(var i=0; i<childOptions.length; i++){
-         $(childOptions[i]).remove();
-      }
-
-      //Populate the select menu embedded in the
-      //cell context menu with the array of bhviews
-      //provided
-      for(var i=0; i<signalBHViews.length; i++){
-         var optionEl = $('<option></option>');
-         $(optionEl).attr('value', signalBHViews[i].name);
-         $(optionEl).text(signalBHViews[i].read_name);
-         if( i == 0 ){
-            $(optionEl).attr('selected', 1);
-         }
-         $(optionEl).css('display', 'block');
-         $(this.cellBHViewOptionsClassSel).append(optionEl);
-      }
    },
    /****************************
     *BHVIEW PREPARATION METHODS
@@ -1415,12 +1268,6 @@ var BHViewView = new Class({
 
    },
    /************************
-    * CELL CONTEXT MENU METHODS
-    * **********************/
-   getCellMenuBHViewSelection: function(){
-      return $(this.contextSelectMenuSel).attr('value');
-   },
-   /************************
     *BHVIEW MODIFICATION METHODS
     ************************/
    displayParentChild: function(parentIndex, bhviewIndex, parentWindowName){
@@ -1510,6 +1357,21 @@ var BHViewView = new Class({
    getTableScrollContainer: function(bhviewIndex){
       var tableSel = this.getIdSelector(this.tableSel, bhviewIndex);
       return $(tableSel).parent(); 
+   },
+   getHelpModal: function(src){
+
+      var helpIframe = '<div><iframe class="bh-help-frame ui-corner-all" src="' + src + '"></iframe></div>';
+      var dialogHtml = $(helpIframe);
+
+      $(dialogHtml).dialog({
+         autoOpen: false,
+         width: 600,
+         height: 800,
+         modal: true,
+         title: "Bughunter Help"
+       });
+
+       return dialogHtml;
    },
    /*******************
     *TOGGLE METHODS
@@ -1622,10 +1484,6 @@ var BHViewView = new Class({
             allUIMenus[i].kill();
          }
       }
-      this.hideContextMenu();
-   },
-   hideContextMenu: function(){
-      $(this.contextMenuClassSel).hide();
    },
    showBHView: function(bhviewIndex, bhviewReadName){
 

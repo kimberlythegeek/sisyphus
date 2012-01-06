@@ -9,6 +9,7 @@ urlpatterns = patterns('',
                        (r'^login/$', views.view_login),
                        (r'^logout/$', views.view_logout),
                        (r'^views/$', views.bhview),
+                       (r'^views/help/.*$', views.get_help),
                        (r'^views/get_date_range$', views.get_date_range),
                        (r'^api/views/.*$', views.get_bhview),
 
