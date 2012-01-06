@@ -399,21 +399,27 @@ var BHViewComponent = new Class({
          }
 
          //Make sure the bhview can handle the signal
-         if(signals[ data.signal ] != 1){
+         if( data.signal == 'bhtext'){
+            //Signal is text only, set the filter to match the text
+            //if(this.dataTable != undefined){
+               //this.dataTable.fnFilter(data.data);
+            //}
+            //return;
+
+         }else if(signals[ data.signal ] != 1){
             return;
          }
 
          this.signalData = data;
 
-         //Pre-fill any fields
          var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
                                                                this.bhviewIndex);
 
          //Display the signal data
          this.view.displaySignalData('receive', this.signalData, this.bhviewIndex);
-
          var adapterName = this.model.getBHViewAttribute('data_adapter');
          var a = this.dataAdapters.getAdapter(adapterName);
+         //Pre-fill any fields
          a.setControlPanelFields(controlPanelDropdownSel, this.signalData);
 
          var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 

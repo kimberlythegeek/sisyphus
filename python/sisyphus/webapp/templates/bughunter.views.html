@@ -1,45 +1,41 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<!--<html xmlns="http://www.w3.org/1999/xhtml">-->
-<html>
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
     <title>Bughunter</title>
-
     <link rel="stylesheet" href="/css/Aristo/jquery-ui-1.8.7.custom.css" type="text/css"/>
     <link rel="stylesheet" href="/css/datatables.css" type="text/css"/>
     <link rel="stylesheet" href="/css/fg.menu.css" type="text/css"/>
     <link rel="stylesheet" href="/css/bughunter.css" type="text/css"/>
-
-    <script src="/scripts/jquery-1.6.3.min.js"></script>
-    <script src="/scripts/jquery-ui-1.8.13.custom.min.js"></script>
-    <script src="/scripts/jquery.url.js"></script>
-    <!--<script src="/scripts/jquery.contextMenu-1.01/jquery.contextMenu.js"></script>-->
-    <script src="/scripts/underscore-min.js"></script>
-    <script src="/scripts/Jit/jit-yc.js"></script>
-
-    <!-- Gives core mootools class functionality to jQuery -->
-    <script src="/scripts/mootools-core-1.4.0.js"></script>
-    <script src="/scripts/moo4q/Source/Class.Mutators.jQuery.js"></script>
-
-    <!--<script src="/media/js/datatables/jquery.dataTables.min.js"></script>-->
-    <script src="/scripts/datatables/jquery.dataTables.js"></script>
-    <script src="/scripts/datatables/ColVis.js"></script>
-
     <link rel="stylesheet" href="/css/ColVisAlt.css" type="text/css"/>
 
+    <script type="text/javascript" src="/scripts/jquery-1.6.3.min.js"></script>
+    <script type="text/javascript" src="/scripts/jquery-ui-1.8.13.custom.min.js"></script>
+    <script type="text/javascript" src="/scripts/jquery.url.js"></script>
+    <script type="text/javascript" src="/scripts/underscore-min.js"></script>
+    <script type="text/javascript" src="/scripts/Jit/jit-yc.js"></script>
+
+    <!-- Gives core mootools class functionality to jQuery -->
+    <script type="text/javascript" src="/scripts/mootools-core-1.4.0.js"></script>
+    <script type="text/javascript" src="/scripts/moo4q/Source/Class.Mutators.jQuery.js"></script>
+
+    <!--<script src="/media/js/datatables/jquery.dataTables.min.js"></script>-->
+    <script type="text/javascript" src="/scripts/datatables/jquery.dataTables.js"></script>
+    <script type="text/javascript" src="/scripts/datatables/ColVis.js"></script>
+
+
     <!-- This version of fg.menu.js has been heavily modified to work in bughunter -->
-    <script src="/scripts/fg.menu.js"></script>
-    <script src="/scripts/json2.js"></script>
+    <script type="text/javascript" src="/scripts/fg.menu.js"></script>
+    <script type="text/javascript" src="/scripts/json2.js"></script>
 
     <!-- Bughunter classes-->
-    <script src="/scripts/views/Bases.js"></script>
-    <script src="/scripts/views/ConnectionsComponent.js"></script>
-    <script src="/scripts/views/DataAdapterCollection.js"></script>
-    <script src="/scripts/views/VisualizationCollection.js"></script>
-    <script src="/scripts/views/BHViewComponent.js"></script>
-    <script src="/scripts/views/BHViewCollection.js"></script>
-    <script src="/scripts/views/BughunterPage.js"></script>
-
+    <script type="text/javascript" src="/scripts/views/Bases.js"></script>
+    <script type="text/javascript" src="/scripts/views/ConnectionsComponent.js"></script>
+    <script type="text/javascript" src="/scripts/views/DataAdapterCollection.js"></script>
+    <script type="text/javascript" src="/scripts/views/VisualizationCollection.js"></script>
+    <script type="text/javascript" src="/scripts/views/BHViewComponent.js"></script>
+    <script type="text/javascript" src="/scripts/views/BHViewCollection.js"></script>
+    <script type="text/javascript" src="/scripts/views/BughunterPage.js"></script>
 </head>
 
 <body>
@@ -98,15 +94,14 @@
    </ul>
    <div id="bh_open_new_view_tab">
       <div class="bh-modal-element">Open in: 
-         <input class="bh-page-newpane" type="radio" name="open" value="page" checked/>
+         <input class="bh-page-newpane" type="radio" name="open" value="page" checked="checked"/>
          Page
          <input class="bh-page-newpane" type="radio" name="open" value="pane" />
          New Pane
       </div>
       <hr class="bh-horz-line"></hr>
       <div class="bh-modal-element">Choose A View:
-         <select id="bh_view_list" size="6">
-         <select>
+         <select id="bh_view_list" size="6"></select>
       </div>
    </div>
 </div>
@@ -133,11 +128,11 @@
 <!--Cloned Elements-->
 <div id="bh_view_wrapper_c" class="ui-helper-clearfix hidden">
 
-   <div id="bh_spinner_c" class="bh-spinner ui-widget ui-helper-clearfix"></div>
+   <div id="bh_spinner_c" class="bh-spinner ui-widget"></div>
 
-   <div id="bh_view_c" style="height:350px;" class="ui-helper-clearfix hidden">
+   <div id="bh_view_c" style="height:350px;" class="hidden">
       <!-- View Container -->
-      <div id="bh_topbar_c" class="ui-widget ui-toobar ui-corner-all bh-toolbar-base bh-toolpanel ui-helper-clearfix hidden">
+      <div id="bh_topbar_c" class="ui-widget ui-toobar ui-corner-all bh-toolbar-base bh-toolpanel hidden">
          <!-- View Top Menu Bar -->
          <div class="fg-toolbar ui-toolbar ui-widget-header ui-corner-top bh-viewtext ui-helper-clearfix">
 
@@ -222,11 +217,12 @@
                </div>
             </div> 
          </div>
-
-         <table id="bh_tview_c" cellpadding="0" cellspacing="0" border="0" class="display"></table>
+      </div>
+      <table id="bh_tview_c" cellpadding="0" cellspacing="0" border="0" class="display"></table>
    </div>
 </div>
 <div id="bh_spacer_c" class="ui-helper-clearfix" style="height:10px;"></div>
+
 
 </body>
 </html>

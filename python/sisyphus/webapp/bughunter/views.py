@@ -481,8 +481,11 @@ def bhview(request, target=settings.VIEW_LOGIN_PAGE):
 
     return render_to_response('bughunter.views.html', data)
 
+@csrf_exempt
 @login_required
 def get_help(request, target=settings.VIEW_LOGIN_PAGE):
+   get_token(request)
+   request.META["CSRF_COOKIE_USED"] = True
    data = {}
    return render_to_response('help/bughunter.generic.help.html', data)
 
@@ -560,6 +563,8 @@ def get_bhview(request, **kwargs):
                                          proc_name, 
                                          full_proc_path, 
                                          nfields)
+   else:
+      json = '{ "error":"Data view name %s not recognized" }' % proc_name
 
    return HttpResponse(json, mimetype=APP_JS)
 
@@ -1351,7 +1356,7 @@ NAMED_FIELDS = set( ['signature',
                      'location',
                      'message'] )
 
-VIEW_PAGES = set([ 'bhview' ])
+VIEW_PAGES = set([ 'bhview', 'get_help' ])
 
 
 

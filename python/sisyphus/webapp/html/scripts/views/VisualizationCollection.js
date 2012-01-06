@@ -10,7 +10,7 @@ var VisualizationCollection = new Class({
 
       //Holds a list of adapters.  The key should be found in
       //views.json in the data_adapter attribute.
-      this.visualizations = { 'platform_tree':new SunburstTree() };
+      this.visualizations = { 'platform_tree':new PlatformTree() };
 
    },
 
@@ -91,7 +91,7 @@ var Visualization = new Class({
    }
 
 });
-var SunburstTree = new Class({
+var PlatformTree = new Class({
 
    Extends:Visualization,
 
@@ -195,10 +195,21 @@ var SunburstTree = new Class({
       $(this.selectors.platform_detail).html(node.data.row['Platform']);
 
       if(node.data.type == 'Signature'){
+
          this.signalData.data = BHPAGE.escapeForUrl( node.data.row['signal_data'] );
          this.signalData.signal = node.data.row['signal_type'];
          this.callback(this.signalData);
          $(this.allViewsContainerSel).trigger(this.signalEvent, this.signalData); 
+
+      }else {
+
+         //Send text signal
+         //this.signalData.data = BHPAGE.escapeForUrl( node.data.row['signal_data'] );
+         //this.signalData.signal = 'bhtext';
+         //this.signalData.data = node.data.description;
+         //this.callback(this.signalData);
+         //$(this.allViewsContainerSel).trigger(this.signalEvent, this.signalData); 
+
       }
    },
 

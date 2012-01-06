@@ -1,155 +1,172 @@
 
-Installation
+Bughunter:
 
-   1.) update datasource
-       git clone https://github.com/jeads/datasource
-       python setup.py install
+   Files:
 
-       You can reach bughunter views at:
-       /bughunter/views
+      All web related files are contained in this directory python/sisyphus/webapp
 
-       When changes are made to sisyphus/webapp/templates/data/views.js
-       you will need to run "python manage.py build_nav" and bounce the
-       webserver to see them.
+      The following file inventory is a list of the critical bughunter files, there
+      are other things floating around but this is the crux of it all...
 
-Features Not Implemented:
+      Web Application 
+         bughunter/views.py                          - Django apps for admin and data views
+         bughunter/models.py                         - Django models for the admin application
+         bughunter/urls.py                           - Django url routing for admin and data views
 
-   1.) Opening a new page from an anchor in the table.  Currently, you can only send
-       an anchor signal to other panes in the page.  This is a deviation from the 
-       functional spec.  I wanted to get feedback on the signal strategy before 
-       finishing this feature.
+         bughunter/filters/bh_unorderedlist.py       - Specialized template tag for writing out <ul></ul>
+                                                       for the data view navigation menu.
+         bughunter/management/commands/build_nav.py  - Command for manage.py that will generate bughunter.navlookup.html
+                                                       and nav_menu.html
+         
+      Service
+         service/bin/bughunter                       - Bash script to start the fcgi service with manage.py
 
-Known BUGS:
+      SQL
+         procs/bughunter.json                        - SQL statements used with 
 
-   1.) UI bug: The dropdown menu panels will sometimes open up (dropup menus!) when the
-       the firebug panel is open in the page.  This is a positioning issue in fg.menu,
-       once they open up they become unusable because the top panel is on a z-index higher
-       than the menus.  This can be fixed in a couple different ways, will start with 
-       trying to get fg.menu's positioning to never open a menu up.
+      View Definitions
+         templates/data/views.json                   - A json structure that describes all data views and their
+                                                       hierarchical organization in the navigation menu.
 
-   2.) Control panels are not initialized with the signal data before they are opened 
-       the first time.  Once opened, they are populated correctly with all signal data.
-       I have some ideas about how to fix this but need some time.
+      View HTML
+         templates/bughunter.views.html              - Main bughunter view page
+         templates/bughunter.navlookup.html          - Template include holding the views.json lookup struct
+         templates/help/bughunter.generic.help.html  - Help main page
+         templates/help/nav/nav_menu.html            - Navigation menu for data views gerated by "manage.py build_nav"
+                                                       command
 
-Things I Still Need To Do:
-   
-   1.) Error handling for failed queries.  Error management in the JS, currently
-       it's a bit non-existant.
-   2.) History?  All of the actions/events are href hash based so this will work
-       well with the jquery history management frameworks I've seen.  It
-       will take some time to get right.
+         templates/help/...                          - Various help includes 
+
+         html/control_panel/...                      - Various control panels that are attached
+                                                       to related data views.
+      Bughunter Media
+         html/css
+         html/images
+         html/scripts
+
+      Bughunter js
+         html/scripts/views/Bases.js                  - See details for js in Architecture section
+         html/scripts/views/BHViewComponent.js
+         html/scripts/views/BHViewCollection.js
+         html/scripts/views/BughunterPage.js
+         html/scripts/views/ConnectionsComponent.js
+         html/scripts/views/DataAdapterCollection.js
+         html/scripts/views/VisualizationCollection.js
+         html/scripts/views/HelpPage.js
+
+      Admin Application JS                
+         html/scripts/bughunter/app.js
+         html/scripts/bughunter/model.js
+         html/scripts/bughunter/utils.js
+         html/scripts/bughunter/views.js
+
+      Admin Application Styles
+         html/style/...                               - CSS for admin application
+         
+      
 
 Architecture:
 
+   Webservice:
+
+      Bughunter Views:
+         The primary data service for data views is found in bughunter/views.py
+         in the method get_bhview.  This method maps the incoming view name to 
+         an adapter found in the datastructure VIEW_ADAPTERS to a function 
+         reference that knows how to build the data for that view.  An example
+         url would look like: 
+
+            /bughunter/api/views/crash_detail_st
+
+         Where crash_detail_st is the view name.  A function decorator provides
+         get_bhview with all the data needed to retrieve the view data. It passes
+         this data on to the appropriate view adapter.
+
+         A datasource datahub object is used for all database queries.  This 
+         object is stored in settings.DHUB.  It provides a complete interface for
+         building SQL dynamically, storing it in a json structure in a separate
+         file, and executing/retrieving the data from the database.  The datasource
+         module used for this can be found at https://github.com/jeads/datasource.
+          
    JS:
       Class Structures:
 
-         Components in General:
+         The javascript that implements the user interface is constructed 
+         using a page/component/collection pattern thingy... whatever that means.  
+         This was found very useful in separating out the required functionality, 
+         below is a brief definition of what that means in bughunter.
 
-            Component:
-               Contains public interface to component.  The component will 
-               typically have instances of a View and Model class and acts
-               as a controller.
+         Page: Manages the DOM ready event, implements any top level initialization 
+               that's required for the page.  An instance of the page class is the 
+               only global variable that other components can access, if they're playing 
+               nice.  The page class instance is responsible for instantiating components 
+               and storing them in attributes.  The page class also holds any data structures 
+               that need to be globally accessible to component classes. 
 
-               View:
-                  Manages all direct DOM interaction for the Component.
+         Component: Contains the public interface of the component.  A component can 
+                    encapsulate any functional subset/unit provided in a page.  The 
+                    component will typically have an instance of a View and Model class.  
+                    The component class is also responsible for any required event binding.
 
-               Model
-                  Manages data structures and server based data retrieval.
+         View: A component's view class manages interfacing with the DOM. Any CSS class 
+               names or HTML id's are defined as attributes of the view.  Any HTML element 
+               modification is controlled with this class.
 
-            Page classes:
-               A class that manages top level interactions with a web page.
+         Model: A component's model manages any asynchronous data retrieval and large data 
+                structure manipulation.
 
-         Bughunter
-            Bases.js
-               Contains all base classes.
+         Collection: A class for managing a collection of Components or classes of any type.  
+                     A collection can also have a model/view if appropriate.
 
-            BughunterPage.js
-               This is a good place to start when reading the js.  
-               
-            BHViewCollection.js
-               Manages the complete collection of bhview components.
+      Bughunter Client Application (python/sisyphus/webapp/html/scripts/views/)
 
-            BHViewComponent.js
-               Manages all functionality associated with a single bhview.
+         This is not a complete file or class listing but is intended to give a top level 
+         description of the design pattern thingy of the bughunter javascript and what the 
+         basic functional responsibility of the pages/components/collections are.
 
-            ConnectionsComponent.js
-               Manages all functionality associated with the modal dialog
-               allowing users to open new bhviews and set their connections.
+         BughunterPage.js 
 
-            DataAdapterCollection.js
-               Manages any idiosynctratic behavior a view might have that is
-               not generic enough to place in BHViewComponent.  This includes
-               the ControlPanel form processing and may be expanded in the 
-               future.
+             BughunterPage Class - Manages the DOM ready event, component initialization, and
+                                   retrieval of the views.json structure that is used by different
+                                   components.
 
-      Support Frameworks:
+         Bases.js
 
-         http://moo4q.com/
+             Design Pattern Base Classes - Contains the base classes for Page, Component, 
+                                           Model, View etc...
+                                                                  
+         BHViewComponent.js 
 
-         A jquery plugin that enables mootools class structures.  This is used
-         in all the class structures for Class definitions and inheritance.
+             BHViewComponent Class - Encapsulates the behavior of a single data view using a model/view and  
+                                     provides a public interface for data view functionality.  Manages
+                                     event binding and registration.
 
-         http://documentcloud.github.com/underscore/
+             BHViewView Class - Encapsulates all DOM interaction required by a data view.
 
-         Used for a variety of javascript data management utilities including
-         _.bind() for all function context management.
+             BHViewModel Class - Encapsulates asynchronous server communication and data structure
+                                 manipulation/retrieval.
 
-   Webservice:
-         A new directory has been added under webapp/bughunter/ 
-      called management.  This contains command extensions for 
-      django's manage.py script.  The new command available is
-      build_nav.  When run it does two things: writes out the 
-      HTML ul used in the navigation menu and builds a JSON 
-      associative array that is used to lookup reference information
-      in the UI.  This JSON structure is embedded in the page
-      when it first loads and is contained in a hidden input
-      element.
-         
-Data Encode/Decode Issues:
-   There is all manner of crazy coming back in the urls and crash signatures from the db.  I've seen
-   and some characters that encodeURI fails on.  In this case I'm using explicit
-   regexes to get row wrapping to work in the table.  The built in escape() function seems
-   to work most of the time but then the info presented in the table is garbled with escape
-   chars.  I will need to do some work on this to come up with a reasonable approach.  Currently
-   I'm just escaping html/xml reserved characters in the data displayed in the table, this 
-   prevents the actual html page from breaking and then using encodeURI/decodeURI to pass 
-   the information to the server.  Sometimes this fails and when it does you will see
-   the "No data available message".
+         BHViewCollection.js 
 
-Paging:
-   We will need real paging.  I've currently hardcoded limits to 5000.  I've pulled back
-   as much as 35,000 rows in a single view (Go firefox!), this will crush the database
-   if multiple users are hitting it simultaneously.  I have a few ideas for paging.  I think
-   the built in filtering in the views is pretty useful, but only if the result sets being
-   pulled back are large enough for it to be meaningfull.  Maybe we could pull back large
-   result sets, say 500, and then fake the paging buttons so new queries are only done
-   when you exceed 500 rows.  This will need to be addressed soon.
+            BHViewCollection Class - Manages operations on a collection of data views using a model/view
+                                     including instantiating view collections.  
 
-Performance Notes:
+            BHViewCollectionView Class - Encapsulates all DOM interaction required by the collection.
 
-   There are a number of performance issues with the SQL I'm using for the views.  The SQL 
-   was pulled directly out of bc's use cases without any optimization.  A lot of it is not
-   appropriate for a production website and will require significant optimization likely
-   through denormalizing the data.  I think before we do a performance improvement pass 
-   we should come to an agreement on what the first set of views should be.  As soon as 
-   we do that I would like to hit SQL performance from all angles.
+            BHViewCollectionModel Class - Provides an interface to the datastructures holding all data
+                                          views and their associated parent/child relationships.
+         DataAdapterCollection.js
 
-   1.) MySQL is rarely able to make effective use of indexes when using temp tables/nested selects.
-       I will need to confirm with EXPLAIN but I'm pretty sure this is happening with most
-       of the queries adapted from the use cases.  We can work around this in several ways: 
-       denormalize data or push queries into the application layer. 
+            DataAdapterCollection Class - Collection of BHViewAdapter class instances. 
 
-   2.) There could be bugs in my adaptation of bc's SQL queries.  
+            BHViewAdapter Class - Base class for all BHViewAdapters.  Manages shared view
+                                  idiosyncratic behavior like what fields go in the 
+                                  control panel and how to populate/retrieve them for 
+                                  signaling behavior.
 
-   3.) If we like the default date range strategy we should make sure all the timestamps
-       are indexed.
+            CrashesAdapter Class - Derived class of BHViewAdapter.  Encapsulates unique 
+                                   behavior for crash data views.
 
-   4.) With the way the UI is layed out we might be able to use the signal/multiple pane
-       approach to do application level joins free of performance charge.   
-
-   5.) If after doing all the optimizations possible it's still not fast enough then it's time
-       for a search index.  At the very least I think we will need a read only database if we
-       don't build a search index.  This has a number of advantages when providing a user 
-       interface to a database.
+            UrlAdapter Class - Derived class of BHViewAdapter. Encapsulates unique behavior for 
+                               views containing URL summaries.
 
