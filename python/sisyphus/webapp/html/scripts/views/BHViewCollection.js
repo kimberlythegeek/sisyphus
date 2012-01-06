@@ -168,7 +168,7 @@ var BHViewCollection = new Class({
    },
    _bindCellContextMenu: function(){
       document.addEventListener('contextmenu', _.bind( this._setContextMenu, this ) );
-      $('menu').bind('click', _.bind( this._cellMenuClickHandler, this ) );
+      $('menuitem').bind('click', _.bind( this._cellMenuClickHandler, this ) );
    },
    _setContextMenu: function(event){
       this.contextMenuTarget = event.target;  
@@ -176,16 +176,34 @@ var BHViewCollection = new Class({
    _cellMenuClickHandler: function(event){
 
       var action = $(event.target).attr('name');
+
       switch(action){
+
          case 'select':
+
             this._selectTextFromContextMenu();
             break;
+
          case 'copy':
+
             this._copyTextFromContextMenu();
             break
+
          case 'openurl':
+
             this._openUrlFromContextMenu();
             break;
+
+         default: 
+
+            //Use the user mouse selection and default to the table cell contents if
+            //there's no selection
+            var text = document.getSelection().toString() || $(this.contextMenuTarget).text();
+            var eLink = new ExternalLink('#ExternalLink', {});
+            var url = eLink.getUrl(action, text);
+            if(url != undefined){
+               window.open(url);
+            }
        }
    },
    _selectTextFromContextMenu: function(){
@@ -317,6 +335,7 @@ var BHViewCollectionModel = new Class({
       //An object acting like an associative array that holds
       //all views
       this.bhviewCollection = {};
+
       //The length of bhviewCollection
       this.length = 0;
 
@@ -450,3 +469,70 @@ var BHViewCollectionModel = new Class({
       this.childWindows.push(newWin);
    }
 });
+
+var ExternalLink = new Class({
+
+   jQuery:'ExternalLink',
+
+   initialize: function(selector, options){
+
+      this.bugzillaBase = 'https://bugzilla.mozilla.org/buglist.cgi?quicksearch=classification:"Client Software" OR classification:"Components" AND ';
+      this.crashstatsBase = "http://crash-stats.mozilla.com/query/query?do_query=1&query_type=contains&query=";
+
+      this.bugzillaFieldMap = { summary:'summary:',
+                                content:'content:' };
+   },
+   getUrl: function(action, text){
+
+      var url = "";
+      var actionComponents = action.split('_');
+      if(actionComponents.length >= 3){
+
+         //ExternalLink actions have the following format
+         // 2 letter link destination (bz bugzilla, cs crash-stats)_link type(sig, fm, url)_search target
+         //bz_sig_socorro
+
+         if(actionComponents[0] == 'bz'){
+
+            url = this.getBugzillaUrl(actionComponents[1], actionComponents[2], text);
+
+         }else if(actionComponents[0] == 'cs'){
+
+            url = this.getCrashstatsUrl(actionComponents[1], actionComponents[2], text);
+
+         }
+      }
+      return url;
+   },
+   getBugzillaUrl: function(fieldType, searchType, text){
+      
+      var url = "";
+      if(fieldType == 'sig'){
+
+         if(searchType == 'sig'){
+            url += this.bugzillaBase + 'sig:"' + text + '"'; 
+         }else {
+            url += this.bugzillaBase + this.bugzillaFieldMap[searchType] + '"' + text + '"'; 
+         }
+
+      }else if(fieldType == 'url'){
+
+         if(searchType == 'url'){
+            url += this.bugzillaBase + 'url:"' + text + '"'; 
+         }else {
+            url += this.bugzillaBase + this.bugzillaFieldMap[searchType] + '"' + text + '"'; 
+         }
+
+      }else{
+
+         url += this.bugzillaBase + 'content:"' + text + '"'; 
+
+      }
+      return url;
+   },
+   getCrashstatsUrl: function(fieldType, searchType, text){
+      var url = this.crashstatsBase + text; 
+      return url;
+   }
+});
+

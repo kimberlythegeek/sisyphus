@@ -86,9 +86,6 @@ var ConnectionsView = new Class({
    getDialogButtons: function(){
 
       var buttons = {
-            "File Bug": function(){
-               alert('File a bug');
-            },
             "Cancel": function(){
                $(this).dialog('close');
             },

@@ -64,11 +64,23 @@
 
 <!--Right Click Context Menu-->
 <menu type="context" id="bh_url_contextmenu">
+   <menu type="context" label="Search Bugzilla">
+      <menuitem label="Bugzilla URL" name="bz_url_url"></menuitem>
+      <menuitem label="Bugzilla Summary" name="bz_url_summary"></menuitem>
+      <menuitem label="Bugzilla Content" name="bz_url_content"></menuitem>
+   </menu>
+   <menuitem label="Search crash-stats" name="cs_url_con"></menuitem>
    <menuitem label="Select Cell Data" name="select"></menuitem>
    <menuitem label="Copy Cell Data" name="copy"></menuitem>
    <menuitem label="Open URL In New Window" name="openurl"></menuitem>
 </menu>
 <menu type="context" id="bh_table_contextmenu">
+   <menu type="context" label="Search Bugzilla">
+      <menuitem label="Socorro Signature" name="bz_sig_sig"></menuitem>
+      <menuitem label="Bugzilla Summary" name="bz_sig_summary"></menuitem>
+      <menuitem label="Bugzilla Content" name="bz_sig_content"></menuitem>
+   </menu>
+   <menuitem label="Search crash-stats" name="cs_sig_con"></menuitem>
    <menuitem label="Select Cell Data" name="select"></menuitem>
    <menuitem label="Copy Cell Data" name="copy"></menuitem>
 </menu>
