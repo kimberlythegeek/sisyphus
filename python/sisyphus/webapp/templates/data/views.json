@@ -118,13 +118,7 @@
   "Unit Tests",
   [
       "Collections",
-      [ { "name":"crash_explorer_ut",
-          "read_name":"Crash Explorer",
-          "collection":[ { "bhview":"crashes_ut", "parent":"" }, 
-                         { "bhview":"crash_detail_ut", "parent":"crash_ut" },
-                         { "bhview":"crash_urls_ut", "parent":"crashes_ut" } ]
-        },
-        { "name":"assertion_explorer_ut",
+      [ { "name":"assertion_explorer_ut",
           "read_name":"Assertion Explorer",
           "collection":[ { "bhview":"assertions_ut", "parent":"" }, 
                          { "bhview":"assertion_detail_ut", "parent":"assertions_ut" },

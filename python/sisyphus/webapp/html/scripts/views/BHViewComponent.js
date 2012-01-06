@@ -33,16 +33,13 @@ var BHViewComponent = new Class({
       this.bhviewParentIndex = this.options.bhview_parent_index;
       this.parentWindowName = window.document.title;
 
-      //The defaultBHView is the first view initialized
-      //when the page loads.
-      this.defaultBHView = false;
-
       //Callback methods for button clicks
       this.buttonHandlers = { closetable:this.closeTable,
                               openwindow:this.openWindow,
                               refresh:this.refresh,
                               help:this.help,
                               signal_help:this.getSignalHelp,
+                              newwindow:this.moveToNewWindow,
                               increasesize:this.increaseSize,
                               decreasesize:this.decreaseSize };
 
@@ -68,14 +65,12 @@ var BHViewComponent = new Class({
       this.addBHViewEvent = 'ADD_BHVIEW';
       this.processControlPanelEvent = 'PROCESS_CONTROL_PANEL';
       this.signalEvent = 'SIGNAL_BHVIEW';
-      this.signalTypeEvent = 'SET_SIGNALING_TYPE_BHVIEW';
       this.openCollectionEvent = 'OPEN_COLLECTION_BHVIEW';
 
       //Set up subscriptions
       this.subscriptionTargets = {};
       this.subscriptionTargets[this.processControlPanelEvent] = this.processControlPanel;
       this.subscriptionTargets[this.signalEvent] = this.signalHandler;
-      this.subscriptionTargets[this.signalTypeEvent] = this.setSignalingType;
 
       //Boolean indicating if the server had to reset the
       //date range supplied by the user
@@ -93,17 +88,16 @@ var BHViewComponent = new Class({
       //initialize the control panel with
       this.signalData = this.getSignalDataFromPage();
 
-      //The signalingType indicates whether a view
-      //can send or receive signals.
       if(this.bhviewIndex == 0){
-         //First view is a sender by default
-         this.signalingType = 'send';
+
          //Disable the close button so the user cannot
          //have a viewless page
          this.view.disableClose(this.bhviewIndex);
-      }else{
-         //All other views are receivers
-         this.signalingType = 'receive';
+         //Set up the update of the date range in the page every 60 minutes
+         //and only run it if we are the first bhview.  The first bhview
+         //cannot be deleted.
+         this.updateDateRangeInterval = setInterval( _.bind(this.updateDateRange, this), 3600000 );
+
       }
 
       //We could be a child in a new window, register listener
@@ -120,19 +114,18 @@ var BHViewComponent = new Class({
                                    this.parentWindowName);
 
       var defaultLoad = this.model.getBHViewAttribute('default_load')
-      if((defaultLoad == 1) || (this.bhviewIndex == 0)){
+      if( (defaultLoad == 1) || 
+          ((this.bhviewIndex == 0) && (this.signalData.signal != undefined)) ){
          //Select view and load the data
+         this.view.displaySignalData('receive', this.signalData, this.bhviewIndex);
          this.selectBHView();
       }else{
-         this.setControlPanelEv();
-         this.view.showNoDataMessage(this.bhviewIndex, 'sendsignal');
-      }
+         var bhviewReadName = this.model.getBHViewAttribute('read_name');
 
-      //Set up the update of the date range in the page every 60 minutes
-      //and only run it if we are the first bhview.  The first bhview
-      //cannot be deleted.
-      if(this.bhviewIndex == 0){
-         this.updateDateRangeInterval = setInterval( _.bind(this.updateDateRange, this), 3600000 );
+         this.view.displayBHViewName(this.bhviewIndex, bhviewReadName);
+         this.setControlPanelEv();
+
+         this.view.showNoDataMessage(this.bhviewIndex, 'sendsignal');
       }
 
    },
@@ -149,7 +142,6 @@ var BHViewComponent = new Class({
    processWindowSignal: function(event){
 
       var data = this.validateMessageData(event);
-
       if( (window.opener != undefined) && (window.opener.document != undefined) ){
          if(!_.isEmpty(data)){
             //Make sure the window/view sender are the appropriate parents
@@ -190,12 +182,14 @@ var BHViewComponent = new Class({
    updateDateRange: function(){
 
       //Make ajax call to retrieve date range, update the values in the page
-      jQuery.ajax( this.model.dateRangeLocation, { accepts:'application/json',
-                                                   dataType:'json',
-                                                   cache:false,
-                                                   type:'GET',
-                                                   context:this.view,
-                                                   success:this.view.updateDateRange });
+      if( this.model != undefined ){
+         jQuery.ajax( this.model.dateRangeLocation, { accepts:'application/json',
+                                                      dataType:'json',
+                                                      cache:false,
+                                                      type:'GET',
+                                                      context:this.view,
+                                                      success:this.view.updateDateRange });
+      }
    },
    /****************
     *PUBLIC INTERFACE
@@ -205,15 +199,16 @@ var BHViewComponent = new Class({
       //Delete the view from the DOM
       this.view.removeBHView(this.bhviewIndex);
 
-      //Get rid of any events assigned with live
-      this.dataTable.die();
-
       //Unbind local events
       var paginationSel = this.view.getTablePaginationSel(this.bhviewIndex);
       $(paginationSel).unbind();
 
-      //Call table destructor
-      this.dataTable.fnDestroy();
+      //Get rid of any events assigned with live
+      if(this.dataTable != undefined){
+         this.dataTable.die();
+         //Call table destructor
+         this.dataTable.fnDestroy();
+      }
 
       //Unbind custom events
       BHPAGE.unbindSubscribers(this.subscriptionTargets,
@@ -223,9 +218,7 @@ var BHViewComponent = new Class({
       //if delete will work without explicit attribute reference.
       //Need to do some research...
       delete(this.subscriptionTargets);
-      delete(this.signalingType);
       delete(this.bhviewIndex);
-      delete(this.defaultBHView);
       delete(this.buttonHandlers);
       delete(this.model);
       delete(this.view);
@@ -234,7 +227,6 @@ var BHViewComponent = new Class({
       delete(this.addBHViewEvent);
       delete(this.processControlPanelEvent);
       delete(this.signalEvent);
-      delete(this.signalTypeEvent);
       delete(this.subscriptionTargets);
       delete(this.signalData);
       delete(this.dataTable);
@@ -271,7 +263,8 @@ var BHViewComponent = new Class({
 
       if( collection != undefined ){
          var data = { parent_bhview_index:this.bhviewIndex,
-                      collection:collection };
+                      collection:collection,
+                      display_type:BHPAGE.ConnectionsComponent.getDisplayType() };
 
          //Set the name to the 0 collection element
          bhviewName = collection[0].bhview;
@@ -281,6 +274,8 @@ var BHViewComponent = new Class({
 
          //Fire event to load the rest of the collection
          $(this.view.allViewsContainerSel).trigger(this.openCollectionEvent, data);
+
+         return false;
 
       }
 
@@ -312,11 +307,8 @@ var BHViewComponent = new Class({
       this.model.getBHViewData(bhviewName, 
                                this, 
                                this.initializeBHView, 
-                               params);
-
-   },
-   markAsDefault: function(){
-      this.defaultBHView = true;
+                               params,
+                               this._fnError);
    },
 
    /***************
@@ -358,7 +350,8 @@ var BHViewComponent = new Class({
          this.model.getBHViewData(this.model.getBHViewAttribute('name'),
                                   this, 
                                   this.initializeBHView,
-                                  params);
+                                  params,
+                                  this._fnError);
       }
    },
    signalHandler: function(data){
@@ -423,12 +416,6 @@ var BHViewComponent = new Class({
                                                                this.bhviewIndex);
 
          this.processControlPanel(this.signalData);
-      }
-   },
-
-   setSignalingType: function(data){
-      if(data.parent_bhview_index == this.bhviewIndex){
-         this.signalingType = data.type;
       }
    },
 
@@ -600,6 +587,8 @@ var BHViewComponent = new Class({
          this.dataTable.fnDraw();
          this.dataTable.fnAdjustColumnSizing();
 
+         this.view.setMinimumHeight(tableSel);
+
       }else{
          this.view.showNoDataMessage(this.bhviewIndex);
       } 
@@ -621,7 +610,7 @@ var BHViewComponent = new Class({
             if(data != undefined){
 
                signalData['signal'] = signal;
-               signalData['data'] = encodeURIComponent(data);
+               signalData['data'] = decodeURIComponent(data);
 
                //Remove signal to prevent all new bhviews from using
                //it as a default
@@ -644,12 +633,12 @@ var BHViewComponent = new Class({
    },
    setDataTableSignals: function(){
 
-       /********************
-        * NOTE: Binding of the context menu must be done every time a new page of 
-        *       the data table is loaded.  There is no pagination event model in
-        *       datatables.js.  It's supposed to be released in vs 2 and is being
-        *       actively developed now.  For the moment use hacky click listener.
-        *********************/
+      /********************
+       * NOTE: Binding of the context menu must be done every time a new page of 
+       *       the data table is loaded.  There is no pagination event model in
+       *       datatables.js.  It's supposed to be released in vs 2 and is being
+       *       actively developed now.  For the moment use hacky click listener.
+       *********************/
       var paginationSel = this.view.getTablePaginationSel(this.bhviewIndex);
       $(paginationSel).bind('click', _.bind(function(e){
          this._bindCellContextMenu();
@@ -665,50 +654,50 @@ var BHViewComponent = new Class({
       }, this));
 
       //Catch click events on the datatable
-      $(this.dataTable).live("click", _.bind(function(event){
+      $(this.dataTable).live("click", _.bind( this._dataTableClickHandler, this));
+
+   },
+   _dataTableClickHandler: function(event){
+
+      //close any open menus
+      this.view.closeMenu();
+
+      event.stopPropagation();
+
+      //If user selected an anchor in the main cell content
+      //selectedTrEl will be a tr element
+      var selectedTrEl = $(event.target).parent().parent().parent();
+
+      //Make sure a table row was retrieved
+      if( $(selectedTrEl).is('tr') ){
+
+         this.view.selectTableRow( selectedTrEl );
+
+         var href = $(event.target).attr('href');
+         if(href != undefined){
+
+            href = href.replace(/\#/, '');
+
+            var adapterName = this.model.getBHViewAttribute('data_adapter');
+            var a = this.dataAdapters.getAdapter(adapterName);
+            var targetData = BHPAGE.escapeForUrl($(event.target).text(), href);
 
 
-         //close any open menus
-         this.view.closeMenu();
+            var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
+                                                                  this.bhviewIndex);
+            var dateRange = a.getDateRangeParams(controlPanelDropdownSel, this.signalData);
 
-         event.stopPropagation();
+            var signalData = { parent_bhview_index:this.bhviewIndex,
+                               data:targetData,
+                               date_range:dateRange,
+                               signal:href };
 
-         //If user selected an anchor in the main cell content
-         //selectedTrEl will be a tr element
-         var selectedTrEl = $(event.target).parent().parent().parent();
+            //Display the signalData
+            this.view.displaySignalData('send', signalData, this.bhviewIndex);
 
-         //Make sure a table row was retrieved
-         if( $(selectedTrEl).is('tr') ){
-
-            this.view.selectTableRow( selectedTrEl );
-
-            var href = $(event.target).attr('href');
-            if(href != undefined){
-
-               href = href.replace(/\#/, '');
-
-               var adapterName = this.model.getBHViewAttribute('data_adapter');
-               var a = this.dataAdapters.getAdapter(adapterName);
-               var targetData = BHPAGE.escapeForUrl($(event.target).text(), href);
-
-
-               var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
-                                                                     this.bhviewIndex);
-               var dateRange = a.getDateRangeParams(controlPanelDropdownSel, this.signalData);
-
-               var signalData = { parent_bhview_index:this.bhviewIndex,
-                                  data:targetData,
-                                  date_range:dateRange,
-                                  signal:href };
-
-               //Display the signalData
-               this.view.displaySignalData('send', signalData, this.bhviewIndex);
-
-               $(this.view.allViewsContainerSel).trigger(this.signalEvent, signalData);
-            }
+            $(this.view.allViewsContainerSel).trigger(this.signalEvent, signalData);
          }
-      }, this));
-
+      }
    },
    /**************
     *BUTTON CLICK HANDLERS
@@ -720,17 +709,38 @@ var BHViewComponent = new Class({
          $(this.view.allViewsContainerSel).trigger( this.closeEvent, { bhview_index:this.bhviewIndex } ); 
       }
    },
+   moveToNewWindow: function(){
+      this.view.closeMenu();
+      if(this.bhviewIndex != 0){
+
+         //Get the dateRange
+         var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
+                                                               this.bhviewIndex);
+         var adapterName = this.model.getBHViewAttribute('data_adapter');
+         var a = this.dataAdapters.getAdapter(adapterName);
+         var params = a.processControlPanel(controlPanelDropdownSel, this.signalData);
+
+         var bhviewName = this.model.getBHViewAttribute('name');
+
+         //Build the data object for the event
+         var data = { selected_bhview:bhviewName,
+                      parent_bhview_index:this.bhviewParentIndex,
+                      display_type:'page',
+                      params:params };
+
+         $(this.view.allViewsContainerSel).trigger(this.addBHViewEvent, data);
+         $(this.view.allViewsContainerSel).trigger( this.closeEvent, { bhview_index:this.bhviewIndex } ); 
+         
+      }
+   },
    openWindow: function(){
       this.view.closeMenu();
-
       var signals = this.model.getBHViewAttribute('signals');
-
       BHPAGE.ConnectionsComponent.setBHViewIndex(this.bhviewIndex);
-      BHPAGE.ConnectionsComponent.open('open', this.signalingType, signals);
+      BHPAGE.ConnectionsComponent.open('open', signals);
    },
    refresh: function(){
 
-      //this.updateSignalDateRange();
       this.view.closeMenu();
 
       //Display the signal data
@@ -783,96 +793,98 @@ var BHViewComponent = new Class({
          showSpeed: 150,
          width: this.view.controlPanelWidth,
 
-         onOpen: _.bind(function(event){
+         onOpen: _.bind(this._controlPanelOnOpen, this),
 
-            this.view.hideContextMenu();
-
-            //Make sure we don't have any extra keydown event bindings
-            $(document).unbind('keydown');
-
-            //Populate the control panel fields with
-            //any signal data
-            var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
-                                                                  this.bhviewIndex);
-            var serverResetDateRangeSel = this.view.getIdSelector(this.view.serverResetDateRangeSel,
-                                                                  this.bhviewIndex);
-            var badDateFormatSel = this.view.getIdSelector(this.view.badDateFormatSel, this.bhviewIndex);
-
-            var adapterName = this.model.getBHViewAttribute('data_adapter');
-            var a = this.dataAdapters.getAdapter(adapterName);
-            a.setControlPanelFields(controlPanelDropdownSel, this.signalData);
-            a.checkDates(controlPanelDropdownSel, 
-                         this.serverDateRangeUpdate,
-                         this.model.start_date, 
-                         this.model.end_date,
-                         serverResetDateRangeSel,
-                         badDateFormatSel);
-
-
-            //Capture keydown and look for enter/return press
-            $(document).keydown( _.bind( this._processControlPanelKeyPress, this ) );
-
-         }, this),
-
-         onClose: _.bind(function(event){
-
-            //Update the signal data when the menu is closed to make 
-            //sure we get any modification to the date range
-            var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
-                                                                  this.bhviewIndex);
-            var adapterName = this.model.getBHViewAttribute('data_adapter');
-            var a = this.dataAdapters.getAdapter(adapterName);
-            a.unbindPanel(controlPanelDropdownSel);
-
-            var dateRange = a.getDateRangeParams(controlPanelDropdownSel, {});
-
-            if(this.signalData){
-               this.signalData['date_range'] = dateRange;
-            }
-
-            //This is really dangerous, it will clear all keydown events
-            //assigned at the document level... which really should not be 
-            //any.  When passing a function to unbind it fails probably because
-            //_.bind() is used for context management...
-            $(document).unbind('keydown');
-
-         }, this),
+         onClose: _.bind( this._controlPanelOnClose, this),
 
          //This clickHandler prevents the form from closing when it's
          //clicked for data input.  
-         clickHandler:_.bind(function(event){
-
-            var controlPanelBtId = this.view.getId(this.view.controlPanelBtSel, this.bhviewIndex);
-            var controlPanelClearBtId = this.view.getId(this.view.controlPanelClearBtSel, this.bhviewIndex);
-            var controlPanelResetDatesBtId = this.view.getId(this.view.controlPanelResetDatesSel, this.bhviewIndex);
-            var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
-                                                                  this.bhviewIndex);
-
-            var elId = $(event.target).attr('id');
-
-            //This enables control panel's with checkboxes
-            var adapterName = this.model.getBHViewAttribute('data_adapter');
-            var a = this.dataAdapters.getAdapter(adapterName);
-            a.processPanelClick(elId);
-
-            if( elId == controlPanelBtId ){
-               //close menu
-               this.view.closeMenu();
-               //fire event
-               $(this.view.allViewsContainerSel).trigger( this.processControlPanelEvent, 
-                                                         { bhview_index:this.bhviewIndex }); 
-            }else if(elId == controlPanelResetDatesBtId){
-
-               a.resetDates(controlPanelDropdownSel);
-
-            }else if(elId == controlPanelClearBtId){
-               a.clearPanel(controlPanelDropdownSel);
-            }
-
-            event.stopPropagation();
-
-         }, this) //end bind
+         clickHandler:_.bind( this._controlPanelClickHandler, this)
       });
+   },
+   _controlPanelOnOpen: function(event){
+      this.view.hideContextMenu();
+
+      //Make sure we don't have any extra keydown event bindings
+      $(document).unbind('keydown');
+
+      //Populate the control panel fields with
+      //any signal data
+      var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
+                                                            this.bhviewIndex);
+      var serverResetDateRangeSel = this.view.getIdSelector(this.view.serverResetDateRangeSel,
+                                                            this.bhviewIndex);
+      var badDateFormatSel = this.view.getIdSelector(this.view.badDateFormatSel, this.bhviewIndex);
+
+      var adapterName = this.model.getBHViewAttribute('data_adapter');
+      var a = this.dataAdapters.getAdapter(adapterName);
+      a.setControlPanelFields(controlPanelDropdownSel, this.signalData);
+      a.checkDates(controlPanelDropdownSel, 
+                   this.serverDateRangeUpdate,
+                   this.model.start_date, 
+                   this.model.end_date,
+                   serverResetDateRangeSel,
+                   badDateFormatSel);
+
+
+      //Capture keydown and look for enter/return press
+      $(document).keydown( _.bind( this._processControlPanelKeyPress, this ) );
+   },
+   _controlPanelOnClose: function(event){
+      //Update the signal data when the menu is closed to make 
+      //sure we get any modification to the date range
+      var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
+                                                            this.bhviewIndex);
+      var adapterName = this.model.getBHViewAttribute('data_adapter');
+      var a = this.dataAdapters.getAdapter(adapterName);
+      a.unbindPanel(controlPanelDropdownSel);
+
+      var dateRange = a.getDateRangeParams(controlPanelDropdownSel, {});
+
+      if(this.signalData){
+         this.signalData['date_range'] = dateRange;
+      }
+
+      //This is really dangerous, it will clear all keydown events
+      //assigned at the document level... which really should not be 
+      //any.  When passing a function to unbind it fails probably because
+      //_.bind() is used for context management...
+      $(document).unbind('keydown');
+
+   },
+   _controlPanelClickHandler: function(event){
+
+      var controlPanelBtId = this.view.getId(this.view.controlPanelBtSel, 
+                                             this.bhviewIndex);
+
+      var controlPanelClearBtId = this.view.getId(this.view.controlPanelClearBtSel, 
+                                                  this.bhviewIndex);
+
+      var controlPanelResetDatesBtId = this.view.getId(this.view.controlPanelResetDatesSel, 
+                                                       this.bhviewIndex);
+
+      var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 
+                                                            this.bhviewIndex);
+
+      var elId = $(event.target).attr('id');
+
+      //This enables control panel's with checkboxes
+      var adapterName = this.model.getBHViewAttribute('data_adapter');
+      var a = this.dataAdapters.getAdapter(adapterName);
+      a.processPanelClick(elId);
+
+      if( elId == controlPanelBtId ){
+         //close menu
+         this.view.closeMenu();
+         //fire event
+         $(this.view.allViewsContainerSel).trigger( this.processControlPanelEvent, 
+                                                  { bhview_index:this.bhviewIndex }); 
+      }else if(elId == controlPanelResetDatesBtId){
+         a.resetDates(controlPanelDropdownSel);
+      }else if(elId == controlPanelClearBtId){
+         a.clearPanel(controlPanelDropdownSel);
+      }
+      event.stopPropagation();
    },
    _processControlPanelKeyPress: function(event){
       //If the user presses enter/return simulate form submission
@@ -903,6 +915,10 @@ var BHViewComponent = new Class({
                      this._selectTextFromContextMenu(el);
                      break;
 
+                  case 'copy':
+                     this._copyTextFromContextMenu(el);
+                     break
+
                   case 'open':
 
                      this._openSignalFromContextMenu(el);
@@ -915,6 +931,24 @@ var BHViewComponent = new Class({
 
                }
          }, this) );
+      }
+   },
+   _copyTextFromContextMenu: function(el){
+      var anchor = $(el).find('a').get(0);
+      var text = "";
+      if(anchor){
+         text = $(anchor).text();
+      }else{
+         text = $(el).text();
+      }
+      try {
+         netscape.security.PrivilegeManager.enablePrivilege('UniversalXPConnect');
+         const gClipboardHelper = Components.classes["@mozilla.org/widget/clipboardhelper;1"].
+         getService(Components.interfaces.nsIClipboardHelper);
+         gClipboardHelper.copyString(text);
+      } catch(e) {
+         alert("Javascript does not have access to the clipboard in your browser.  You can allow access by entering 'about:config' in the location bar in the browser and setting 'signed.applets.codebase_principal_support=true' or installing the AllowClipboard addon.  NOTE: This will only work in firefox.");
+         return false;
       }
    },
    _configureContextMenuOnOpen: function(el){
@@ -975,7 +1009,14 @@ var BHViewComponent = new Class({
       var href = anchor.text()
       this.view.closeMenu();
       window.open(href);
-   }
+   },
+   _fnError: function(data, textStatus, jqXHR){
+      var messageText = 'Ohhh no, something has gone horribly wrong! ';
+      messageText += ' HTTP status:' + data.status + ', ' + textStatus +
+      ', ' + data.statusText;
+
+      this.view.showNoDataMessage(this.bhviewIndex, 'error', messageText); 
+   },
 });
 var BHViewView = new Class({
 
@@ -1003,7 +1044,7 @@ var BHViewView = new Class({
       this.cellContextPanelWidth = 360;
 
       //Scrolling params
-      this.minScrollPanelSize = 250;
+      this.minScrollPanelSize = 200;
       this.defaultScrollPanelSize = 500;
       this.tableScrollClassSel = '.dataTables_scrollBody';
 
@@ -1032,8 +1073,11 @@ var BHViewView = new Class({
       this.visMenuSel = '#bh_vis_menu_c';
       this.topBarTitleSel = '#bh_view_title_c';
 
+      this.scrollBodyClassSel = 'dataTables_scrollBody';
+
       //Close button selector
       this.closeButtonSel = '#bh_closetable_bt_c';
+      this.newWindowButtonSel = '#bh_newwindow_bt_c';
 
       //Control panel ids
       this.controlPanelBtSel = '#bh_cp_load_view_c';
@@ -1309,6 +1353,9 @@ var BHViewView = new Class({
    disableClose: function(bhviewIndex){
       var closeButtonSel = this.getIdSelector(this.closeButtonSel, bhviewIndex);
       $(closeButtonSel).addClass("ui-state-disabled");
+
+      var newWindowButtonSel = this.getIdSelector(this.newWindowButtonSel, bhviewIndex);
+      $(newWindowButtonSel).addClass("ui-state-disabled");
    },
    selectTableRow: function( selectedTrEl ){
 
@@ -1352,6 +1399,14 @@ var BHViewView = new Class({
 
       return hPix;
    },
+   setMinimumHeight: function(tableSel){
+      var scrollBody = $(tableSel).parent();
+      var h = parseInt( $(scrollBody).css('height') );
+      if( h < this.minScrollPanelSize ){
+         var newHeight = this.minScrollPanelSize + 'px';
+         $(scrollBody).css('height', newHeight);
+      }
+   },
    /*******************
     * GET METHODS
     *******************/
@@ -1382,25 +1437,26 @@ var BHViewView = new Class({
          $(signalDateRangeDisplaySel).text(dateRange); 
       }
       //Show signal type and associated data
-      var data = BHPAGE.unescapeForUrl(signalData.data);
-      var displayData = data;
-      if(signalData.data && signalData.signal){
-         if(data.length >= this.maxSignalDataLength){
-            displayData = data.substring(0, this.maxSignalDataLength - 3) + '...';
+      if(signalData.data != undefined){
+         var data = BHPAGE.unescapeForUrl(signalData.data);
+         var displayData = data;
+         if(signalData.data && signalData.signal){
+            if(data.length >= this.maxSignalDataLength){
+               displayData = data.substring(0, this.maxSignalDataLength - 3) + '...';
+            }
+         }
+         if(direction == 'receive'){
+            var signalDataReceivedDisplaySel = this.getIdSelector(this.signalDataReceivedDisplaySel, bhviewIndex);
+            $(signalDataReceivedDisplaySel).text(displayData);
+            $(signalDataReceivedDisplaySel).attr('title', data);
+         }else if(direction == 'send'){
+            var signalDataSentDisplaySel = this.getIdSelector(this.signalDataSentDisplaySel, bhviewIndex);
+            $(signalDataSentDisplaySel).text(displayData);
+            $(signalDataSentDisplaySel).attr('title', data);
          }
       }
-      //Show direction of signal
-      if(direction == 'receive'){
-         var signalDataReceivedDisplaySel = this.getIdSelector(this.signalDataReceivedDisplaySel, bhviewIndex);
-         $(signalDataReceivedDisplaySel).text(displayData);
-         $(signalDataReceivedDisplaySel).attr('title', data);
-      }else if(direction == 'send'){
-         var signalDataSentDisplaySel = this.getIdSelector(this.signalDataSentDisplaySel, bhviewIndex);
-         $(signalDataSentDisplaySel).text(displayData);
-         $(signalDataSentDisplaySel).attr('title', data);
-      }
    },
-   showNoDataMessage: function(bhviewIndex, messageType){
+   showNoDataMessage: function(bhviewIndex, messageType, messageText){
 
       //Hide main pane spinner
       this.hideSpinner(bhviewIndex);
@@ -1428,6 +1484,8 @@ var BHViewView = new Class({
       var message = this.nodataMessage;
       if(messageType == 'sendsignal'){
          message = this.sendSignalMessage;
+      }else if(messageType == 'error'){
+         message = messageText;
       }
       $(noDataSel).text(message);
       $(noDataSel).css('display', 'block');
@@ -1435,7 +1493,7 @@ var BHViewView = new Class({
    },
    closeMenu: function(){
       /*************
-       *This method calls a the kill() method of
+       *This method calls the kill() method of
        *an fg.menu object to close the menu explicitly.
        *************/
       for(var i=0; i<allUIMenus.length; i++){
@@ -1461,7 +1519,7 @@ var BHViewView = new Class({
       this.displayBHViewName(bhviewIndex, bhviewReadName);
 
       if(bhviewIndex == 0){
-         //Disable the close button so the user cannot
+         //Disable the close button and move to new window button so the user cannot
          //have a viewless page
          this.disableClose(bhviewIndex);
       }
@@ -1561,7 +1619,7 @@ var BHViewModel = new Class({
    getBHViewAttribute: function(attr){
       return this.bhviewHash[attr];
    },
-   getBHViewData: function(bhviewName, context, fnSuccess, params){
+   getBHViewData: function(bhviewName, context, fnSuccess, params, fnError){
 
       var url = this.apiLocation + bhviewName;
 
@@ -1585,6 +1643,7 @@ var BHViewModel = new Class({
                           type:'POST',
                           data:data,
                           context:context,
+                          error:fnError,
                           success:fnSuccess,
                           dataFilter:_.bind(this.datatableAdapter, this) });
 

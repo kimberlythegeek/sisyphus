@@ -14,12 +14,12 @@ var ConnectionsComponent = new Class({
       this.model = new ConnectionsModel('#ConnectionsModel',{});
 
    },
-   open: function(tab, signalingType, signals){
-
+   open: function(tab, signals){
       this.setAllViewsOptionMenu(this.view.viewListSel, signals);
-
-      this.view.setSignalingType(signalingType);
-      this.view.open(tab, signalingType);
+      this.view.open(tab);
+   },
+   getDisplayType: function(){
+      return this.view.displayType;
    },
    setAllViewsOptionMenu: function(selectSel, signals){
       var bhviewNames = BHPAGE.BHViewCollection.getBHViewsBySignalHash(signals);
@@ -40,13 +40,12 @@ var ConnectionsView = new Class({
    initialize: function(selector, options){
 
       this.setOptions(options);
+
       this.parent(options);
 
       //List of hashes containing:
       // name:bhviewName, read_name:readName
       this.bhviewNames = this.options.bhviewNames;
-
-      this.displayType = 'pane';
 
       this.allViewsContainerSel = '#bh_view_container';
 
@@ -54,7 +53,6 @@ var ConnectionsView = new Class({
       this.connectionsModalClassSel = '.bh-connections-modal';
 
       //Tab Selectors 
-      this.mannageConnectionsTabSel = '#bh_manage_connections_tab';
       this.openNewViewTabSel = '#bh_open_new_view_tab';
 
       //Select menu selectors
@@ -62,11 +60,9 @@ var ConnectionsView = new Class({
 
       //Radio buttons
       this.radioButtonOpenClassSel = '.bh-page-newpane';
-      this.radioButtonConnectionsClassSel = '.bh-connections';
 
       //Events
       this.addBHViewEvent = 'ADD_BHVIEW';
-      this.signalTypeEv = 'SET_SIGNALING_TYPE_BHVIEW';
 
       //Index of the view that opened the dialog
       this.bhviewIndex;
@@ -78,8 +74,6 @@ var ConnectionsView = new Class({
 
       //Set up the tag selection events
       this.setTabSelections();
-      //Set up the radio buttons on the open page tab
-      this.setRadioButtons();
 
       $(this.connectionsModalClassSel).dialog({ 
          autoOpen: false,
@@ -104,10 +98,13 @@ var ConnectionsView = new Class({
                var selectedView = this.getBHViewSelection();
                //Close the dialog
                $(this.connectionsModalClassSel).dialog('close');
+
+               var displayType = $('input[name=open]:checked').val();
+
                //Trigger the add view event
                $(this.allViewsContainerSel).trigger(this.addBHViewEvent, { selected_bhview:selectedView, 
                                                                            parent_bhview_index:this.bhviewIndex,
-                                                                           display_type:this.displayType });
+                                                                           display_type:displayType });
 
             }, this)
          };
@@ -116,30 +113,6 @@ var ConnectionsView = new Class({
    },
    getBHViewSelection: function(){
       return $(this.viewListSel).attr('value');
-   },
-   setRadioButtons: function(radioButtonSelectors){
-      $(this.radioButtonOpenClassSel).bind( 'click', _.bind(function(event){
-            var value = $( event.target ).attr('value');
-            if(value.search(/page/) > -1){
-               this.displayType = 'page';
-            }else if(value.search(/newpane/) > -1){
-               this.displayType = 'pane';
-            }
-      }, this));
-      $(this.radioButtonConnectionsClassSel).bind( 'click', _.bind(function(event){
-            var value = $( event.target ).attr('value');
-            $(this.allViewsContainerSel).trigger(this.signalTypeEv, 
-                                                 { type:value, bhview_index:this.bhviewIndex } );
-      }, this));
-   },
-   setSignalingType: function(type){
-      var radioBts = $(this.radioButtonConnectionsClassSel);
-      for(var i = 0; i<radioBts.length; i++){
-         var value = $(radioBts[i]).attr('value');
-         if(value == type){
-            $(radioBts[i]).attr('checked', 1);
-         }
-      }
    },
    setAllViewsOptionMenu: function(listSel, bhviewNames){
 
@@ -178,8 +151,6 @@ var ConnectionsView = new Class({
       var tabSel;
       if(tab == 'open'){
          tabSel = this.openNewViewTabSel;
-      }else if(tab == 'connections'){
-         tabSel = this.mannageConnectionsTabSel;
       }
 
       $(this.connectionsModalClassSel).tabs("select", tabSel);

@@ -1,6 +1,7 @@
 # Django settings for sisyphus.webapp project.
 
 import os
+import simplejson
 from datasource.bases.BaseHub import BaseHub
 from datasource.hubs.MySQL import MySQL
 
@@ -24,6 +25,25 @@ try:
     DEBUG = os.environ["SISYPHUS_DEBUG"] is not None
 except KeyError:
     DEBUG = False
+
+####################
+# When the environment variable SISYPHUS_CACHE_QUERIES is
+# set to true a set of cached queries is used instead of 
+# directly querying the database.  This is useful for 
+# javascript developing/debugging especially when there are
+# performance/connectivity issues.
+###################
+CACHE_QUERIES = {}
+try:
+   if os.environ["SISYPHUS_CACHE_QUERIES"] is not None:
+      filepath = "%s%s" % (ROOT, "/procs/cached_queries.data")
+      file_obj = open(filepath) 
+      try:
+         CACHE_QUERIES = simplejson.loads(file_obj.read())
+      finally:
+         file_obj.close()
+except KeyError:
+   CACHE_QUERIES = {}
 
 TEMPLATE_DEBUG = DEBUG
 

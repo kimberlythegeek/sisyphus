@@ -36,6 +36,15 @@ var BHViewCollection = new Class({
 
       var parentToIndexMap = {};
 
+      //force parent to be the first bhview
+      data.parent_bhview_index = 0;
+
+      var indexTargets = this.model.getAllBHViewIndexes();
+      //Remove all bhviews
+      for(var i=0; i<indexTargets.length; i++){
+         this.closeBHView({ bhview_index:indexTargets[i] });
+      }
+
       for(var i=0; i < data.collection.length; i++){
 
          var bhviewChild = data.collection[i].bhview;
@@ -44,22 +53,10 @@ var BHViewCollection = new Class({
          var bhviewData = {  selected_bhview:bhviewChild,
                              display_type:'pane',
                              parent_bhview_index:parentToIndexMap[bhviewParent] };
-
-         if( i === 0 ){
-            //User has selected a collection from the Navigation
-            //menu.  Change parent view to the first view in the 
-            //collection
-            if( data.parent_bhview_index != undefined ){
-
-               parentToIndexMap[bhviewChild] = data.parent_bhview_index;
-
-            } else {
-               //Collection is set as the default item to display
-               var newIndex = this.addBHView(bhviewData);
-               parentToIndexMap[bhviewChild] = newIndex;
-
-            }
-
+         if( i == 0 ){
+            //Collection is set as the default item to display
+            var newIndex = this.addBHView(bhviewData);
+            parentToIndexMap[bhviewChild] = newIndex;
          }else{
             var newIndex = this.addBHView(bhviewData);
             parentToIndexMap[bhviewChild] = newIndex;
@@ -67,7 +64,6 @@ var BHViewCollection = new Class({
       }
    },
    resizeWindow: function(event){
-
       for(var i=0; i < this.model.bhviewCollection.length; i++){
          if( this.model.bhviewCollection[i].dataTable != undefined ){
             this.model.bhviewCollection[i].dataTable.fnAdjustColumnSizing();
@@ -80,9 +76,6 @@ var BHViewCollection = new Class({
    getBHViewsBySignalHash: function(signals){
       return this.model.getBHViewsBySignalHash(signals);
    },
-   getBHViewCount: function(){
-      return this.model.getBHViewCount();
-   },
    getAllBHViewNames: function(){
       return this.model.getAllBHViewNames();
    },
@@ -92,6 +85,11 @@ var BHViewCollection = new Class({
    addBHView: function(data){
       
       var bhviewName = data.selected_bhview;
+
+      if(!this.model.hasBHView(bhviewName)){
+         bhviewName = this.model.getDefaultBHView();
+      }
+
       var bhviewHash = BHPAGE.navLookup[bhviewName];
 
       //View has no pane version and can only be launched
@@ -111,51 +109,36 @@ var BHViewCollection = new Class({
                                   data.parent_bhview_index);
 
       }else {
-         //Open bhview in current page
-         var defaultView = false;
 
-         //First view created, mark as default so the bhview
-         //can disable close button to prevent a state of 
-         //no views displayed
-         if(!this.model.hasBHView(data.selected_bhview)){
-            bhviewName = this.defaultBHViewName;
-            defaultView = true;
-
-            bhviewHash = BHPAGE.navLookup[bhviewName];
-
-            if(bhviewHash.collection != undefined){
-               //Default view is a collection let openBHViewCollection handle it
-               var data = { parent_bhview_index:undefined,
-                            collection:bhviewHash.collection };
-
-               this.openBHViewCollection(data);
-               return false;
-            }
+         if(bhviewHash.collection != undefined){
+            //view is a collection let openBHViewCollection handle it
+            var dataForCollection = { parent_bhview_index:undefined,
+                                      collection:bhviewHash.collection,
+                                      display_type:'pane' };
+            this.openBHViewCollection(dataForCollection);
+            return false;
          }
 
-         var bhviewIndex = this.model.getBHViewIndex();
+         var bhviewIndex = this.model.getNewBHViewIndex();
 
          var bhviewComponent = new BHViewComponent('#bhviewComponent', 
                                                  { bhview_name:bhviewName, 
                                                    bhview_parent_index:data.parent_bhview_index,
                                                    bhview_index:bhviewIndex }); 
 
-         //Record parent/child relationships
          this.model.addParentChildRelationship(data.parent_bhview_index, bhviewIndex);
 
-         if(defaultView){
-            bhviewComponent.markAsDefault();
-         }
-
-         this.model.addBHView(bhviewComponent);
+         this.model.addBHView(bhviewComponent, bhviewIndex);
 
          return bhviewIndex;
       }
    },
    closeBHView: function(data){
       var bhview = this.model.getBHView(data.bhview_index);
-      this.model.removeBHView(bhview);
-      bhview.destroy();
+      if( bhview != undefined ){
+         bhview.destroy();
+         this.model.removeBHView(data.bhview_index);
+      }
    },
    loadNewChildWindow: function(childWindow){
       this.model.loadNewChildWindow(childWindow);
@@ -276,10 +259,11 @@ var BHViewCollectionModel = new Class({
 
       this.newViewUrl = '/bughunter/views';
 
-      //An associative array might be a better choice here.
-      //Could embed the bhviewIndex in the keys.  Then we
-      //can remove deleted array entries safely.
-      this.bhviewCollection = [];
+      //An object acting like an associative array that holds
+      //all views
+      this.bhviewCollection = {};
+      //The length of bhviewCollection
+      this.length = 0;
 
       /******
        * This data structure maintains the parent/child relationships
@@ -308,24 +292,29 @@ var BHViewCollectionModel = new Class({
          this.bhviewRelationships[childIndex] = { 'parent':undefined, 'children':{} }; 
       }
    },
+   getLength: function(){
+      return this.length;
+   },
    getBHView: function(bhviewIndex){
-      if( !_.isNull( this.bhviewCollection[ bhviewIndex ] ) ){
+      if( this.bhviewCollection[ bhviewIndex ] != undefined ){
         return this.bhviewCollection[bhviewIndex]; 
-      }else{
-         console.log('bhviewCollection error: no view found at index ' + bhviewIndex);
       }
    },
-   getBHViewCount: function(){
-      var count = 0;
-      for(var i=0; i<this.bhviewCollection.length; i++){
-         if(!_.isUndefined(this.bhviewCollection[i].bhviewIndex)){
-            count++;
+   getAllBHViewIndexes: function(){
+      var indexTargets = [];
+      for(var bhviewIndex in this.bhviewCollection){
+         indexTargets.push(bhviewIndex);
+      }
+      return indexTargets;
+   },
+   getNewBHViewIndex: function(){
+      for(var i=0; i<this.length; i++){
+         //Use any view indexes that have been removed
+         if(this.bhviewCollection[i] === undefined){
+            return i;
          }
       }
-      return count;
-   },
-   getBHViewIndex: function(){
-      return this.bhviewCollection.length;
+      return this.length;
    },
    getDefaultBHView: function(){
       for( var bhviewName in  BHPAGE.navLookup ){
@@ -333,7 +322,6 @@ var BHViewCollectionModel = new Class({
             return bhviewName;
          }
       }
-      console.log('Warning: no default bhViewHash found!');
    },
    getAllBHViewNames: function(){
 
@@ -384,22 +372,24 @@ var BHViewCollectionModel = new Class({
          return false;
       }
    },
-   addBHView: function(bhview){
-      this.bhviewCollection.push(bhview);
+   addBHView: function(bhview, bhviewIndex){
+      this.bhviewCollection[ bhviewIndex ] = bhview;
+      this.length++;
    },
-   removeBHView: function(bhviewObject){
+   removeBHView: function(bhviewIndex){
 
-      var bhviewIndex = bhviewObject.bhviewIndex;
+      if( this.bhviewRelationships[bhviewIndex] != undefined ){
+         var parentIndex = this.bhviewRelationships[bhviewIndex]['parent'];
+         if( this.bhviewRelationships[parentIndex] != undefined ){
+            //Remove this child from parent's children
+            delete(this.bhviewRelationships[parentIndex]['children'][bhviewIndex]);
+         }
+         //Remove this bhview
+         delete(this.bhviewRelationships[bhviewIndex]);
+         delete(this.bhviewCollection[bhviewIndex]);
 
-      //Clean up relationships
-      var parentIndex = this.bhviewRelationships[bhviewIndex]['parent'];
-
-      //Remove this child from parent's children
-      delete(this.bhviewRelationships[parentIndex]['children'][bhviewIndex]);
-      //Remove this bhview
-      delete(this.bhviewRelationships[bhviewIndex]);
-
-      this.bhviewCollection[bhviewObject] = delete(this.bhviewCollection[bhviewObject]);
+         this.length--;
+      }
    },
    loadNewChildWindow: function(newWin){
       this.childWindows.push(newWin);

@@ -29,6 +29,7 @@ from sisyphus.webapp import settings
 from sisyphus.automation import utils
 
 
+
 ###
 # Returns a random string with specified number of characters.  Adapted from
 # http://code.activestate.com/recipes/576722-pseudo-random-string/
@@ -544,10 +545,16 @@ def get_bhview(request, **kwargs):
       ####
       #Found a data adapter for the proc, call it
       ####
-      json = VIEW_ADAPTERS[proc_name](proc_path, 
-                                      proc_name, 
-                                      full_proc_path, 
-                                      nfields)
+      if proc_name in settings.CACHE_QUERIES:
+         #####
+         #Use cache query for developing/debugging purposes
+         #####
+         json = simplejson.dumps( settings.CACHE_QUERIES[proc_name] )
+      else:
+         json = VIEW_ADAPTERS[proc_name](proc_path, 
+                                         proc_name, 
+                                         full_proc_path, 
+                                         nfields)
 
    return HttpResponse(json, mimetype=APP_JS)
 
