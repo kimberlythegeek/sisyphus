@@ -799,6 +799,7 @@ var BHViewComponent = new Class({
       this._setVisReadName(charts);
 
       var bhviewReadName = this.model.getBHViewAttribute('read_name');
+
       this.view.displayBHViewName(this.bhviewIndex, bhviewReadName);
 
       var datatableWrapperSel = this.view.getIdSelector(this.view.tableSel, this.bhviewIndex) + 

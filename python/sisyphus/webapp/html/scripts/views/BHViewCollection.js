@@ -208,7 +208,12 @@ var BHViewCollection = new Class({
          case 'copy':
 
             this._copyTextFromContextMenu();
-            break
+            break;
+
+         case 'resubmit_url':
+
+            this._resubmitUrl();
+            break;
 
          case 'openurl':
 
@@ -226,6 +231,9 @@ var BHViewCollection = new Class({
                window.open(url);
             }
        }
+   },
+   _resubmitUrl: function(){
+      alert('resubmiting url');
    },
    _selectTextFromContextMenu: function(){
       if(this.contextMenuTarget){

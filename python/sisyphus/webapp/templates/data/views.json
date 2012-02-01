@@ -188,28 +188,19 @@
   [ { "name":"workers_summary",
       "read_name":"Worker Summary",
       "page_target":"/HASHadmin/workersummary",
-      "charts":[ { "name":"table" }, 
-                 { "name":"pie" }, 
-                 { "name":"bar" }, 
-                 { "name":"tree" } ]
+      "charts":[ { "name":"table", "read_name":"Table" } ]
     },
 
     { "name":"worker_list",
       "read_name":"Worker List",
       "page_target":"/HASHadmin/workers",
-      "charts":[ { "name":"table" }, 
-                 { "name":"pie" }, 
-                 { "name":"bar" }, 
-                 { "name":"tree" } ]
+      "charts":[ { "name":"table", "read_name":"Table" } ]
     },
 
     { "name":"worker_logs",
       "read_name":"Worker Log",
       "page_target":"/HASHadmin/logs",
-      "charts":[ { "name":"table" }, 
-                 { "name":"pie" }, 
-                 { "name":"bar" }, 
-                 { "name":"tree" } ]
+      "charts":[ { "name":"table", "read_name":"Table" } ]
     }
    ],
 
@@ -219,10 +210,7 @@
        "signals":{ "url":"1", "socorro_id":"1" },
        "data_adapter":"named_fields",
        "control_panel":"socorro.html",
-       "charts":[ { "name":"table" }, 
-                  { "name":"pie" }, 
-                  { "name":"bar" }, 
-                  { "name":"tree" } ]
+       "charts":[ { "name":"table", "read_name":"Table" } ]
      }
    ]
 ]

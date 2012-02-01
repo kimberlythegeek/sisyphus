@@ -61,16 +61,36 @@ var BHViewAdapter = new Class({
 
       this.setOptions(options);
 
+      this.crashStatsUrlBase = "https://crash-stats.mozilla.com/report/index/";
+      this.hgUrlBase = "http://hg.mozilla.org/mozilla-central/rev/";
+
       //Name of the adapter, set by getAdapter()
       this.adapter = "";
       //Set's the default column to sort on
       this.sorting = { 'named_fields':[[0, 'desc']] };
 
+      // Maps column name to formatter function ref
+      //
+      //This might eventually need to be split out into 
+      //the derived classes that possess the tables.
+      this.formatColumnMap = { crashreport:_.bind(this._mediaColumnFormatter, this),
+                               log:_.bind(this._mediaColumnFormatter, this),
+                               url:_.bind(this._escapeColumnFormatter, this),
+                               steps:_.bind(this._escapeColumnFormatter, this),
+                               changeset:_.bind(this._externalLinkFormatter, this),
+                               uuid:_.bind(this._externalLinkFormatter, this),
+                               steps:_.bind(this._preTagFormatter, this),
+                               stack:_.bind(this._preTagFormatter, this) };
+
       this.mediaColumns = { crashreport:true,
                             log:true };
                            
-      this.wrapColumns = { url:true,
-                           steps:true };
+      this.escapeColumns = { url:true,
+                             steps:true };
+
+      this.externalLinkColumns = { changeset:true };
+
+      this.preTagColumns = { steps:true, stack:true };
 
       this.cpStartDateName = 'start_date';
       this.cpEndDateName = 'end_date';
@@ -324,80 +344,29 @@ var BHViewAdapter = new Class({
        * ***************************/
       if(dataObject.data.length >= 1 ){
 
-         wrapFound = false;
-         signalsFound = false;
-         mediaFound = false;
-
          if(this.sorting[ this.adapter ]){
             datatableObject.aaSorting = this.sorting[this.adapter];
          }
 
-         //Build column names and test for columns that need
-         //special handling.  We want to avoid iterating through
-         //dataObject.data if we can.
+         //Build column names for datatables.js
          for(i=0; i<dataObject['columns'].length; i++){
             var colName = dataObject['columns'][i];
-            if(this.wrapColumns[colName]){
-               wrapFound = true;
-            } 
-            if(signals != undefined){
-               if(signals[colName] == 1){
-                  signalsFound = true;
-               }
-            }
-            if(this.mediaColumns[colName]){
-               mediaFound = true;
-            }
             datatableObject.aoColumns.push({ "mDataProp":colName, "sTitle":colName });
          }
 
-         if(wrapFound || signalsFound || mediaFound){
-            for(var i=0; i<dataObject.data.length; i++){
-               if(wrapFound){
-                  for(var w in this.wrapColumns){
-                     if(dataObject.data[i][w] != undefined){
-                        dataObject.data[i][w] = BHPAGE.escapeHtmlEntities(dataObject.data[i][w]);
-                     }
-                  }
-               }
-
-               if(signalsFound){
-                  for(var s in signals){
-                     var eclass = 'bh-signal-' + s;
-                     if(dataObject.data[i][s] != undefined){
-
-                        if(s == 'socorro_id'){
-                           dataObject.data[i][s] = '<div style="display:inline;"><a class="' + eclass + 
-                                                   '" href="#' + s + '">' + 
-                                                   BHPAGE.escapeHtmlEntities(String(dataObject.data[i][s])) + 
-                                                   '</a></div>';
-                        }else{
-                           var cmenu = "bh_table_contextmenu";
-                           if(s == 'url'){
-                              cmenu = "bh_url_contextmenu";
-                           }else if(s == 'fatal_message'){
-                              cmenu = "bh_fm_contextmenu";
-                           }
-                           dataObject.data[i][s] = '<div contextmenu="' + cmenu + 
-                                                   '" style="display:inline;"><a class="' + eclass + 
-                                                   '" href="#' + s + 
-                                                   '">' + BHPAGE.escapeHtmlEntities(dataObject.data[i][s]) + 
-                                                   '</a></div>';
-                        }
-                     }
-                  }
-               }
-
-               if(mediaFound){
-                  for(var m in this.mediaColumns){
-                     if(dataObject.data[i][m] != undefined){
-                        var mediaHref = "/bughunter/media" + 
-                                        dataObject.data[i][m].replace(/^.*media/, '').replace(/\.gz$/, '');
-                        dataObject.data[i][m] = '<a target="_blank" href="' + mediaHref + '">view</a>';
-                     }
-                  }
+         for(var i=0; i<dataObject.data.length; i++){
+            //Trying to avoid iterating over all columns here, some tables
+            //have lots of columns that don't require any special formatting.
+            //To account for this, formatter functions iterate over the limited
+            //set of columns that need formatting.
+            for( var formatCol in this.formatColumnMap ){
+               if(dataObject.data[i][formatCol] != undefined){
+                  this.formatColumnMap[formatCol](i, formatCol, dataObject);
                }
             }
+            //Handling signal columns separately so we don't have to
+            //hardcode the signals and map them to a specific handler function
+            this._signalColumnFormatter(i, signals, dataObject);
          }
       }
    },
@@ -415,6 +384,57 @@ var BHViewAdapter = new Class({
          range.moveEnd('character', selectionEnd);
          range.moveStart('character', selectionStart);
          range.select();
+      }
+   },
+   _preTagFormatter: function(i, col, dataObject){
+      dataObject.data[i][col] = '<pre>' + dataObject.data[i][col] + '</pre>';
+   },
+   _externalLinkFormatter: function(i, col, dataObject){
+      var urlBase = "";
+      if(col == 'uuid'){
+         urlBase = this.crashStatsUrlBase;
+      }else if(col == 'changeset'){
+         urlBase = this.hgUrlBase;
+      }
+      dataObject.data[i][col] = '<a target="_blank" href="' + urlBase +
+                                   dataObject.data[i][col] + '">' + dataObject.data[i][col] + '</a>';
+   },
+   _escapeColumnFormatter: function(i, col, dataObject){
+      if(dataObject.data[i][col] != undefined){
+         dataObject.data[i][col] = BHPAGE.escapeHtmlEntities(dataObject.data[i][col]);
+      }
+   },
+   _mediaColumnFormatter: function(i, col, dataObject){
+      if(dataObject.data[i][col] != undefined){
+         var mediaHref = "/bughunter/media" + 
+         dataObject.data[i][col].replace(/^.*media/, '').replace(/\.gz$/, '');
+         dataObject.data[i][col] = '<a target="_blank" href="' + mediaHref + '">view</a>';
+      }
+   },
+   _signalColumnFormatter: function(i, signals, dataObject){
+      for(var s in signals){
+         var eclass = 'bh-signal-' + s;
+         if(dataObject.data[i][s] != undefined){
+
+            if(s == 'socorro_id'){
+               dataObject.data[i][s] = '<div style="display:inline;"><a class="' + eclass + 
+                                       '" href="#' + s + '">' + 
+                                       BHPAGE.escapeHtmlEntities(String(dataObject.data[i][s])) + 
+                                       '</a></div>';
+            }else{
+               var cmenu = "bh_table_contextmenu";
+               if(s == 'url'){
+                  cmenu = "bh_url_contextmenu";
+               }else if(s == 'fatal_message'){
+                  cmenu = "bh_fm_contextmenu";
+               }
+               dataObject.data[i][s] = '<div contextmenu="' + cmenu + 
+                                       '" style="display:inline;"><a class="' + eclass + 
+                                       '" href="#' + s + 
+                                       '">' + BHPAGE.escapeHtmlEntities(dataObject.data[i][s]) + 
+                                       '</a></div>';
+            }
+         }
       }
    }
 });
