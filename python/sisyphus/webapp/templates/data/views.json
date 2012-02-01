@@ -139,11 +139,11 @@
            "read_name":"Unit Related Assertions",
            "signals":{ "assertion":"1", 
                        "location":"1",
-                       "socorro_id":"1", 
+                       "unittest_id":"1", 
                        "url":"1"},
            "control_panel":"assertion_urls.html",
            "data_adapter":"named_fields",
-           "hidden_columns":{ "changeset":"13", "bug_list":"14", "steps":"15", "exitstatus":"16", "priority":"17" },
+           "hidden_columns":{ "changeset":"13", "exitstatus":"14" },
            "charts":[ { "name":"table", "read_name":"Table" } ]
          }
 
@@ -174,11 +174,11 @@
             "read_name":"Unit Related Valgrinds",
             "signals":{ "signature":"1", 
                         "message":"1",
-                        "socorro_id":"1", 
+                        "testrun_id":"1", 
                         "url":"1"},
             "control_panel":"valgrind_urls.html",
             "data_adapter":"named_fields",
-            "hidden_columns":{ "changeset":"13", "bug_list":"14", "steps":"15", "exitstatus":"16", "priority":"17" },
+            "hidden_columns":{ "changeset":"13", "exitstatus":"14" },
             "charts":[ { "name":"table", "read_name":"Table" } ]
          }
      ]

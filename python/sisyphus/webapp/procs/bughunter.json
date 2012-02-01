@@ -409,7 +409,7 @@
                            a.id NOT IN (
                               SELECT a.id
                               FROM Assertion AS a
-                              JOIN SiteTestAssertion AS uta ON a.id = uta.assertion_id
+                              JOIN UnitTestAssertion AS uta ON a.id = uta.assertion_id
                               WHERE (uta.datetime < 'REP0')) REP2
                     GROUP BY a.assertion,
                              a.location,
@@ -470,16 +470,12 @@
                        DATE_FORMAT(uta.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
                        uta.stack,
                        uta.count,
-                       str.log,
-                       str.changeset,
-                       str.bug_list,
-                       str.steps,
-                       str.exitstatus,
-                       str.priority,
-                       str.socorro_id
+                       utr.log,
+                       utr.changeset,
+                       utr.exitstatus
                FROM Assertion AS a 
                JOIN UnitTestAssertion AS uta ON a.id = uta.assertion_id
-               JOIN SiteTestRun AS str ON uta.testrun_id = str.id
+               JOIN UnitTestRun AS utr ON uta.testrun_id = utr.id
                WHERE uta.url IN (
                   SELECT url FROM REP2
                ) AND (uta.datetime >= 'REP0' AND uta.datetime <= 'REP1')
@@ -530,7 +526,7 @@
                            v.id NOT IN (
                               SELECT v.id
                               FROM Valgrind AS v 
-                              JOIN SiteTestValgrind AS utv ON v.id = utv.valgrind_id
+                              JOIN UnitTestValgrind AS utv ON v.id = utv.valgrind_id
                               WHERE (utv.datetime < 'REP0')) REP2
                     GROUP BY v.signature,
                              v.message,
@@ -589,16 +585,12 @@
                        DATE_FORMAT(utv.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
                        utv.stack,
                        utv.count,
-                       str.log,
-                       str.changeset,
-                       str.bug_list,
-                       str.steps,
-                       str.exitstatus,
-                       str.priority,
-                       str.socorro_id
+                       utr.log,
+                       utr.changeset,
+                       utr.exitstatus
                FROM Valgrind AS v
                JOIN UnitTestValgrind AS utv ON v.id = utv.valgrind_id
-               JOIN SiteTestRun AS str ON utv.testrun_id = str.id
+               JOIN UnitTestRun AS utr ON utv.testrun_id = utr.id
                WHERE utv.url IN (
                   SELECT url FROM REP2
                ) AND (utv.datetime >= 'REP0' AND utv.datetime <= 'REP1')
