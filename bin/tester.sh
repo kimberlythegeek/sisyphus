@@ -117,33 +117,25 @@ for data in $datalist; do
 
     if [[ "$verbose" == "1" ]]; then
         test-setup.sh -d $TEST_DIR/data/$data.data 2>&1 | tee -a $TEST_LOG
-        $testscript $testargs -d $TEST_DIR/data/$data.data 2>&1 | tee -a $TEST_LOG
     else
         test-setup.sh -d $TEST_DIR/data/$data.data >> $TEST_LOG 2>&1
-        $testscript $testargs -d $TEST_DIR/data/$data.data >> $TEST_LOG 2>&1
     fi
 
+    filter=cat
+
     if [[ "$XPCOM_DEBUG_BREAK" == "stack" ]]; then
-        case $OSID in
-            nt)
-                ;;
-            linux)
-                if findprogram fix-linux-stack.pl; then
-                    fix-linux-stack.pl < $TEST_LOG > $TEST_LOG.tmp
-                    mv $TEST_LOG.tmp $TEST_LOG
-                else
-                    error "XPCOM_DEBUG_BREAK=stack specified but fix-linux-stack.pl is not available"
-                fi
-                ;;
-            darwin)
-                if findprogram fix-macosx-stack.pl; then
-                    fix-macosx-stack.pl < $TEST_LOG > $TEST_LOG.tmp
-                    mv $TEST_LOG.tmp $TEST_LOG
-                else
-                    error "XPCOM_DEBUG_BREAK=stack specified but fix-macosx-stack.pl is not available"
-                fi
-                ;;
-        esac
+        executablepath=$(grep ^environment:.TEST_EXECUTABLEPATH= $TEST_LOG | sed 's|environment: TEST_EXECUTABLEPATH=\(.*\)|\1|')
+        symbolspath=$executablepath/crashreporter-symbols
+
+        if [[ -d "$symbolspath" && -e "$TEST_DIR/bin/fix_stack_using_bpsyms.py" ]]; then
+            filter="python $TEST_DIR/bin/fix_stack_using_bpsyms.py $symbolspath"
+        fi
+    fi
+
+    if [[ "$verbose" == "1" ]]; then
+        $testscript $testargs -d $TEST_DIR/data/$data.data 2>&1 | $filter | tee -a $TEST_LOG
+    else
+        $testscript $testargs -d $TEST_DIR/data/$data.data 2>&1 | $filter >> $TEST_LOG 2>&1
     fi
 
 done
