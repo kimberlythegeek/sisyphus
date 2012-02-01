@@ -157,4 +157,13 @@ def fixSymbols(line, symbolsDir):
 if __name__ == "__main__":
   symbolsDir = sys.argv[1]
   for line in iter(sys.stdin.readline, ''):
-    print fixSymbols(line, symbolsDir),
+    try:
+      outs = fixSymbols(line, symbolsDir)
+    except MemoryError:
+      outs = line
+    except OSError, oserror:
+      if oserror.errno == 12: # Out of Memory
+        outs = line
+
+    outs = outs.rstrip() # remove trailing newline
+    print outs
