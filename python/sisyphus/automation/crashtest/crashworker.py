@@ -50,6 +50,8 @@ import urlparse
 import urllib
 import glob
 
+import signal
+
 sisyphus_dir     = os.environ["TEST_DIR"]
 tempdir          = os.path.join(sisyphus_dir, 'python')
 if tempdir not in sys.path:
@@ -73,8 +75,12 @@ post_files_url    = sisyphus_url + '/post_files/'
 from sisyphus.webapp.bughunter import models
 from sisyphus.automation import utils, worker, program_info
 
-os.environ["TEST_TOPSITE_TIMEOUT"]="300"
-os.environ["TEST_TOPSITE_PAGE_TIMEOUT"]="120"
+test_topsite_timeout = 300
+test_topsite_page_timeout = 120
+
+os.environ["TEST_TOPSITE_TIMEOUT"]=str(test_topsite_timeout)
+os.environ["TEST_TOPSITE_PAGE_TIMEOUT"]=str(test_topsite_page_timeout)
+
 os.environ["XPCOM_DEBUG_BREAK"]="stack"
 os.environ["userpreferences"]= sisyphus_dir + '/prefs/spider-user.js'
 
@@ -135,9 +141,14 @@ class CrashTestWorker(worker.Worker):
         else:
             self.invisible = ''
 
+        # Use a property to record whether the test process has been hung in order
+        # to allow the hung alarm signal to set its value.
+        self.hung_process = False
+
     def runTest(self, extra_test_args):
 
         self.debugMessage("testing firefox %s %s %s" % (self.branch, self.buildtype, self.testrun_row.socorro.url))
+        self.hung_process = False
         self.state        = "testing"
         self.save()
 
@@ -232,7 +243,28 @@ class CrashTestWorker(worker.Worker):
             env=environment)
 
         try:
-            stdout, stderr = proc.communicate()
+            # When a stuck plugin-container process or other process
+            # spawned by the test is not killed by the normal time out
+            # procedure, we need to kill the process ourselves. Fire
+            # the time out alarm 30 seconds after the test should have
+            # timed out.
+            def timeout_handler(signum, frame):
+                self.hung_process = True
+                self.killTest(proc.pid)
+
+            default_alarm_handler = signal.getsignal(signal.SIGALRM)
+            try:
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(test_topsite_timeout + 30)
+                stdout, stderr = proc.communicate()
+            except OSError, oserror:
+                if oserror.errno != 10:
+                    raise
+                # Ignore OSError 10: No child process
+            finally:
+                signal.alarm(0)
+                signal.signal(signal.SIGALRM, default_alarm_handler)
+
         except KeyboardInterrupt, SystemExit:
             raise
         except:
@@ -387,15 +419,14 @@ class CrashTestWorker(worker.Worker):
             self.process_dump_files(profilename, page, symbolsPath, dmpuploadpath)
 
 
-        hung_process = False
         test_process_dict = self.psTest()
         if test_process_dict:
-            hung_process = True
+            self.hung_process = True
             for test_process in test_process_dict:
                 self.logMessage('runTest: test process still running: pid: %s : %s' % (test_process, test_process_dict[test_process]))
             self.killTest(proc.pid)
 
-        if hung_process:
+        if self.hung_process:
             if self.testrun_row.exitstatus:
                 self.testrun_row.exitstatus += ' HANG'
             else:

@@ -1445,7 +1445,7 @@ class Worker(object):
         process_dict = {}
 
         if self.os_name != "Windows NT":
-            pattern = r' *([0-9]+) .*/work/mozilla/builds/[^/]+/mozilla/'
+            pattern = r' *([0-9]+) .*(/work/mozilla/builds/[^/]+/mozilla/|totem-plugin-viewer|gst-install-plugins-helper)'
             ps_args = ['ps', '-e', '-x']
         else:
             pattern = '[a-zA-Z]* *([0-9]+) .*(/work/mozilla/builds/[^/]+/mozilla/|mozilla-build|java|wmplayer|mplayer2)'
