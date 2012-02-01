@@ -37,6 +37,8 @@
 #
 # ***** END LICENSE BLOCK *****
 
+$(python $TEST_DIR/bin/limit_memory.py)
+
 #
 # options processing
 #
