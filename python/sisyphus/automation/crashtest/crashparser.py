@@ -73,7 +73,7 @@ from sisyphus.automation import utils
 import sisyphus.webapp.settings
 from sisyphus.webapp.bughunter import models
 
-rePrivateNetworks = re.compile(r'https?://(localhost|127\.0\.0\.1|192\.168\.[0-9]+\.[0-9]+|172\.16\.[0-9]+\.[0-9]+|10\.[0-9]+\.[0-9]+\.[0-9]+)')
+rePrivateNetworks = re.compile(r'https?://(localhost|.*\.localdomain|[^./]+($|/)|127\.0\.0\.1|192\.168\.[0-9]+\.[0-9]+|172\.16\.[0-9]+\.[0-9]+|10\.[0-9]+\.[0-9]+\.[0-9]+)')
 
 options              = None
 skipurls             = []
