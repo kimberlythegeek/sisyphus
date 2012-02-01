@@ -18,7 +18,6 @@
          <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
          <ul>
             <li><a href="#overview">Overview</a></li>
-            <li><a href="#data">Understanding the Data</a></li>
             <li><a href="#view_navigation">View Navigation</a></li>
             <li><a href="#control_panel">Control Panel</a></li>
             <li><a href="#parent_child">Parent/Child Relationships</a></li>
@@ -85,13 +84,13 @@
          <h3>Overview</h3>
          <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
-            <p>The purpose of bughunter is to help find bugs by collecting extensive meta data associated with crash reports, assertions, and valgrind data.  This user interface enables a user to browse this meta data by connecting datasets together.  You can find detailed info about the application architecture <a class="bh-help-link" href="https://wiki.mozilla.org/Auto-tools/Projects/BugHunter" target="_blank">here</a>. The application presents data in data views.  Data views can be presented in multiple panes within a single browser page or displayed in separate pages depending on what works best for a user's display.  Data views can be connected to each other when they share a data type or identifier allowing a user to explore deep relationships in the data.</p>
-         </div>
-         <a name="data"></a>
-         <h3>Understanding the Data</h3>
-         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
-         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
-            <p>Bughunter data is grouped into two broad categories: site test and unit test data.  Site test data is derived from reproducing crashes using data from socorro... BC can you fill in details here? I'm thinking top level details on how the data is generated... that sort of thing </p>
+            <p>Bughunter consists of a backend where worker machines perform tests and submit the results to a database and a frontend user interface where the results can be viewed in a web browser and used to file bug reports. The purpose of bughunter is to help users find and file bugs on crashes, assertions and valgrind warnings.</p>
+            <p>Bughunter performs two types of tests and organizes the results accordingly:</p>
+            <h4>Site Tests</h4>
+            <p>Site Tests involve testing the behaviour of the browser when loading web pages from various web sites. Currently, Site Tests consist of attempting to reproduce crashes by loading the urls reported to Socorro.</p>
+            <h4>UnitTest Tests</h4>
+            <p>UnitTest Tests involve running the UnitTests on Linux and Mac OS X under Valgrind's memcheck in order to discover any memory related problems as well as to record assertions encountered during the Unit Tests.</p>
+            <p>Bughunter's user interface enables a user to browse this data by connecting datasets together.  You can find detailed info about the application architecture <a class="bh-help-link" href="https://wiki.mozilla.org/Auto-tools/Projects/BugHunter" target="_blank">here</a>. The application presents data in data views.  Data views can be presented in multiple panes within a single browser page or displayed in separate pages depending on what works best for a user's display.  Data views can be connected to each other when they share a data type or identifier allowing a user to explore deep relationships in the data.</p>
          </div>
          <a name="view_navigation"></a>
          <div style="margin-top:10px;" class="ui-helper-clearfix">
@@ -137,13 +136,13 @@
          <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
             <p>Each view has a set of button controls displayed in the top panel.  The following is a description of each button from left to right.</p>
-            <p><strong>Decrease View Panel Size:</strong> Decrease the display size of a view's data table.  This may or may not apply to a graphical representation.</p>
-            <p><strong>Increase View Panel Size:</strong> Increase the display size of a view's data table.  This may or may not apply to a graphical representation.</p>
-            <p><strong>Open New View:</strong> This button opens a modal window that presents the user with options for opening new child views.  The child views opened will be parented to the view from which they were opened.</p>
-            <p><strong>Help:</strong> Clearly you understand this button...</p>
-            <p><strong>Refresh:</strong> Reload the data from its original source in the view.</p>
-            <p><strong>Move To New Window:</strong> Move the view data to a new browser tab or window.</p>
-            <p><strong>Close:</strong> Close the view.</p>
+            <p><span class="css-left ui-icon ui-icon-circle-minus"></span><strong>Decrease View Panel Size:</strong> Decrease the display size of a view's data table.  This may or may not apply to a graphical representation.</p>
+            <p><span class="css-left ui-icon ui-icon-circle-plus"></span><strong>Increase View Panel Size:</strong> Increase the display size of a view's data table.  This may or may not apply to a graphical representation.</p>
+            <p><span class="css-left ui-icon ui-icon-newwin"></span><strong>Open New View:</strong> This button opens a modal window that presents the user with options for opening new child views.  The child views opened will be parented to the view from which they were opened.</p>
+            <p><span class="css-left ui-icon ui-icon-help"></span><strong>Help:</strong> Clearly you understand this button...</p>
+            <p><span class="css-left ui-icon ui-icon-refresh"></span><strong>Refresh:</strong> Reload the data from its original source in the view.</p>
+            <p><span class="css-left ui-icon ui-icon-extlink"></span><strong>Move To New Window:</strong> Move the view data to a new browser tab or window.</p>
+            <p><span class="css-left ui-icon ui-icon-closethick"></span><strong>Close:</strong> Close the view.</p>
          </div>
          <a name="signals"></a>
          <div style="margin-top:10px;" class="ui-helper-clearfix">
@@ -164,7 +163,7 @@
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
             <p>Directly above each tabular display of data is a set of controls that operate on the table.  The controls are described below from left to right.</p>
             <p><strong>Show Entries:</strong> This option menu can be used to changed the number of rows displayed on a single page.  When the number of rows exceeds the page display limit a set of paging links are displayed in the lower right of the table.</p>
-            <p><strong>Column Filter:</strong> This option menu can be used to change which columns are displayed.  When opened, all of the columns available in a table are displayed along with a checkbox that can be used to toggle the display of a column.</p>  
+            <p><strong>Column Filter:</strong> This option menu can be used to change which columns are displayed.  When opened, all of the columns available in a table are displayed along with a checkbox that can be used to toggle the display of a column.</p>
             <p><strong>Search Filter:</strong> The search filter will filter all of the data contained within a data table by any string or regular expression entered into the input box.</p>
          </div>
          <a name="context_menu"></a>
@@ -186,7 +185,7 @@
          </div>
          <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
-            <p>Site test data is generated by reproducing crash reports deposited in the socorro database.  BC - please fill in any other worthy details...</p>
+            <p>Site test data consists of the Crashes, Assertions, and potentially Valgrind warnings generated during Site Testing.</p>
          </div>
 
          <!-- Site Crash Data -->
@@ -201,20 +200,38 @@
          <a name="crashes_st"></a>
          <h3>Site Crashes</h3>
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
-            {% include "help/sig_fm.html" %}
-            {% include "help/platform_columns.html" %}
+            <p><strong>signature:</strong> When a crash occurs, a minidump file is created by <a class="bh-help-link" href="http://kb.mozillazine.org/Breakpad" target="_blank">breakpad</a>. The minidump file is uploaded to the database server and the path to the raw file is saved in the minidump field.  This minidump file is processed by a stack walking program that creates a crash report which is also uploaded to the crashreport field.  The crash signature is created by taking the stack frames from the stack in the crash report and munging it to produce a signature which can be used to group similar crashes. Extraneous addresses, numbers, and non-alpha characters have been removed to improve reproducibility.</p>
+            <p><strong>fatal message:</strong> The warning/error message generated by a fatal assertion such as an Assertion failure or ABORT.</p>
+            {% include "help/aggregated_count_columns.html" %}
          </div>
          <a name="crash_urls_st"></a>
          <h3>Site Crash URL Summary</h3>
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
-            <p><strong>url:</strong> The url associated with the crash report.</p>
-            {% include "help/platform_columns.html" %}
+            <p><strong>url:</strong> The url where the crash occurred.</p>
+            {% include "help/aggregated_count_columns.html" %}
          </div>
          <a name="crash_detail_st"></a>
          <h3>Site Related Crashes</h3>
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
-            {% include "help/sig_fm.html" %}
-            {% include "help/detail_columns.html" %}
+            <p><strong>signature:</strong> When a crash occurs, a minidump file is created by <a class="bh-help-link" href="http://kb.mozillazine.org/Breakpad" target="_blank">breakpad</a>. The minidump file is uploaded to the database server and the path to the raw file is saved in the minidump field.  This minidump file is processed by a stack walking program that creates a crash report which is also uploaded to the crashreport field.  The crash signature is created by taking the stack frames from the stack in the crash report and munging it to produce a signature which can be used to group similar crashes. Extraneous addresses, numbers, and non-alpha characters have been removed to improve reproducibility.</p>
+            <p><strong>fatal message:</strong> The warning/error message generated by a fatal assertion such as an Assertion failure or ABORT.</p>
+            {% include "help/product_columns.html" %}
+            <p><strong>url:</strong> The url where the crash occurred.</p>
+            <p><strong>datetime:</strong> The date and time the crash occurred.</p>
+            <p><strong>reason:</strong> The Crash Reason from the Crash Report.</p>
+            <p><strong>address:</strong> The Crash Address from the Crash Report.</p>
+            <p><strong>crashreport:</strong> A link to the Crash Reported produced by Breakpad from the minidump.</p>
+            <p><strong>crashtype:</strong> Whether the crashing process was the main browser process or the plugin container process.</p>
+            <p><strong>pluginfilename:</strong>Name of the plugin associated with the crash.</p>
+            <p><strong>pluginversion:</strong>Version of the plugin associated with the crash.</p>
+            <p><strong>exploitability:</strong> This field is populated by a program that processes a minidump file to determine its probable exploitability, this is currently only available for windows.</p>
+            <p><strong>log:</strong>The output to stdout and stderr during the test.</p>
+            <p><strong>changeset:</strong> The mercurial changeset of the build used during testing.</p>
+            <p><strong>bug list:</strong> The bug list from the associated Socorro Report.</p>
+            <p><strong>steps:</strong> The steps performed during the test. This may include which urls were loaded and any other actions that may be needed to reproduce the crash. </p>
+            <p><strong>exitstatus:</strong> The exit status of the product program run.</p>
+            <p><strong>priority:</strong> Priority is an internal field that is used by the system to prioritize jobs. It can be useful to determine if this crash occurred while testing a url uploaded from Socorro (priority 3), while attempting to reproduce a crash (priority 0) or while testing a url which was manually uploaded by a user (priority 1).</p>
+            <p><strong>socorro id:</strong> The socorro id is the primary key for the uploaded Socorro Record which was being tested. It can be used to look up the Site Test Runs associated with a Socorro Record for look up the specific Socorro Record assocated with a Site Test Run.</p>
          </div>
 
          <!-- Site Assertion Data -->
@@ -230,21 +247,27 @@
          <h3>Site Assertions</h3>
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
             {% include "help/assertion_location.html" %}
-            {% include "help/occurance_count.html" %}
-            {% include "help/platform_columns.html" %}
+            {% include "help/occurrence_count.html" %}
+            {% include "help/aggregated_count_columns.html" %}
          </div>
          <a name="assertion_urls_st"></a>
          <h3>Site Assertion URL Summary</h3>
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
-            <p><strong>url:</strong> The url associated with the assertion report.</p>
-            {% include "help/occurance_count.html" %}
-            {% include "help/platform_columns.html" %}
+            <p><strong>url:</strong> The url where the assertion occurred.</p>
+            {% include "help/occurrence_count.html" %}
+            {% include "help/aggregated_count_columns.html" %}
          </div>
          <a name="assertion_detail_st"></a>
          <h3>Site Related Assertions</h3>
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
             {% include "help/assertion_location.html" %}
-            {% include "help/detail_columns.html" %}
+            {% include "help/product_columns.html" %}
+            <p><strong>url:</strong> The url where the assertion occurred.</p>
+            {% include "help/datetime_column.html" %}
+            <p><strong>stack:</strong> The stack where the assertion occurred. This is currently not captured though it is available in the log file for the test run.</p>
+            <p><strong>count:</strong> The number of times the assertion occurred in a row.</p>
+            {% include "help/log_column.html" %}
+            {% include "help/socorro_id_column.html" %}
          </div>
 
          <a name="unit_test_data"></a>
@@ -253,7 +276,7 @@
          </div>
          <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
-            <p>Unit test data is generated by ...  BC - Help</p>
+            <p>Unit test data consists of the Test Results, Crashes, Assertions, and Valgrind messages generated during the Unit Tests.</p>
          </div>
 
          <!-- Unit Assertion Data -->
@@ -269,21 +292,27 @@
          <h3>Unit Assertions</h3>
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
             {% include "help/assertion_location.html" %}
-            {% include "help/occurance_count.html" %}
-            {% include "help/platform_columns.html" %}
+            {% include "help/occurrence_count.html" %}
+            {% include "help/aggregated_count_columns.html" %}
          </div>
          <a name="assertion_urls_ut"></a>
          <h3>Unit Assertion URL Summary</h3>
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
             <p><strong>url:</strong> The url associated with the assertion report.</p>
-            {% include "help/occurance_count.html" %}
-            {% include "help/platform_columns.html" %}
+            {% include "help/occurrence_count.html" %}
+            {% include "help/aggregated_count_columns.html" %}
          </div>
          <a name="assertion_detail_ut"></a>
          <h3>Unit Related Assertions</h3>
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
             {% include "help/assertion_location.html" %}
-            {% include "help/detail_columns.html" %}
+            {% include "help/product_columns.html" %}
+            <p><strong>url:</strong> The url where the assertion occurred.</p>
+            {% include "help/datetime_column.html" %}
+            <p><strong>stack:</strong> The stack where the assertion occurred. This is currently not captured though it is available in the log file for the test run.</p>
+            <p><strong>count:</strong> The number of times the assertion occurred in a row.</p>
+            {% include "help/log_column.html" %}
+            {% include "help/testrun_id_column.html" %}
          </div>
 
          <!-- Unit Valgrind Data -->
@@ -298,20 +327,25 @@
          <a name="valgrinds_ut"></a>
          <h3>Unit Valgrinds</h3>
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
-            {% include "help/sig_message.html" %}
-            {% include "help/platform_columns.html" %}
+            {% include "help/valgrind_sig_message.html" %}
+            {% include "help/aggregated_count_columns.html" %}
          </div>
          <a name="valgrind_urls_ut"></a>
          <h3>Unit Valgrind URL Summary</h3>
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
-            <p><strong>url:</strong> The url associated with the valgrind report.</p>
-            {% include "help/platform_columns.html" %}
+            <p><strong>url:</strong> The url where the valgrind message was emitted.</p>
+            {% include "help/aggregated_count_columns.html" %}
          </div>
          <a name="valgrind_detail_ut"></a>
          <h3>Unit Related Valgrinds</h3>
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
-            {% include "help/sig_message.html" %}
-            {% include "help/detail_columns.html" %}
+            {% include "help/valgrind_sig_message.html" %}
+            {% include "help/product_columns.html" %}
+            <p><strong>url:</strong> The url wehre the valgrind warning occurred.</p>
+            {% include "help/datetime_column.html" %}
+            <p><strong>count: </strong> The number of times the valgrind warning occurred in a row.</p>
+            {% include "help/log_column.html" %}
+            {% include "help/testrun_id_column.html" %}
          </div>
          <a name="crash_table_data"></a>
          <div style="margin-top:10px;" class="ui-helper-clearfix">
@@ -324,25 +358,26 @@
          <a name="socorro_record"></a>
          <h3>Socorro Record</h3>
          <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
-            <p><strong>socorro_id:</strong> The socorro id can be used to signal other tables that share this field.</p>
+            <p>The Socorro Record contains the data from the user's original Socorro crash report. With the exception of the socorro_id, each of these fields corresponds to a similar field in the crash report available from crash-stats.mozilla.com.</p>
+            <p><strong>socorro_id:</strong> The socorro id is the primary key for the Socorro Record table. It is also a foreign key in the Site Test Run table. socorro_id signals can be sent to and from the Socorro Record view and the Site Test Run view. In this way you can look up the Site Test Runs associated with a Socorro Record for look up the specific Socorro Record assocated with a Site Test Run.</p>
             <p><strong>signature:</strong> The socorro crash signature which is distinct from the bughunter signature.</p>
             <p><strong>url:</strong> The url associated with the crash report.</p>
-            <p><strong>uuid:</strong> BC help</p>
-            <p><strong>client_crash_date:</strong> The date the crash occurred.</p>
-            <p><strong>date_processed:</strong> The date the crash report was processed in bughunter.</p>
-            <p><strong>last_crash:</strong> BC help</p>
-            <p><strong>product:</strong> The name of the software product.</p>
-            <p><strong>build:</strong> BC help</p>
+            <p><strong>uuid:</strong> The crash report id of the original Socorro crash report.</p>
+            <p><strong>client_crash_date:</strong> The date of the crash.</p>
+            <p><strong>date_processed:</strong> The Date Processed from the original Socorro report.</p>
+            <p><strong>last_crash:</strong> The Last Crash Date</p>
+            <p><strong>product:</strong> The name of the software product which generated the crash report.</p>
+            <p><strong>build:</strong> The Build ID of the crashing product.</p>
             <p><strong>branch:</strong> The source branch.</p>
             <p><strong>os_name:</strong> The name of the operating system associated with the crash.</p>
             <p><strong>os_full_version:</strong> The full version of the operating system associated with the crash.</p>
             <p><strong>os_version:</strong> The abbreviated version of the operating system associated with the crash.</p>
             <p><strong>cpu_info:</strong> Description of the cpu.</p>
             <p><strong>cpu_name:</strong> Name of the cpu.</p>
-            <p><strong>address:</strong> BC help</p>
-            <p><strong>bug_list:</strong> BC help</p>
+            <p><strong>address:</strong> The Crash Address from the Socorro crash report.</p>
+            <p><strong>bug_list:</strong> A comma delimited list of the bug numbers which are associated with this crash report in Socorro.</p>
             <p><strong>user_comments:</strong> The user comments associated with the crash.</p>
-            <p><strong>reason:</strong> BC help</p>
+            <p><strong>reason:</strong> The Crash Reason from the Socorro crash report.</p>
          </div>
       </div>
    </div>
