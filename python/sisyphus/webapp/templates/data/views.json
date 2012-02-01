@@ -21,6 +21,7 @@
       [ { "name":"crashes_st",
            "read_name":"Site Crashes",
            "signals":{ "signature":"1", 
+                       "url":"1",
                        "fatal_message":"1",
                        "address":"1", 
                        "pluginfilename":"1", 
@@ -67,7 +68,7 @@
       "Assertions",
       [ { "name":"assertions_st",
            "read_name":"Site Assertions",
-           "signals":{ "assertion":"1", "location":"1" },
+           "signals":{ "url":"1", "assertion":"1", "location":"1" },
            "control_panel":"assertions.html",
            "default_load":1,
            "data_adapter":"crashes",
@@ -183,7 +184,48 @@
          }
      ]
   ],
-
+  "User Data",
+  [
+      "Collections",
+      [
+        { "name":"resubmission_crashes_and_assertions",
+          "read_name":"URL Resubmission Crashes & Assertions",
+          "collection":[ { "bhview":"resubmission_urls_ud", "parent":"" }, 
+                         { "bhview":"crashes_st", "parent":"resubmission_urls_ud" },
+                         { "bhview":"assertions_st", "parent":"resubmission_urls_ud" } ]
+        },
+        { "name":"resubmission_crash_explorer",
+          "read_name":"URL Resubmission Crash Explorer",
+          "collection":[ { "bhview":"resubmission_urls_ud", "parent":"" }, 
+                         { "bhview":"crashes_st", "parent":"resubmission_urls_ud" },
+                         { "bhview":"crash_detail_st", "parent":"crashes_st" },
+                         { "bhview":"crash_urls_st", "parent":"crashes_st" } ]
+        },
+        { "name":"resubmission_assertion_explorer",
+          "read_name":"URL Resubmission Assertion Explorer",
+          "collection":[ { "bhview":"resubmission_urls_ud", "parent":"" }, 
+                         { "bhview":"assertions_st", "parent":"resubmission_urls_ud" }, 
+                         { "bhview":"assertion_detail_st", "parent":"assertions_st" },
+                         { "bhview":"assertion_urls_st", "parent":"assertions_st" } ]
+        }
+      ],
+      { "name":"resubmission_urls_ud",
+        "read_name":"My URL Resubmissions",
+        "signals":{ "signature":"1", "url":"1", "socorro_id":"1" },
+        "data_adapter":"resubmission_urls",
+        "default_load":1,
+        "control_panel":"resubmission_urls.html",
+        "charts":[ { "name":"table", "read_name":"Table" } ]
+      },
+      { "name":"all_resubmission_urls_ud",
+        "read_name":"All URL Resubmissions",
+        "signals":{ "signature":"1", "url":"1", "socorro_id":"1" },
+        "default_load":1,
+        "data_adapter":"all_resubmission_urls",
+        "control_panel":"resubmission_urls.html",
+        "charts":[ { "name":"table", "read_name":"Table" } ]
+      }
+  ],
   "Admin",
   [ { "name":"workers_summary",
       "read_name":"Worker Summary",
@@ -207,7 +249,7 @@
    "Crash Tables",
    [ { "name":"socorro_record",
        "read_name":"Socorro Record",
-       "signals":{ "url":"1", "socorro_id":"1" },
+       "signals":{ "signature":"1", "url":"1", "socorro_id":"1" },
        "data_adapter":"named_fields",
        "control_panel":"socorro.html",
        "charts":[ { "name":"table", "read_name":"Table" } ]

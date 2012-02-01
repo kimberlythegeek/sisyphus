@@ -26,6 +26,7 @@
             <li><a href="#signals">Signals</a></li>
             <li><a href="#table_filters">Table Filters</a></li>
             <li><a href="#context_menu">Table Context Menu</a></li>
+            <li><a href="#url_resubmission">URL Resubmission</a></li>
             <li>
                <a href="#data_descriptions">Data</a>
                <ul>
@@ -68,6 +69,12 @@
                               <li><a href="#valgrind_detail_ut">Unit Valgrind Assertions</a></li>
                            </ul>
                         </li>
+                     </ul>
+                  </li>
+                  <li><a href="#user_data">User Data</a>
+                     <ul>
+                        <li><a href="#resubmission_urls_ud">My URL Resubmissions</a></li>
+                        <li><a href="#all_resubmission_urls_ud">All URL Resubmissions</a></li>
                      </ul>
                   </li>
                   <li><a href="#crash_table_data">Crash Tables</a>
@@ -178,6 +185,16 @@
             <p><strong>Select Cell Data:</strong> When selected this option will automatically select all of the text in a data cell for convenient copy/paste operations.</p>
             <p><strong>Copy Cell Data:</strong> When selected this option will copy the contents of a given cell to the clipboard.  This feature requires the user to enable the ability in firefox.  You can allow access by entering 'about:config' in the location bar in the browser and setting 'signed.applets.codebase_principal_support=true' or installing the AllowClipboard addon and enabling clipboard access for bughunter.</p>
             <p><strong>Open URL In Window:</strong> This is only applicable to links that have a URL for content.  When selected, this will open the url in a new browser window.  USE CAUTION: These urls may contain very disturbing content and might crash your browser: shut the door, cover your eyes, and prepare for the worst...</p>
+            <p><strong>Resubmit URL:</strong> This option is only available when the cell contents contain a URL associated with a crash report.  When selected a modal window will open allowing the user to supply a custom signature with the URL to be resubmitted. When URLs are resubmitted they are processed through the bughunter queue, retesting the URL across all source code and platform combinations available in bughunter.</p>
+            <p><strong>Resubmit All URLs:</strong> Same as <strong>Resubmit URL</strong> but all of the URLs from the selected data view will be loaded into the modal for resubmission.</p>
+         </div>
+         <a name="url_resubmission"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">URL Resubmission</h3>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>URLs can be resubmitted to the bughunter job queue from two different areas: the right click <a class="bh-help-link" href="#context_menu">context menu</a>, which enables the user to resubmit URLs already found in bughunter and the control panel of the <a class="bh-help-link" href="#resubmission_urls_ud">My URL Resubmissions</a> and <a class="bh-help-link" href="#all_resubmission_urls_ud">All URL Resubmissions</a> data views.  The control panel option provides a textarea for adding a custom signature and a list of user supplied URLs to be resubmitted.  The custom signature can be any text the user would like to associate with the resubmission, this can help keep track of the intention of the resubmission.  The field can be used as a signal with the <a class="bh-help-link" href="#socorro_record">Socorro Record</a> data view.  These URLs can be any site the user wishes to test across all source code and platform combinations available in bughunter.</p>
          </div>
          <a name="site_test_data"></a>
          <div style="margin-top:10px;" class="ui-helper-clearfix">
@@ -346,6 +363,25 @@
             <p><strong>count: </strong> The number of times the valgrind warning occurred in a row.</p>
             {% include "help/log_column.html" %}
             {% include "help/testrun_id_column.html" %}
+         </div>
+         <a name="user_data"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">User Data</h3>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>User data contains data views that manage user generated data.  Currently this includes URL resubmissions.  URL resubmissions are URLs contained in bughunter or provided by the user that have been resubmitted to the bughunter queue.  Resubmitted URLs are retested across all source code and platform combinations available in bughunter.</p>
+         </div>
+         <a name="resubmission_urls_ud"></a>
+         <h3>My URL Resubmissions</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            {% include "help/url_resubmissions.html" %}
+         </div>
+         <a name="all_resubmission_urls_ud"></a>
+         <h3>All URL Resubmissions</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p><strong>User:</strong> The username/email address associated with the URL resubmission.</p>
+            {% include "help/url_resubmissions.html" %}
          </div>
          <a name="crash_table_data"></a>
          <div style="margin-top:10px;" class="ui-helper-clearfix">

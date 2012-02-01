@@ -21,14 +21,25 @@ var BHViewCollection = new Class({
       //DOM element that a user right clicks
       //on in any table associated with a view.
       this.contextMenuTarget;  
-
+      //This is set dynamically when the context menu is open.
+      //It holds the text contained in the cell that the user
+      //right clicked on
+      this.cellText;
+      //The id/index of the bhview that owns the context menu.  
+      //This attribute is set when the user opens the context menu.
+      this.bhviewMenuOwnerId;
+      //This is populated when a user selects a URL or group of URLs
+      //using the context menu
+      this.urls = [];
+ 
       //Get the view marked as default in json structure
       this.defaultBHViewName = this.model.getDefaultBHView();
 
       this.subscriptionTargets = { CLOSE_BHVIEW:this.closeBHView,
                                    ADD_BHVIEW:this.addBHView,
                                    SIGNAL_BHVIEW:this.sendSignalToChildWindows,
-                                   OPEN_COLLECTION_BHVIEW:this.openBHViewCollection };
+                                   OPEN_COLLECTION_BHVIEW:this.openBHViewCollection,
+                                   URL_RESUBMISSION:this.resubmitUrls };
 
       BHPAGE.registerSubscribers(this.subscriptionTargets, 
                                  this.view.allViewsContainerSel,
@@ -37,7 +48,28 @@ var BHViewCollection = new Class({
       //reset column widths when window resizes
       $(window).resize( _.bind( this.resizeWindow, this ) );
 
+      this._initializeResubmitModal();
+
       this._bindCellContextMenu();
+
+   },
+   resubmitUrls: function(data){
+
+      this.urls = this.view.loadUrls(data.urls);
+
+      var comments = data.signature;
+
+      var bhview = this.model.getBHView(this.bhviewMenuOwnerId);
+
+      this.urlResubmissionEventData = data;
+
+      this.model.resubmitUrls(this, 
+                              comments, 
+                              this.urls, 
+                              _.bind(bhview.fnError, bhview), 
+                              _.bind(this._resubmitCallbackEvent, this));
+
+      $(this.view.resubmitUrlDialogSel).dialog('close');
 
    },
    openBHViewCollection: function(data){
@@ -174,13 +206,20 @@ var BHViewCollection = new Class({
 
       this.contextMenuTarget = event.target;  
 
-      //See if the selection matches the cell contents
-      var cellText = $(this.contextMenuTarget).text();
+      this.cellText = $(this.contextMenuTarget).text();
+
+      //Set the index of the owner bhview
+      var id = $(this.contextMenuTarget).closest('table').attr('id');
+      var idMatch = id.match(/(\d+)$/);
+      if(idMatch){
+         this.bhviewMenuOwnerId = parseInt(idMatch[1]);
+      }
 
       var sel = document.getSelection();
 
       if(sel){
          if(sel.focusNode){
+            //See if the selection matches the cell contents
             if(sel.focusNode.parentElement != this.contextMenuTarget){
                //Selection parentElement does not match the element 
                //that the context menu was opened on, clear the selection
@@ -212,7 +251,26 @@ var BHViewCollection = new Class({
 
          case 'resubmit_url':
 
-            this._resubmitUrl();
+            this.urls = [ this.cellText ];
+            this.urls = this.view.loadUrls(this.urls);
+            $(this.view.resubmitUrlDialogSel).dialog( 'open' );
+            break;
+
+         case 'resubmit_all_urls':
+
+            //Get the id so we can retrieve the bhview
+            if(this.bhviewMenuOwnerId >= 0){
+               var bhview = this.model.getBHView(this.bhviewMenuOwnerId);
+               //Get all of the urls in the column
+               this.urls = bhview.getColumnData('url', function(cell){
+                  var a = $(cell).find('a'); 
+                  return( $(a).text() );
+               });
+               //Load urls into modal
+               this.urls = this.view.loadUrls(this.urls);
+            }
+
+            $(this.view.resubmitUrlDialogSel).dialog( 'open' );
             break;
 
          case 'openurl':
@@ -232,8 +290,63 @@ var BHViewCollection = new Class({
             }
        }
    },
+   _initializeResubmitModal: function(){
+
+      var resubmitButtons = { "Cancel":function(){ $(this).dialog("close"); },
+                              "Submit":_.bind( this._resubmitUrl, this ) };
+
+      $(this.view.resubmitUrlDialogSel).dialog({ 
+         autoOpen: false,
+         width:500,
+         height:600,
+         buttons:resubmitButtons,
+         modal:true
+      });
+      $(this.view.resubmitSuccessSel).dialog({
+         autoOpen: false,
+         width:350,
+         height:450,
+         buttons:{ "Close":function(){ $(this).dialog("close"); } },
+         modal:true
+      });
+   },
    _resubmitUrl: function(){
-      alert('resubmiting url');
+      
+      var comments = $(this.view.resubmitCommentsSel).val();
+      var bhview = this.model.getBHView(this.bhviewMenuOwnerId);
+
+      this.model.resubmitUrls(this, 
+                              comments, 
+                              this.urls, 
+                              _.bind(bhview.fnError, bhview), 
+                              _.bind(this._resubmitCallback, this));
+
+      $(this.view.resubmitUrlDialogSel).dialog('close');
+
+   },
+   _resubmitCallback: function(data, textStatus, jqXHR){
+
+      var messages = data['message'].split(/;|,/);
+      $(this.view.resubmitSuccessMessageSel).empty();
+      for(var i=0; i<messages.length; i++){
+         var mHtml = $('<p>' + messages[i] + '</p>');
+         $(this.view.resubmitSuccessMessageSel).append(mHtml);
+      }
+      $(this.view.resubmitSuccessSel).dialog('open');
+
+   },
+   _resubmitCallbackEvent: function(data, textStatus, jqXHR){
+
+      //This method is used when a URL resubmission event is fired from
+      //another component
+      this._resubmitCallback(data, textStatus, jqXHR);
+
+      this.urlResubmissionEventData.callback();
+
+      var bhview = this.model.getBHView(this.bhviewMenuOwnerId);
+      bhview.closeMenu();
+      bhview.refresh();
+
    },
    _selectTextFromContextMenu: function(){
       if(this.contextMenuTarget){
@@ -273,6 +386,12 @@ var BHViewCollectionView = new Class({
 
       this.urlBase = '/bughunter/views/';
       this.allViewsContainerSel = '#bh_view_container';
+      this.resubmitUrlDialogSel = '#bh_resubmit_urls';
+      this.resubmitUrlTextareaSel = '#bh_urls_container';
+      this.resubmitCommentsSel = '#bh_resubmit_comments';
+      this.resubmitSuccessSel = '#bh_resubmission_summary';
+      this.resubmitSuccessMessageSel = '#bh_resubmission_message';
+
    },
    submitPostForm: function(newViewUrl, params, selectedView, parentBHviewIndex){
 
@@ -346,6 +465,25 @@ var BHViewCollectionView = new Class({
       hiddenFields.push(parentHiddenField);
 
       return hiddenFields;
+   },
+   loadUrls: function(urls){
+
+      $(this.resubmitUrlTextareaSel).empty();
+      var seen = {};
+      var count = 1;
+      var uniqueUrls = [];
+      for(var i=0; i<urls.length; i++){
+         //Don't load duplicate urls
+         if( seen[ urls[i] ] != true){
+            uniqueUrls.push(urls[i]);
+            var row = '<tr><td>' + count + '</td>' + '<td>' + urls[i] + '</td></tr>';
+            $(this.resubmitUrlTextareaSel).append( $(row) );
+            seen[ urls[i] ] = true;
+            count++;
+         }
+      }
+
+      return uniqueUrls;
    }
 });
 
@@ -360,6 +498,7 @@ var BHViewCollectionModel = new Class({
       this.parent(options);
 
       this.newViewUrl = '/bughunter/views';
+      this.urlResubmissionUrl = '/bughunter/api/resubmit/';
 
       //An object acting like an associative array that holds
       //all views
@@ -382,6 +521,21 @@ var BHViewCollectionModel = new Class({
       //Used to manage cross tab communication.
       this.childWindows = [];
 
+   },
+   resubmitUrls: function(context, comments, urls, fnError, fnSuccess){
+
+      var data = JSON.stringify( { "comments":comments,
+                                   "urls":urls } );
+
+      jQuery.ajax( this.urlResubmissionUrl, { accepts:'application/json',
+                                              dataType:'json',
+                                              cache:false,
+                                              processData:false,
+                                              type:'POST',
+                                              data:data,
+                                              context:context,
+                                              error:fnError,
+                                              success:fnSuccess });
    },
    addParentChildRelationship: function(parentIndex, childIndex){
 

@@ -19,7 +19,9 @@ var DataAdapterCollection = new Class({
       //views.json in the data_adapter attribute.
       this.adapters = { 'named_fields':new BHViewAdapter(),
                         'crashes':new CrashesAdapter(),
-                        'urls':new UrlAdapter() };
+                        'urls':new UrlAdapter(),
+                        'all_resubmission_urls': new AllResubmissionUrlsAdapter(),
+                        'resubmission_urls': new ResubmissionUrlsAdapter() };
 
    },
 
@@ -491,6 +493,116 @@ var UrlAdapter = new Class({
 
       //Set default sort column to Total Count
       this.sorting = { 'urls':[[1, 'desc']] };
+   }
+});
+
+var ResubmissionUrlsAdapter = new Class({
+
+   Extends:BHViewAdapter,
+
+   jQuery:'ResubmissionUrlsAdapter',
+
+   initialize: function(selector, options){
+      this.setOptions(options);
+      this.parent(options);
+
+      this.resubmissionId = 'bh_cp_url_resubmission_c';
+      this.urlResubmissionTextarea = 'url-resubmission';
+      this.urlResubmissionSignature = 'url-resubmission-comments';
+
+      this.allViewsContainerSel = '#bh_view_container';
+
+      this.urlResubmissionEvent = 'URL_RESUBMISSION';
+
+      //Set default sort column to Total Count
+      this.sorting = { 'resubmission_urls':[[0, 'desc']] };
+   },
+   processPanelClick: function(elId){
+      if(elId && elId.match(this.resubmissionId)){
+
+         var urlEl = $('[name="' + this.urlResubmissionTextarea + '"]');
+         var rawUrls = $(urlEl).val();
+         var urlsSplit = rawUrls.split(/\n/);
+         var urls = [];
+         for(var i=0; i<urlsSplit.length; i++){
+            if(urlsSplit[i] != ""){
+               urls.push(urlsSplit[i]);
+            }
+         }
+
+         var sigEl = $('[name="' + this.urlResubmissionSignature + '"]');
+         var signature = $(sigEl).val();
+
+         if(urls.length > 0){
+
+            var data = { urls:urls, 
+                         signature:signature,
+                         callback:_.bind( function(){
+                         
+                           //Clear the url resubmission fields
+                           $('[name="' + this.urlResubmissionTextarea + '"]').val("");
+                           $('[name="' + this.urlResubmissionSignature + '"]').val("");
+                         
+                         }, this) };
+            $(this.allViewsContainerSel).trigger(this.urlResubmissionEvent, data);
+
+         }else{
+            alert('Hey I need some URLs to do that.  Add some URLs to the textarea labeld "Enter URLs".  Thanks!');
+         }
+      }
+      return;
+   },
+   setControlPanelFields: function(controlPanelDropdownEl, data){
+
+      var textareaSel = '[name="' + this.urlResubmissionTextarea + '"],[name="' + 
+                        this.urlResubmissionSignature + '"]';
+
+      $(textareaSel).bind('keydown', function(event){
+         if(event.keyCode == 13){
+            //Let the user add a newline to the textareas
+            event.stopPropagation();
+         }
+      });
+
+      if(!_.isEmpty(data)){
+         var el = $(controlPanelDropdownEl).find('[name="' + data.signal + '"]');
+         $(el).attr('value', BHPAGE.unescapeForUrl(data.data));
+
+         if(!_.isEmpty(data.date_range)){
+            var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
+            startInput.attr('value',  data.date_range.start_date );
+            var endInput = $(controlPanelDropdownEl).find('[name="end_date"]');
+            endInput.attr('value', data.date_range.end_date );
+         }
+
+      }else {
+
+         var startInput = $(controlPanelDropdownEl).find('[name="start_date"]');
+         var endInput = $(controlPanelDropdownEl).find('[name="end_date"]');
+
+         //Only set the values to the default date range if both values
+         //are undefined
+         if( !startInput.val() && !endInput.val() ){ 
+            startInput.attr('value',  $(this.startDateSel).val() );
+            endInput.attr('value', $(this.endDateSel).val() );
+         }
+      }
+   }
+});
+
+var AllResubmissionUrlsAdapter = new Class({
+
+   Extends:ResubmissionUrlsAdapter,
+
+   jQuery:'AllResubmissionUrlsAdapter',
+
+   initialize: function(selector, options){
+
+      this.setOptions(options);
+      this.parent(options);
+
+      //Set default sort column to Total Count
+      this.sorting = { 'all_resubmission_urls':[[1, 'desc']] };
    }
 });
 

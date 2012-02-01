@@ -132,6 +132,27 @@ var BHViewComponent = new Class({
       }
 
    },
+   /****************
+    *PUBLIC INTERFACE
+    ****************/
+   closeMenu: function(){
+      this.view.closeMenu();
+   },
+   getColumnData: function(column, columnFilter){
+
+      var columnData = [];
+      var data = this.dataTable.fnGetData();
+      for(var i=0; i<data.length; i++){
+         if(data[i][column]){
+            var cell = data[i][column];
+            if(columnFilter){
+               cell = columnFilter(data[i][column]);
+            }
+            columnData.push(cell);
+         }
+      }
+      return columnData;
+   },
    notifyBHViewCollection: function(){
 
       if( (window.opener != undefined) && (window.opener.document != undefined) ){
@@ -194,9 +215,6 @@ var BHViewComponent = new Class({
                                                       success:this.view.updateDateRange });
       }
    },
-   /****************
-    *PUBLIC INTERFACE
-    ****************/
    destroy: function(){
 
       //Delete the view from the DOM
@@ -312,7 +330,7 @@ var BHViewComponent = new Class({
                                this, 
                                this.initializeBHView, 
                                params,
-                               this._fnError);
+                               this.fnError);
    },
 
    /***************
@@ -355,7 +373,7 @@ var BHViewComponent = new Class({
                                   this, 
                                   this.initializeBHView,
                                   params,
-                                  this._fnError);
+                                  this.fnError);
       }
    },
    signalHandler: function(data){
@@ -543,7 +561,6 @@ var BHViewComponent = new Class({
    initializeBHView: function(data, textStatus, jqXHR){
 
       this.data = data;
-
       if(data.aoColumns.length > 0){
          //Load the data into the table
          var tableSel = this.view.getIdSelector(this.view.tableSel, this.bhviewIndex);
@@ -849,6 +866,13 @@ var BHViewComponent = new Class({
    /*************
     *MENU CALLBACK METHODS
     *************/
+   fnError: function(data, textStatus, jqXHR){
+      var messageText = 'Ohhh no, something has gone horribly wrong! ';
+      messageText += ' HTTP status:' + data.status + ', ' + textStatus +
+      ', ' + data.statusText;
+
+      this.view.showNoDataMessage(this.bhviewIndex, 'error', messageText); 
+   },
     _setControlPanelCb: function(data){
 
       var controlPanelSel = this.view.getIdSelector(this.view.controlPanelSel, this.bhviewIndex);
@@ -896,7 +920,6 @@ var BHViewComponent = new Class({
                    this.model.end_date,
                    serverResetDateRangeSel,
                    badDateFormatSel);
-
 
       //Capture keydown and look for enter/return press
       $(document).keydown( _.bind( this._processControlPanelKeyPress, this ) );
@@ -968,13 +991,6 @@ var BHViewComponent = new Class({
       }
    },
 
-   _fnError: function(data, textStatus, jqXHR){
-      var messageText = 'Ohhh no, something has gone horribly wrong! ';
-      messageText += ' HTTP status:' + data.status + ', ' + textStatus +
-      ', ' + data.statusText;
-
-      this.view.showNoDataMessage(this.bhviewIndex, 'error', messageText); 
-   },
    _setVisReadName: function(charts){
       for(var i=0; i<charts.length; i++){
          if(charts[i].name == this.visName){

@@ -5,6 +5,7 @@ import re
 import datetime
 import time
 import simplejson
+import urllib
 
 from base64 import b64encode
 from collections import defaultdict
@@ -17,18 +18,14 @@ from django.http import HttpResponse, HttpResponseNotAllowed, HttpResponseRedire
 from django.shortcuts import render_to_response
 from django.views.decorators.csrf import csrf_exempt
 from django.middleware.csrf import get_token
-
 from django.conf import settings
-
 from django.utils.encoding import iri_to_uri, smart_str, smart_unicode, force_unicode
 from django.utils.http import urlquote
-import urllib
 
 from sisyphus.webapp.bughunter import models
 from sisyphus.webapp import settings
 from sisyphus.automation import utils
-
-
+from sisyphus.automation.crashtest import crashurlloader
 
 ###
 # Returns a random string with specified number of characters.  Adapted from
@@ -481,7 +478,6 @@ def bhview(request, target=settings.VIEW_LOGIN_PAGE):
 
     return render_to_response('bughunter.views.html', data)
 
-@csrf_exempt
 @login_required
 def get_help(request, target=settings.VIEW_LOGIN_PAGE):
    get_token(request)
@@ -497,6 +493,36 @@ def get_date_range(request, **kwargs):
    json = simplejson.dumps( { 'start_date':str(start_date), 
                               'end_date':str(end_date),
                               'current_date':str(current_date) } )
+
+   return HttpResponse(json, mimetype=APP_JS)
+
+@login_required
+def resubmit_urls(request):
+   
+   get_token(request)
+   request.META["CSRF_COOKIE_USED"] = True
+
+   raw_data = simplejson.loads(request.raw_post_data)
+
+   urls = []
+   comments = ""
+   escape_func = settings.DHUB.escapeString;
+
+   if 'urls' in raw_data:
+      for url in raw_data['urls']:
+         urls.append( escape_func( urllib.unquote(url) ) )
+
+   if 'comments' in raw_data:
+      comments = escape_func( urllib.unquote(raw_data['comments']) )
+
+   data = { 'urls':urls,
+            'signature':raw_data['comments'],
+            'skipurls':[],
+            'user_id':request.user.id,
+            'skipurlsfile':""}
+
+   response = crashurlloader.load_urls(data)
+   json = simplejson.dumps( { 'message':response } )
 
    return HttpResponse(json, mimetype=APP_JS)
 
@@ -562,20 +588,76 @@ def get_bhview(request, **kwargs):
          json = VIEW_ADAPTERS[proc_name](proc_path, 
                                          proc_name, 
                                          full_proc_path, 
-                                         nfields)
+                                         nfields,
+                                         request.user.id)
    else:
       json = '{ "error":"Data view name %s not recognized" }' % proc_name
 
    return HttpResponse(json, mimetype=APP_JS)
 
+####
+#USER DATA: URL Resubmissions
+####
+def _get_resubmission_urls(proc_path, proc_name, full_proc_path, nfields, user_id):
+
+   col_prefixes = { 'signature':'sr',
+                    'url':'sr' }
+
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                       debug_show=settings.DEBUG,
+                                       replace=[ str(user_id), rep ],
+                                       return_type='table')
+
+
+   response_data = _aggregate_user_data(table_struct)
+
+   columns = [ 'Date',
+               'signature',
+               'url',
+               'status',
+               'Total Count']
+
+   return simplejson.dumps( { 'columns':columns, 
+                              'data':response_data,
+                              'start_date':nfields['start_date'], 
+                              'end_date':nfields['end_date'] } )
+
+def _get_all_resubmission_urls(proc_path, proc_name, full_proc_path, nfields, user_id):
+
+   col_prefixes = { 'signature':'sr',
+                    'url':'sr' }
+
+   rep = _build_new_rep(nfields, col_prefixes)
+
+   table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                       debug_show=settings.DEBUG,
+                                       replace=[ rep ],
+                                       return_type='table')
+
+   response_data = _aggregate_all_user_data(table_struct)
+
+   columns = [ 'User',
+               'Date',
+               'signature',
+               'url',
+               'status',
+               'Total Count']
+
+   return simplejson.dumps( { 'columns':columns, 
+                              'data':response_data,
+                              'start_date':nfields['start_date'], 
+                              'end_date':nfields['end_date'] } )
+
 #####
 #SITE TESTING DATA ADAPTERS: Crashes
 #####
-def _get_crashes_st(proc_path, proc_name, full_proc_path, nfields):
+def _get_crashes_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
    col_prefixes = { 'signature':'c',
-                    'url':'sr',
                     'fatal_message':'str',
+                    'url':'stc',
                     'address':'stc',
                     'pluginfilename':'stc',
                     'pluginversion':'stc',
@@ -605,7 +687,7 @@ def _get_crashes_st(proc_path, proc_name, full_proc_path, nfields):
                               'start_date':nfields['start_date'], 
                               'end_date':nfields['end_date'] } )
 
-def _get_crash_urls_st(proc_path, proc_name, full_proc_path, nfields):
+def _get_crash_urls_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
    col_prefixes = { 'signature':'c',
                     'url':'stc',
@@ -633,7 +715,7 @@ def _get_crash_urls_st(proc_path, proc_name, full_proc_path, nfields):
                               'start_date':nfields['start_date'], 
                               'end_date':nfields['end_date'] } )
 
-def _get_crash_detail_st(proc_path, proc_name, full_proc_path, nfields):
+def _get_crash_detail_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
    col_prefixes = { 'signature':'c',
                     'url':'stc',
@@ -672,10 +754,11 @@ def _get_crash_detail_st(proc_path, proc_name, full_proc_path, nfields):
 #####
 #SITE TESTING DATA ADAPTERS: Assertions
 #####
-def _get_assertions_st(proc_path, proc_name, full_proc_path, nfields):
+def _get_assertions_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
    col_prefixes = { 'assertion':'a',
-                    'location':'a' }
+                    'location':'a',
+                    'url':'sta' }
 
    _set_dates_for_placeholders(nfields)
 
@@ -702,7 +785,7 @@ def _get_assertions_st(proc_path, proc_name, full_proc_path, nfields):
                               'start_date':nfields['start_date'], 
                               'end_date':nfields['end_date'] } )
 
-def _get_assertion_urls_st(proc_path, proc_name, full_proc_path, nfields):
+def _get_assertion_urls_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
    col_prefixes = { 'url':'sta',
                     'assertion':'a' }
@@ -725,7 +808,7 @@ def _get_assertion_urls_st(proc_path, proc_name, full_proc_path, nfields):
                               'start_date':nfields['start_date'], 
                               'end_date':nfields['end_date'] } )
 
-def _get_assertion_detail_st(proc_path, proc_name, full_proc_path, nfields):
+def _get_assertion_detail_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
    col_prefixes = { 'assertion':'a',
                     'location':'a', 
@@ -761,7 +844,7 @@ def _get_assertion_detail_st(proc_path, proc_name, full_proc_path, nfields):
 #####
 #UNIT TESTING ADAPTERS
 #####
-def _get_crashes_ut(proc_path, proc_name, full_proc_path, nfields):
+def _get_crashes_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
    col_prefixes = { 'signature':'c',
                     'url':'sr',
@@ -795,7 +878,7 @@ def _get_crashes_ut(proc_path, proc_name, full_proc_path, nfields):
                               'start_date':nfields['start_date'], 
                               'end_date':nfields['end_date'] } )
 
-def _get_assertions_ut(proc_path, proc_name, full_proc_path, nfields):
+def _get_assertions_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
    col_prefixes = { 'assertion':'a',
                     'location':'a' }
@@ -825,7 +908,7 @@ def _get_assertions_ut(proc_path, proc_name, full_proc_path, nfields):
                               'start_date':nfields['start_date'], 
                               'end_date':nfields['end_date'] } )
 
-def _get_assertion_detail_ut(proc_path, proc_name, full_proc_path, nfields):
+def _get_assertion_detail_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
    col_prefixes = { 'assertion':'a',
                     'location':'a', 
@@ -858,7 +941,7 @@ def _get_assertion_detail_ut(proc_path, proc_name, full_proc_path, nfields):
                              'start_date':nfields['start_date'], 
                              'end_date':nfields['end_date']} )
 
-def _get_assertion_urls_ut(proc_path, proc_name, full_proc_path, nfields):
+def _get_assertion_urls_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
    col_prefixes = { 'url':'uta',
                     'assertion':'a' }
@@ -884,7 +967,7 @@ def _get_assertion_urls_ut(proc_path, proc_name, full_proc_path, nfields):
 #####
 #UNIT TESTING VALGRIND ADAPTERS
 #####
-def _get_valgrinds_ut(proc_path, proc_name, full_proc_path, nfields):
+def _get_valgrinds_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
    col_prefixes = { 'signature':'v',
                     'message':'v' }
@@ -913,7 +996,7 @@ def _get_valgrinds_ut(proc_path, proc_name, full_proc_path, nfields):
                               'start_date':nfields['start_date'], 
                               'end_date':nfields['end_date'] } )
 
-def _get_valgrind_urls_ut(proc_path, proc_name, full_proc_path, nfields):
+def _get_valgrind_urls_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
    col_prefixes = { 'url':'utv',
                     'message':'v',
@@ -937,7 +1020,7 @@ def _get_valgrind_urls_ut(proc_path, proc_name, full_proc_path, nfields):
                               'start_date':nfields['start_date'], 
                               'end_date':nfields['end_date'] } )
 
-def _get_valgrind_detail_ut(proc_path, proc_name, full_proc_path, nfields):
+def _get_valgrind_detail_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
    col_prefixes = { 'signature':'v',
                     'message':'v', 
@@ -973,7 +1056,7 @@ def _get_valgrind_detail_ut(proc_path, proc_name, full_proc_path, nfields):
 #####
 #CRASH TABLE ADAPTERS
 #####
-def _get_socorro_record(proc_path, proc_name, full_proc_path, nfields):
+def _get_socorro_record(proc_path, proc_name, full_proc_path, nfields, user_id):
 
    col_prefixes = { 'signature':'sr',
                     'url':'sr',
@@ -1139,6 +1222,97 @@ def _aggregate_url_platform_data(table_struct):
       response_data.append(url_summary)
 
    return response_data
+
+def _aggregate_user_data(table_struct):
+
+   #####
+   #Aggregate the state
+   #####
+   data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int))))
+
+   for row in table_struct['data']:
+      row['date'] = '<span class="no-wrap">' + row['date'] + '</span>'
+      data[ row['date'] ][ row['signature'] ][ row['url'] ][ row['state'] ] += int(row['total_count'])
+      data[ row['date'] ][ row['signature'] ][ row['url'] ][ 'total_count' ] += int(row['total_count'])
+
+   response_data = []
+   for date, dateObject in data.iteritems():
+      for sig, signature in dateObject.iteritems():
+         for url, statusObject in signature.iteritems():
+
+            status = _format_status(statusObject)
+
+            url_summary = { 'Date':date,
+                            'signature':sig,
+                            'url':url,
+                            'status':status,
+                            'Total Count':statusObject['total_count'] }
+
+            response_data.append(url_summary)
+
+   return response_data
+
+def _aggregate_all_user_data(table_struct):
+
+   #####
+   #Aggregate the state
+   #####
+   data = defaultdict(lambda: defaultdict(lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(int)))))
+
+   for row in table_struct['data']:
+      row['date'] = '<span class="no-wrap">' + row['date'] + '</span>'
+      data[ row['email'] ][ row['date'] ][ row['signature'] ][ row['url'] ][ row['state'] ] += int(row['total_count'])
+      data[ row['email'] ][ row['date'] ][ row['signature'] ][ row['url'] ][ 'total_count' ] += int(row['total_count'])
+
+   response_data = []
+   for email, dateObject in data.iteritems():
+      for date, signatures in dateObject.iteritems():
+         for sig, urls in signatures.iteritems():
+            for url, statusObject in urls.iteritems():
+
+               status = _format_status(statusObject)
+
+               url_summary = { 'User':email,
+                               'Date':date,
+                               'signature': sig,
+                               'url':url,
+                               'status':status,
+                               'Total Count':statusObject['total_count'] }
+
+               response_data.append(url_summary)
+
+   return response_data
+
+def _format_status(statusObject):
+
+   status = ""
+   if 'waiting' in statusObject:
+      status += _format_status_field('waiting', 'Waiting', statusObject['waiting'], True)
+   else:
+      status += _format_status_field('waiting', 'Waiting', 0, True)
+
+   if 'executing' in statusObject:
+      status += _format_status_field('executing', 'Executing', statusObject['executing'], True)
+   else:
+      status += _format_status_field('executing', 'Executing', 0, True)
+
+   if 'completed' in statusObject:
+      status += _format_status_field('completed', 'Completed', statusObject['completed'], False)
+
+      ##All jobs complete, show message##
+      if statusObject['total_count'] == statusObject['completed']:
+         status = '<span class="bh-status-completed"><b>ALL JOBS COMPLETE</b></span>'
+   else:
+      status += _format_status_field('completed', 'Completed', 0, False)
+
+   return status
+
+def _format_status_field(status, statusText, count, spacer):
+
+   if spacer:
+      return '<span class="bh-status-' + status + '"><b>' + statusText + ':</b>' + str(count) + '</span>&nbsp;&nbsp;'
+   else:
+      return '<span class="bh-status-' + status + '"><b>' + statusText + ':</b>' + str(count) + '</span>'
 
 def _format_branch_data(branches):
 
@@ -1339,7 +1513,11 @@ VIEW_ADAPTERS = dict( crashes_st=_get_crashes_st,
                       valgrind_urls_ut=_get_valgrind_urls_ut,
                       valgrind_detail_ut=_get_valgrind_detail_ut,
 
-                      socorro_record=_get_socorro_record )
+                      socorro_record=_get_socorro_record,
+
+                      resubmission_urls_ud=_get_resubmission_urls,
+                      all_resubmission_urls_ud=_get_all_resubmission_urls
+                      )
 
 NAMED_FIELDS = set( ['signature',
                      'url',

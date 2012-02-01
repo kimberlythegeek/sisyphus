@@ -75,7 +75,8 @@
    <menuitem label="Select Cell Data" name="select"></menuitem>
    <menuitem label="Copy Cell Data" name="copy"></menuitem>
    <menuitem label="Open URL In New Window" name="openurl"></menuitem>
-   <menuitem label="Resubmit URL to Bughunter" name="resubmit_url"></menuitem>
+   <menuitem label="Resubmit URL" name="resubmit_url"></menuitem>
+   <menuitem label="Resubmit All URLs" name="resubmit_all_urls"></menuitem>
 </menu>
 <menu type="context" id="bh_table_contextmenu">
    <menu type="context" label="Search Bugzilla">
@@ -88,6 +89,30 @@
    <menuitem label="Copy Cell Data" name="copy"></menuitem>
 </menu>
 
+<!-- Resubmission summary -->
+<div id="bh_resubmission_summary" class="ui-widget ui-corner-top hidden" title="Resubmission Summary">
+   <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+      <strong>URL Resubmission Was Successful!</strong>
+      <div id="bh_resubmission_message"></div>
+   </div>
+</div>
+<!-- URL resubmission Modal -->
+<div id="bh_resubmit_urls" class="ui-widget ui-corner-top hidden" title="Resubmit URLs">
+   <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+      <p><strong>NOTE:</strong> The signature field will store any comments you would like to associate with this set of URLs to help keep track of your URL resubmissions.  You can filter results by comment text, so go ahead and write that novel!</p>
+   </div>
+   <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+      <strong>Add A Signature:</strong>
+      <textarea id="bh_resubmit_comments" rows="3", cols="58"></textarea>
+   </div>
+   <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel" style="overflow:auto;">
+      <strong>Resubmission URLs:</strong>
+      <table id="bh_urls_container" class="display bh-resubmission-modal" cellspacing="0" cellpadding="0" border="1">
+         <tr>
+         </tr>
+      </table>
+   </div>
+</div>
 <!-- Connections Modal -->
 <div class="bh-connections-modal ui-widget ui-corner-top hidden" title="Open New View">
    <ul>

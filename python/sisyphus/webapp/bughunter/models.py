@@ -386,6 +386,7 @@ class SocorroRecord(models.Model):
     reason            = models.CharField(max_length=255,  null = True, blank = True)
     process_type      = models.CharField(max_length=8,   null = True, blank = True) # currently \N -> browser, 'plugin'->'plugin'
     app_notes         = models.TextField(null = True, blank = True)
+    user_id           = models.IntegerField(null = True)
 
     def __unicode__(self):
         if self.signature is None:

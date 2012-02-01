@@ -43,64 +43,43 @@ import urlparse
 import datetime
 import time
 
-sisyphus_dir     = os.environ["TEST_DIR"]
-tempdir          = os.path.join(sisyphus_dir, 'python')
-if tempdir not in sys.path:
-    sys.path.append(tempdir)
+if __name__ == '__main__':
+   sisyphus_dir     = os.environ["TEST_DIR"]
+   tempdir          = os.path.join(sisyphus_dir, 'python')
+   if tempdir not in sys.path:
+      sys.path.append(tempdir)
 
-tempdir          = os.path.join(tempdir, 'sisyphus')
-if tempdir not in sys.path:
-    sys.path.append(tempdir)
+   tempdir          = os.path.join(tempdir, 'sisyphus')
+   if tempdir not in sys.path:
+      sys.path.append(tempdir)
 
-tempdir          = os.path.join(tempdir, 'webapp')
-if tempdir not in sys.path:
-    sys.path.append(tempdir)
+   tempdir          = os.path.join(tempdir, 'webapp')
+   if tempdir not in sys.path:
+      sys.path.append(tempdir)
 
-os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
+   os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
 
 from django.db import connection
+from django.contrib.auth.models import User
 
 from sisyphus.automation import utils
 import sisyphus.webapp.settings
 from sisyphus.webapp.bughunter import models
 
-def main():
+def get_skipurls(data):
+    if not data['skipurlsfile']:
+      ##Default skipurlsfile if none is provided##
+      data['skipurlsfile'] = sisyphus.webapp.settings.ROOT + '/../automation/crashtest/skipurls.list'
 
-    usage = '''usage: %prog [options] --urls urls.list --signature signature
-'''
-    parser = OptionParser(usage=usage)
+    skipurlsfilehandle = open(data['skipurlsfile'], 'r')
+    for skipurl in skipurlsfilehandle:
+       skipurl = skipurl.rstrip('\n')
+       data['skipurls'].append(skipurl)
+    skipurlsfilehandle.close()
 
-    parser.add_option('-s', '--skipurls', action='store', type='string',
-                      dest='skipurlsfile',
-                      default=None,
-                      help='file containing url patterns to skip when uploading.')
+def load_urls(data):
 
-    parser.add_option('--urls', action='store', type='string',
-                      dest='urlsfile',
-                      default=None,
-                      help='file containing url patterns to skip when uploading.')
-
-    parser.add_option('--signature', action='store', type='string',
-                      dest='signature',
-                      default=None,
-                      help='set the signature document\'s signature' +
-                      'property to allow tracking of this set of urls.')
-
-    (options, args) = parser.parse_args()
-
-    if not options.urlsfile:
-        parser.error('urls.list file is required')
-
-    if not options.signature:
-        parser.error('signature is required')
-
-    skipurls = []
-    if options.skipurlsfile:
-        skipurlsfilehandle = open(options.skipurlsfile, 'r')
-        for skipurl in skipurlsfilehandle:
-            skipurl = skipurl.rstrip('\n')
-            skipurls.append(skipurl)
-        skipurlsfilehandle.close()
+    get_skipurls(data)
 
     branches_rows = models.Branch.objects.all().order_by('major_version')
 
@@ -165,13 +144,11 @@ def main():
     while not utils.getLock('sisyphus.bughunter.sitetestrun', locktimeout):
         continue
 
-    urlsfilehandle = open(options.urlsfile, 'r')
     try:
-        for url in urlsfilehandle:
+        for url in data['urls']:
 
             url_counter += 1
 
-            url = url.rstrip('\n')
             if url.find('http') != 0:
                 nonhttp_counter += 1
                 continue # skip non-http urls
@@ -189,7 +166,7 @@ def main():
                 badurl_counter += 1
                 continue
 
-            for skipurl in skipurls:
+            for skipurl in data['skipurls']:
                 if re.search(skipurl, url):
                     skip_counter += 1
                     continue
@@ -221,7 +198,7 @@ def main():
                                     continue
 
                                 socorro_row = models.SocorroRecord(
-                                    signature           = options.signature,
+                                    signature           = data['signature'],
                                     url                 = url,
                                     uuid                = '',
                                     client_crash_date   = None,
@@ -248,6 +225,7 @@ def main():
                                     reason              = '',
                                     process_type        = '',
                                     app_notes           = '',
+                                    user_id             = data['user_id']
                                     )
 
                                 try:
@@ -280,12 +258,12 @@ def main():
                                 except Exception, e:
                                     print "Exception: %s, url: %s" % (e, url)
     finally:
+        message = ""
         try:
             lockDuration = utils.releaseLock('sisyphus.bughunter.sitetestrun')
-            print(("loaded %d urls; eliminated %d unsupported records, %d non http urls, " +
+            message =("loaded %d urls; eliminated %d unsupported records, %d non http urls, " +
                    "%d private urls, %d bad urls, %d skipped urls; uploaded %d socorro records, " +
-                   "%d testruns in %s") %
-                  ( url_counter,
+                   "%d testruns in %s") % ( url_counter,
                     unsupported_counter,
                     nonhttp_counter,
                     private_counter,
@@ -294,12 +272,82 @@ def main():
                     socorro_counter,
                     testrun_counter,
                     datetime.datetime.now() - starttime
-                    ))
+                    )
         except:
             exceptionType, exceptionValue, errorMessage = utils.formatException()
-            print '%s, %s' % (exceptionValue, errorMessage)
+            message = '%s, %s' % (exceptionValue, errorMessage)
 
-    urlsfilehandle.close()
+        if __name__ == '__main__':
+            print message
+        else:
+            return message
+
+def main(data):
+    load_urls(data)
 
 if __name__ == '__main__':
-    main()
+
+    ##Parse command line arguments##
+    usage = '''usage: %prog [options] --username username --urls urls.list --signature signature
+'''
+    parser = OptionParser(usage=usage)
+
+    parser.add_option('-s', '--skipurls', action='store', type='string',
+                      dest='skipurlsfile',
+                      default=None,
+                      help='file containing url patterns to skip when uploading.')
+
+    parser.add_option('--username', action='store', type='string',
+                      dest='username',
+                      default=None,
+                      help='username associated with the url submission.')
+
+    parser.add_option('--urls', action='store', type='string',
+                      dest='urlsfile',
+                      default=None,
+                      help='file containing url patterns to skip when uploading.')
+
+    parser.add_option('--signature', action='store', type='string',
+                      dest='signature',
+                      default=None,
+                      help='set the signature document\'s signature' +
+                      'property to allow tracking of this set of urls.')
+
+    (options, args) = parser.parse_args()
+
+    if not options.username:
+        parser.error('username is required')
+
+    ##########
+    #Lookup the id associated with the username
+    ##########
+    user_objects = User.objects.all()
+    user_id = 0
+    for u in user_objects:
+      if options.username == u.username or options.username == u.email:
+         user_id = u.id
+         break
+
+    if user_id == 0:
+        parser.error('username was not found in bughunter')
+
+    if not options.urlsfile:
+        parser.error('urls.list file is required')
+
+    if not options.signature:
+        parser.error('signature is required')
+
+    data = { 'urls':[],
+             'signature':options.signature,
+             'skipurls':[],
+             'user_id':int(user_id),
+             'skipurlsfile':options.skipurlsfile}
+
+    ##Load URLs from file##
+    urlsfilehandle = open(options.urlsfile, 'r')
+    for url in urlsfilehandle:
+      url = url.rstrip('\n')
+      data['urls'].append(url)
+    urlsfilehandle.close()
+
+    main(data)

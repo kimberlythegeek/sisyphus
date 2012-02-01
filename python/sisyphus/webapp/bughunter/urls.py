@@ -12,6 +12,7 @@ urlpatterns = patterns('',
                        (r'^views/help/.*$', views.get_help),
                        (r'^views/get_date_range$', views.get_date_range),
                        (r'^api/views/.*$', views.get_bhview),
+                       (r'^api/resubmit/.*$', views.resubmit_urls),
 
                        (r'^api/login/$', views.log_in),
                        (r'^api/logout/$', views.log_out),

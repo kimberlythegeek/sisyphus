@@ -1,6 +1,40 @@
 {
  "views":{ 
 
+      "resubmission_urls_ud":{
+
+         "sql":"SELECT sr.signature,
+                       sr.url,
+                       str.state,
+                       COUNT(str.state) AS total_count,
+                       DATE_FORMAT(str.datetime, '%Y-%m-%d %H:%i:%s') AS date
+                 FROM SocorroRecord AS sr
+                 JOIN SiteTestRun AS str ON sr.id = str.socorro_id
+                 WHERE sr.user_id = REP0 REP1
+                 GROUP BY sr.signature, sr.url, str.state
+                 ORDER BY str.datetime DESC",
+
+         "host_type":"master_host"
+
+      },
+      "all_resubmission_urls_ud":{
+
+         "sql":"SELECT au.email,
+                       sr.signature,
+                       sr.url,
+                       str.state,
+                       COUNT(str.state) AS total_count,
+                       DATE_FORMAT(str.datetime, '%Y-%m-%d %H:%i:%s') AS date
+                 FROM SocorroRecord AS sr
+                 JOIN auth_user AS au ON sr.user_id = au.id
+                 JOIN SiteTestRun AS str ON sr.id = str.socorro_id
+                 WHERE sr.user_id IS NOT NULL REP0
+                 GROUP BY au.email, sr.signature, sr.url, str.state
+                 ORDER BY str.datetime DESC",
+
+         "host_type":"master_host"
+
+      },
       "socorro_record":{
 
          "sql":"SELECT sr.id AS 'socorro_id',

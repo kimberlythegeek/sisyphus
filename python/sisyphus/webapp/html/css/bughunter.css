@@ -168,6 +168,9 @@ div.bh-nodata {
 .hidden {
   display: none;
 }
+span.no-wrap {
+   white-space:nowrap;
+}
 a {
   text-decoration: none;
   color: #000080;
@@ -210,6 +213,14 @@ div.bh-spinner {
   height: 350px;
 }
 
+/***********
+ * URL resubmission styles
+ * *********/
+.bh-resubmission-modal {
+  width: 300px;
+  font-size: smaller;
+  border-spacing: 0;
+}
 /***********
  *datatable styles
  ***********/
@@ -345,4 +356,17 @@ a.bh-help-link {
    width:170px;
    height:35px;
    background-position: -890px -70px;
+}
+
+/******
+ * URL resubmission status styles
+ * ****/
+.bh-status-waiting {
+  color: #4C10AE;
+}
+.bh-status-executing {
+  color: #FF5600;
+}
+.bh-status-completed {
+  color: #007730;
 }
