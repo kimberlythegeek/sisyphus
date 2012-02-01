@@ -1466,6 +1466,8 @@ class Worker(object):
                     self.logMessage("psTest: Invalid pid %s: line: %s" % (pid, ps_line))
                 process_dict[pid] = ps_line
 
+        ps_proc.wait()
+
         return process_dict
 
     def killTest(self, pid = None):
