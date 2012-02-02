@@ -31,6 +31,11 @@ var BHViewCollection = new Class({
       //This is populated when a user selects a URL or group of URLs
       //using the context menu
       this.urls = [];
+
+      //This is set by resubmitUrls and contains the bhviewIndex
+      //of the data view that triggered the URL_RESUBMISSION event.
+      //This is the only case where this attribute is defined
+      this.bhviewIndex;
  
       //Get the view marked as default in json structure
       this.defaultBHViewName = this.model.getDefaultBHView();
@@ -59,7 +64,9 @@ var BHViewCollection = new Class({
 
       var comments = data.signature;
 
-      var bhview = this.model.getBHView(this.bhviewMenuOwnerId);
+      this.bhviewIndex = data.bhview_index;
+
+      var bhview = this.model.getBHView(this.bhviewIndex);
 
       this.urlResubmissionEventData = data;
 
@@ -343,7 +350,7 @@ var BHViewCollection = new Class({
 
       this.urlResubmissionEventData.callback();
 
-      var bhview = this.model.getBHView(this.bhviewMenuOwnerId);
+      var bhview = this.model.getBHView(this.bhviewIndex);
       bhview.closeMenu();
       bhview.refresh();
 

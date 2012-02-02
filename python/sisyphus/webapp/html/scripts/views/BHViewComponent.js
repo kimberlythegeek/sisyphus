@@ -965,7 +965,7 @@ var BHViewComponent = new Class({
       //This enables control panel's with checkboxes
       var adapterName = this.model.getBHViewAttribute('data_adapter');
       var a = this.dataAdapters.getAdapter(adapterName);
-      a.processPanelClick(elId);
+      a.processPanelClick(elId, this.bhviewIndex);
 
       if( elId == controlPanelBtId ){
          //close menu

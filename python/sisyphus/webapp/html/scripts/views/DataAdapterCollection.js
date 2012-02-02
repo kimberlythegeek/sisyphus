@@ -372,7 +372,7 @@ var BHViewAdapter = new Class({
          }
       }
    },
-   processPanelClick: function(elId){
+   processPanelClick: function(elId, bhviewIndex){
       return;
    },
    setSelectionRange: function(input, selectionStart, selectionEnd){
@@ -455,7 +455,7 @@ var CrashesAdapter = new Class({
 
       this.newSignaturesId = 'bh_new_signatures_c';
    },
-   processPanelClick: function(elId){
+   processPanelClick: function(elId, bhviewIndex){
       if(elId === undefined){
          return;
       }
@@ -517,7 +517,7 @@ var ResubmissionUrlsAdapter = new Class({
       //Set default sort column to Total Count
       this.sorting = { 'resubmission_urls':[[0, 'desc']] };
    },
-   processPanelClick: function(elId){
+   processPanelClick: function(elId, bhviewIndex){
       if(elId && elId.match(this.resubmissionId)){
 
          var urlEl = $('[name="' + this.urlResubmissionTextarea + '"]');
@@ -536,6 +536,7 @@ var ResubmissionUrlsAdapter = new Class({
          if(urls.length > 0){
 
             var data = { urls:urls, 
+                         bhview_index:bhviewIndex,
                          signature:signature,
                          callback:_.bind( function(){
                          
