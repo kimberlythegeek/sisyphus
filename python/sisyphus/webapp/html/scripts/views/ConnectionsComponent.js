@@ -64,8 +64,8 @@ var ConnectionsView = new Class({
       //Events
       this.addBHViewEvent = 'ADD_BHVIEW';
 
-      //Index of the view that opened the dialog
-      this.bhviewIndex;
+      //Index of the view that opened the dialog, set at runtime
+      this.bhviewIndex = undefined;
 
       this.initializeModal();
    },

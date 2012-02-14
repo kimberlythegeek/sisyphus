@@ -10,7 +10,7 @@
                        DATE_FORMAT(str.datetime, '%Y-%m-%d %H:%i:%s') AS date
                  FROM SocorroRecord AS sr
                  JOIN SiteTestRun AS str ON sr.id = str.socorro_id
-                 WHERE sr.user_id = REP0 REP1
+                 WHERE (str.datetime >= 'REP0' AND str.datetime <= 'REP1') AND sr.user_id = REP2 REP3
                  GROUP BY sr.signature, sr.url, str.state
                  ORDER BY str.datetime DESC",
 
@@ -28,7 +28,7 @@
                  FROM SocorroRecord AS sr
                  JOIN auth_user AS au ON sr.user_id = au.id
                  JOIN SiteTestRun AS str ON sr.id = str.socorro_id
-                 WHERE sr.user_id IS NOT NULL REP0
+                 WHERE (str.datetime >= 'REP0' AND str.datetime <= 'REP1') AND sr.user_id IS NOT NULL REP2
                  GROUP BY au.email, sr.signature, sr.url, str.state
                  ORDER BY str.datetime DESC",
 

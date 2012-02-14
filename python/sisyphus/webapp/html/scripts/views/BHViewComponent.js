@@ -84,8 +84,8 @@ var BHViewComponent = new Class({
                                  this.view.allViewsContainerSel,
                                  this);
 
-      //datatable.js object is stored in this attribute
-      this.dataTable;
+      //datatable.js object is stored in this attribute, it is set at runtime
+      this.dataTable = undefined;
 
       //Look for signals embedded in the page to
       //initialize the control panel with
@@ -135,6 +135,9 @@ var BHViewComponent = new Class({
    /****************
     *PUBLIC INTERFACE
     ****************/
+   showTableSpinner: function(){
+      this.view.showTableSpinner(this.bhviewIndex);
+   },
    closeMenu: function(){
       this.view.closeMenu();
    },
@@ -1111,8 +1114,8 @@ var BHViewView = new Class({
       //Clone id selector, finds all elements with an id attribute ending in _c
       this.cloneIdSelector = '*[id$="_c"]';
 
-      //The current selected row element in a table
-      this.selectedTrEl;
+      //The current selected row element in a table, set at runtime
+      this.selectedTrEl = undefined;
 
       //Signal base id
       this.signalBaseSel = '#bh_post_';

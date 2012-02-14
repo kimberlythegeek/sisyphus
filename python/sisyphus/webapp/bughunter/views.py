@@ -547,9 +547,6 @@ def get_bhview(request, **kwargs):
               viewname will be found in proc_path = "bughunter.views."
               in the data hub proc json file.
 
-   The arguments p, r, rq, and named_field are optional, if set 
-   they translate to options for settings.DHUB.execute():
-
    See the datasource README for more documentation
 
    named_field= The named_fields other than p,r,rq require a
@@ -603,13 +600,14 @@ def _get_resubmission_urls(proc_path, proc_name, full_proc_path, nfields, user_i
    col_prefixes = { 'signature':'sr',
                     'url':'sr' }
 
+   _set_dates_for_placeholders(nfields)
+
    rep = _build_new_rep(nfields, col_prefixes)
 
    table_struct = settings.DHUB.execute(proc=full_proc_path,
                                        debug_show=settings.DEBUG,
-                                       replace=[ str(user_id), rep ],
+                                       replace=[ nfields['start_date'], nfields['end_date'], str(user_id), rep ],
                                        return_type='table')
-
 
    response_data = _aggregate_user_data(table_struct)
 
@@ -629,11 +627,13 @@ def _get_all_resubmission_urls(proc_path, proc_name, full_proc_path, nfields, us
    col_prefixes = { 'signature':'sr',
                     'url':'sr' }
 
+   _set_dates_for_placeholders(nfields)
+
    rep = _build_new_rep(nfields, col_prefixes)
 
    table_struct = settings.DHUB.execute(proc=full_proc_path,
                                        debug_show=settings.DEBUG,
-                                       replace=[ rep ],
+                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
                                        return_type='table')
 
    response_data = _aggregate_all_user_data(table_struct)
@@ -1225,94 +1225,95 @@ def _aggregate_url_platform_data(table_struct):
 
 def _aggregate_user_data(table_struct):
 
-   #####
-   #Aggregate the state
-   #####
+   data = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+
+   for row in table_struct['data']:
+
+      ##Don't wrap the date##
+      row['date'] = '<span class="no-wrap">' + row['date'] + '</span>'
+
+      ####
+      #Aggregate the state
+      ####
+      data[ row['signature'] ][ row['url'] ][ row['state'] ] += int(row['total_count'])
+      data[ row['signature'] ][ row['url'] ][ 'total_count' ] += int(row['total_count'])
+      data[ row['signature'] ][ row['url'] ][ 'date' ] = row['date']
+
+   response_data = []
+   status_list = ['waiting', 'executing', 'completed']
+   for sig, sig_object in data.iteritems():
+      for url in sig_object.keys():
+         status_object = sig_object[url]
+
+         ##format the status as a single string##
+         status = _format_status_field(status_object, status_list)
+
+         url_summary = { 'Date':status_object['date'],
+                         'signature':sig,
+                         'url':url,
+                         'status':status,
+                         'Total Count':status_object['total_count'] }
+
+         response_data.append(url_summary)
+
+   return response_data
+
+def _format_status_field(status_object, status_list):
+
+   status = ""
+   for s in status_list:
+      if s in status_object:
+         ##uppercase first character##
+         statusText = s[0].upper() + s[1:len(s)]
+         count = status_object[s]
+
+         if s == 'completed':
+            if int(status_object[s]) == status_object['total_count']:
+               status = '<span class="no-wrap bh-status-completed">ALL JOBS COMPLETE</span>'
+               break
+            else:
+               status +='<span class="bh-status-' + s + '"><b>' + statusText + ':</b>' + str(count) + '</span>'
+         else:
+            status = '<span class="bh-status-' + s + '"><b>' + statusText + ':</b>' + str(count) + '</span>&nbsp;&nbsp;'
+
+   return status
+
+def _aggregate_all_user_data(table_struct):
+
    data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int))))
 
    for row in table_struct['data']:
+
+      ##Don't wrap the date##
       row['date'] = '<span class="no-wrap">' + row['date'] + '</span>'
-      data[ row['date'] ][ row['signature'] ][ row['url'] ][ row['state'] ] += int(row['total_count'])
-      data[ row['date'] ][ row['signature'] ][ row['url'] ][ 'total_count' ] += int(row['total_count'])
+
+      ####
+      #Aggregate the state
+      ####
+      data[ row['email'] ][ row['signature'] ][ row['url'] ][ row['state'] ] += int(row['total_count'])
+      data[ row['email'] ][ row['signature'] ][ row['url'] ][ 'total_count' ] += int(row['total_count'])
+      data[ row['email'] ][ row['signature'] ][ row['url'] ][ 'date' ] = row['date']
 
    response_data = []
-   for date, dateObject in data.iteritems():
-      for sig, signature in dateObject.iteritems():
-         for url, statusObject in signature.iteritems():
+   status_list = ['waiting', 'executing', 'completed']
+   for email, email_object in data.iteritems():
+      for sig, sig_object in email_object.iteritems():
+         for url in sig_object.keys():
+            status_object = sig_object[url]
 
-            status = _format_status(statusObject)
+            ##format the status as a single string##
+            status = _format_status_field(status_object, status_list)
 
-            url_summary = { 'Date':date,
-                            'signature':sig,
-                            'url':url,
-                            'status':status,
-                            'Total Count':statusObject['total_count'] }
+            url_summary = {'User':email, 
+                           'Date':status_object['date'],
+                           'signature':sig,
+                           'url':url,
+                           'status':status,
+                           'Total Count':status_object['total_count'] }
 
             response_data.append(url_summary)
 
    return response_data
-
-def _aggregate_all_user_data(table_struct):
-
-   #####
-   #Aggregate the state
-   #####
-   data = defaultdict(lambda: defaultdict(lambda: defaultdict( lambda: defaultdict( lambda: defaultdict(int)))))
-
-   for row in table_struct['data']:
-      row['date'] = '<span class="no-wrap">' + row['date'] + '</span>'
-      data[ row['email'] ][ row['date'] ][ row['signature'] ][ row['url'] ][ row['state'] ] += int(row['total_count'])
-      data[ row['email'] ][ row['date'] ][ row['signature'] ][ row['url'] ][ 'total_count' ] += int(row['total_count'])
-
-   response_data = []
-   for email, dateObject in data.iteritems():
-      for date, signatures in dateObject.iteritems():
-         for sig, urls in signatures.iteritems():
-            for url, statusObject in urls.iteritems():
-
-               status = _format_status(statusObject)
-
-               url_summary = { 'User':email,
-                               'Date':date,
-                               'signature': sig,
-                               'url':url,
-                               'status':status,
-                               'Total Count':statusObject['total_count'] }
-
-               response_data.append(url_summary)
-
-   return response_data
-
-def _format_status(statusObject):
-
-   status = ""
-   if 'waiting' in statusObject:
-      status += _format_status_field('waiting', 'Waiting', statusObject['waiting'], True)
-   else:
-      status += _format_status_field('waiting', 'Waiting', 0, True)
-
-   if 'executing' in statusObject:
-      status += _format_status_field('executing', 'Executing', statusObject['executing'], True)
-   else:
-      status += _format_status_field('executing', 'Executing', 0, True)
-
-   if 'completed' in statusObject:
-      status += _format_status_field('completed', 'Completed', statusObject['completed'], False)
-
-      ##All jobs complete, show message##
-      if statusObject['total_count'] == statusObject['completed']:
-         status = '<span class="bh-status-completed"><b>ALL JOBS COMPLETE</b></span>'
-   else:
-      status += _format_status_field('completed', 'Completed', 0, False)
-
-   return status
-
-def _format_status_field(status, statusText, count, spacer):
-
-   if spacer:
-      return '<span class="bh-status-' + status + '"><b>' + statusText + ':</b>' + str(count) + '</span>&nbsp;&nbsp;'
-   else:
-      return '<span class="bh-status-' + status + '"><b>' + statusText + ':</b>' + str(count) + '</span>'
 
 def _format_branch_data(branches):
 

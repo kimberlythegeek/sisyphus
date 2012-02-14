@@ -20,14 +20,14 @@ var BHViewCollection = new Class({
       //This is dynamically set to the 
       //DOM element that a user right clicks
       //on in any table associated with a view.
-      this.contextMenuTarget;  
+      this.contextMenuTarget = undefined;  
       //This is set dynamically when the context menu is open.
       //It holds the text contained in the cell that the user
       //right clicked on
-      this.cellText;
+      this.cellText = undefined;
       //The id/index of the bhview that owns the context menu.  
       //This attribute is set when the user opens the context menu.
-      this.bhviewMenuOwnerId;
+      this.bhviewMenuOwnerId = undefined;
       //This is populated when a user selects a URL or group of URLs
       //using the context menu
       this.urls = [];
@@ -35,7 +35,7 @@ var BHViewCollection = new Class({
       //This is set by resubmitUrls and contains the bhviewIndex
       //of the data view that triggered the URL_RESUBMISSION event.
       //This is the only case where this attribute is defined
-      this.bhviewIndex;
+      this.bhviewIndex = undefined;
  
       //Get the view marked as default in json structure
       this.defaultBHViewName = this.model.getDefaultBHView();
@@ -68,6 +68,11 @@ var BHViewCollection = new Class({
 
       var bhview = this.model.getBHView(this.bhviewIndex);
 
+      //Show the spinner and close the menu so the user doesn't
+      //keep clicking the submit button
+      bhview.showTableSpinner();
+      bhview.closeMenu();
+
       this.urlResubmissionEventData = data;
 
       this.model.resubmitUrls(this, 
@@ -76,7 +81,6 @@ var BHViewCollection = new Class({
                               _.bind(bhview.fnError, bhview), 
                               _.bind(this._resubmitCallbackEvent, this));
 
-      $(this.view.resubmitUrlDialogSel).dialog('close');
 
    },
    openBHViewCollection: function(data){

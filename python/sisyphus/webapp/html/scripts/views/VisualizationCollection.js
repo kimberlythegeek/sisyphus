@@ -43,7 +43,7 @@ var Visualization = new Class({
       //Signal identification data for bhview
       this.signalData = {};
       //bhview callback to be called when signal is sent
-      this.callback;
+      this.callback = undefined;
 
       //Node to select when first opening
       this.defaultNode;
