@@ -475,9 +475,9 @@ class UnitTestWorker(worker.Worker):
         unittestbranch_rows = models.UnitTestBranch.objects.all()
 
         for unittestbranch_row in unittestbranch_rows:
-            # special case chunking mochitest-plain, reftest, crashtest, jstestbrowser
-            if unittestbranch_row.test in "mochitest-plain,reftest,crashtest,jstestbrowser":
-                total_chunks = 10
+            # special case chunking mochitest-plain, mochitest-chrome, reftest, crashtest, jstestbrowser
+            if unittestbranch_row.test in "mochitest-plain,mochitest-chrome,reftest,crashtest,jstestbrowser":
+                total_chunks = 20
                 for chunk in range(total_chunks):
                     chunk_options = '%s --total-chunks=%d --this-chunk=%d' % (extra_test_args, total_chunks, chunk+1)
                     unittestrun = models.UnitTestRun(
