@@ -7,7 +7,7 @@ if [[ -z "$TEST_DIR" ]]; then
 TEST_DIR, the location of the Sisyphus framework, 
 is required to be set prior to calling this script.
 EOF
-  exit 2
+  exit 100
 fi
 
 if [[ ! -e $TEST_DIR/bin/library.sh ]]; then
@@ -19,7 +19,7 @@ if [[ ! -e $TEST_DIR/bin/library.sh ]]; then
     echo "located."
     echo ""
 
-    exit 2
+    exit 100
 fi
 
 source $TEST_DIR/bin/library.sh
@@ -66,7 +66,7 @@ variable            description
 
 if an argument contains more than one value, it must be quoted.
 EOF
-    exit 2
+    exit $ERR_ARGS
 }
 
 unset product branch executablepath profilename sitelist url depth robots httpresponses datafiles hook invisible

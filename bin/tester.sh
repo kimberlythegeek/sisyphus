@@ -61,7 +61,7 @@ $TEST_DIR/data constructed from each combination of the input parameters:
 {item1},{item2},{item3},{item4}
 
 EOF
-    exit 1
+    exit $ERR_ARGS
 }
 
 unset testscript testargs

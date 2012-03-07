@@ -60,7 +60,7 @@ note that the environment variables should have the same names as in the
 "variable" column.
 
 EOF
-    exit 1
+    exit $ERR_ARGS
 }
 
 unset product branch executablepath filename datafiles
@@ -98,10 +98,10 @@ if [[ $OSID == "nt" ]]; then
         chmod u+x "$filename"
         $filename /S /D=`cygpath -a -w "$executablepath"`
     elif echo  $filetype | grep -iq 'zip archive'; then
-        tmpdir=`mktemp  -d /tmp/firefoxzip.XXXX` || exit 1
+        tmpdir=`mktemp  -d /tmp/firefoxzip.XXXX` || error "mktemp failed" $LINENO
         # paranoia
         if [[ -z "$tmpdir" ]]; then
-            exit 1
+            error "empty temp directory" $LINENO
         fi
         mkdir -p "$executablepath"
         unzip -o -d "$tmpdir" "$filename"

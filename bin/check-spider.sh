@@ -64,10 +64,11 @@ note that the environment variables should have the same names as in the
 Checks if the Spider extension is installed either in the named profile
 or as a global extension, by attempting up to 3 times to launch the Spider.
 
-If Spider fails to launch, the script returns exit code 2.
+If this script is called with invalid arguments it returns exit code $ERR_ARGS.
+If Spider fails to launch, the script returns exit code $ERR_ERROR.
 
 EOF
-    exit 1
+    exit $ERR_ARGS
 }
 
 unset product branch executablepath profilename datafiles

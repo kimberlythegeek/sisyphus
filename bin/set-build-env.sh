@@ -127,7 +127,7 @@ for step in step1; do # dummy loop for handling exits
             echo -n " -T buildtype"
         fi
         usage
-        myexit 1
+        myexit $ERR_ARGS
     fi
 
     if [[ $branch == "1.9.0" ]]; then
@@ -158,7 +158,7 @@ for step in step1; do # dummy loop for handling exits
         export BRANCH_CO_FLAGS="";
     else
         echo "Unknown branch: $branch"
-        myexit 1
+        myexit $ERR_ARGS
     fi
 
     if [[ -n "$MOZ_CO_DATE" ]]; then
@@ -344,7 +344,7 @@ for step in step1; do # dummy loop for handling exits
 
             if [[ "$OSID" == "nt" ]]; then
                 echo "NT does not support gcov"
-                myexit 1
+                myexit $ERR_ARGS
             fi
             export CFLAGS="--coverage"
             export CXXFLAGS="--coverage"
@@ -365,7 +365,7 @@ for step in step1; do # dummy loop for handling exits
 
     if [[ ! -d $BUILDTREE ]]; then
         echo "Build directory $BUILDTREE does not exist"
-        myexit 2
+        myexit $ERR_ERROR
     fi
 
     # here project refers to either browser or mail

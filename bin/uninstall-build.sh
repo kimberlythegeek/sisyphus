@@ -62,7 +62,7 @@ Uninstalls build located in directory-tree 'executablepath'
 then removes the directory upon completion.
 
 EOF
-    exit 1
+    exit $ERR_ARGS
 }
 
 unset product branch executablepath datafiles

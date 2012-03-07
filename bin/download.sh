@@ -71,7 +71,7 @@ it is created. If the download takes longer than timeout seconds,
 the download is cancelled.
 
 EOF
-    exit 1
+    exit $ERR_ARGS
 }
 
 unset downloadurl credentials filepath timeout datafiles
@@ -103,12 +103,11 @@ fi
 
 timeout=${timeout:-300}
 
-
 path=`dirname "$filepath"`
 
 if [[ -z "$path" ]]; then
     echo "$SCRIPT: ERROR filepath path is empty"
-    exit 2
+    usage
 fi
 
 echo "downloadurl=$downloadurl filepath=$filepath credentials=$credentials timeout=$timeout"
@@ -122,8 +121,7 @@ echo "downloadurl=$downloadurl filepath=$filepath credentials=$credentials timeo
 # --create-dirs create path if needed
 
 if ! curl -LsS -m $timeout "$downloadurl" -D - --create-dirs -o "$filepath" $auth; then
-    echo "$SCRIPT: FAIL Unable to download $downloadurl"
-    exit 2
+    error "$SCRIPT: FAIL Unable to download $downloadurl" $LINENO
 fi
 
 

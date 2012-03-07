@@ -66,7 +66,7 @@ disk. Use with caution.
 ******************** WARNING ********************
 
 EOF
-    exit 1
+    exit $ERR_ARGS
 }
 
 unset directory
@@ -81,12 +81,12 @@ while getopts $options optname ;
   esac
 done
 
+source $TEST_DIR/bin/library.sh
+
 if [[ -z $directory ]]
     then
     usage
 fi
-
-source $TEST_DIR/bin/library.sh
 
 if [[ `whoami` == "root" ]]; then
     error "can not be run as root" $LINENO

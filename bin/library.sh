@@ -49,20 +49,39 @@ fi
 # export variables
 set -a
 
+# define our own exit codes to prevent confusion about their meanings
+# See Advanced Bash Scripting Guide Chapter 6 Exit and Exit Status and
+# Table D1
+ERR_TIMED_RUN_OS=66
+ERR_TIMED_RUN_SIGNAL=77
+ERR_TIMED_RUN_TIMEOUT=88
+ERR_TIMED_RUN_INTERRUPT=99
+ERR_SIGNAL_KILL=137
+ERR_ERROR=100
+ERR_ARGS=101
+
+# emit a call stack for function and source calls
+function debug_frames() {
+  local frame=0
+  while caller $frame; do let frame=frame+1; done
+}
+
 # in the event of an untrapped script error tail the test log,
 # if it exists, to stderr then echo a FATAL ERROR message to the
 # test log and stderr.
 
 function _err()
 {
+    debug_frames
+
     local rc=$?
     debug "_err: $0"
 
     case "$rc" in
-        0|66|77|88|99)
+        0|$ERR_TIMED_RUN_OS|$ERR_TIMED_RUN_SIGNAL|$ERR_TIMED_RUN_TIMEOUT|$ERR_TIMED_RUN_INTERRUPT)
             # ignore exit codes from timed_run.py?
             ;;
-        137)
+        $ERR_SIGNAL_KILL)
             # terminated by kill.
             if [[ -n "$TEST_LOG" ]]; then
                 echo -e "\nKILLED $0 exit code $rc\n" >> $TEST_LOG
@@ -99,7 +118,7 @@ function _exit()
 trap "_exit" EXIT
 
 # error message
-# output error message end exit 2
+# output error message end exit $ERR_ERROR
 
 error()
 {
@@ -112,7 +131,7 @@ error()
     if [[ "$0" == "-bash" || "$0" == "bash" ]]; then
         return 0
     fi
-    exit 2
+    exit $ERR_ERROR
 }
 
 # convert a.b.c to 100*a + 10*b + c for numeric comparisons.

@@ -62,7 +62,7 @@ note that the environment variables should have the same names as in the
 "variable" column.
 
 EOF
-    exit 1
+    exit $ERR_ARGS
 }
 
 unset products branches buildcommands buildtypes extra extraflag datafiles
