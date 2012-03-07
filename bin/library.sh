@@ -62,6 +62,14 @@ function _err()
         0|66|77|88|99)
             # ignore exit codes from timed_run.py?
             ;;
+        137)
+            # terminated by kill.
+            if [[ -n "$TEST_LOG" ]]; then
+                echo -e "\nKILLED $0 exit code $rc\n" >> $TEST_LOG
+            else
+                echo -e "\nKILLED $0 exit code $rc\n" 1>&2
+            fi
+            ;;
         *)
             if [[ -n "$TEST_LOG" ]]; then
                 echo -e "\nFATAL ERROR in $0 exit code $rc\n" >> $TEST_LOG

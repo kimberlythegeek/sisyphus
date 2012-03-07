@@ -155,8 +155,7 @@ class CrashTestWorker(worker.Worker):
         # kill any test processes still running.
         test_process_dict = self.psTest()
         if test_process_dict:
-            for test_process in test_process_dict:
-                self.logMessage('runTest: test process running before test: pid: %s : %s' % (test_process, test_process_dict[test_process]))
+            self.logMessage('runTest: test processes running before test')
             self.killTest()
 
         socorro_row = self.testrun_row.socorro
@@ -249,6 +248,7 @@ class CrashTestWorker(worker.Worker):
             # the time out alarm 30 seconds after the test should have
             # timed out.
             def timeout_handler(signum, frame):
+                self.logMessage("runTest: %s timed out" % url)
                 self.hung_process = True
                 self.killTest(proc.pid)
 
@@ -270,11 +270,11 @@ class CrashTestWorker(worker.Worker):
         except:
 
             exceptionType, exceptionValue, errorMessage = utils.formatException()
-            self.logMessage('runTest: exception: %s, %s' % (exceptionValue, errorMessage))
+            self.logMessage('runTest: %s, exception: %s, %s' % (url, exceptionValue, errorMessage))
 
             if errorMessage.find('filedescriptor out of range') != -1:
-                self.logMessage('filedescriptors %d out of range. Restarting.' %
-                                utils.openFileDescriptorCount())
+                self.logMessage('runTest: %s, filedescriptors %d out of range. Restarting.' %
+                                (url, utils.openFileDescriptorCount()))
                 # Closing file descriptors and trying again does not
                 # fix the issue on Windows. Just restart the program.
                 self.reloadProgram()
@@ -296,7 +296,7 @@ class CrashTestWorker(worker.Worker):
                 match = reFatalError.match(line)
                 if match:
                     fatal_error = True
-                    self.logMessage("runTest: %s" % line)
+                    self.logMessage("runTest: %s: %s" % (url, line))
 
                 if not executablepath:
                     match = reExecutablePath.match(line)
@@ -335,7 +335,7 @@ class CrashTestWorker(worker.Worker):
                             page = utils.encodeUrl(page)
                         except Exception, e:
                             exceptionType, exceptionValue, errorMessage = utils.formatException()
-                            self.logMessage('runTest: exception: %s, %s: page: %s' % (exceptionValue, errorMessage, page))
+                            self.logMessage('runTest: %s, exception: %s, %s: page: %s' % (url, exceptionValue, errorMessage, page))
                             page = None
                     continue
 
@@ -422,8 +422,7 @@ class CrashTestWorker(worker.Worker):
         test_process_dict = self.psTest()
         if test_process_dict:
             self.hung_process = True
-            for test_process in test_process_dict:
-                self.logMessage('runTest: test process still running: pid: %s : %s' % (test_process, test_process_dict[test_process]))
+            self.logMessage('runTest: %s, test processes still running' % url)
             self.killTest(proc.pid)
 
         if self.hung_process:

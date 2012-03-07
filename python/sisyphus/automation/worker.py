@@ -1445,17 +1445,19 @@ class Worker(object):
         process_dict = {}
 
         if self.os_name != "Windows NT":
-            pattern = r' *([0-9]+) .*(/work/mozilla/builds/[^/]+/mozilla/|totem-plugin-viewer|gst-install-plugins-helper)'
+            pattern = r' *([0-9]+) .*(/work/mozilla/builds/[^/]+/mozilla/' + self.product + '-' + self.buildtype + '|totem-plugin-viewer|gst-install-plugins-helper)'
             ps_args = ['ps', '-e', '-x']
         else:
-            pattern = '[a-zA-Z]* *([0-9]+) .*(/work/mozilla/builds/[^/]+/mozilla/|mozilla-build|java|wmplayer|mplayer2)'
+            pattern = r' *([0-9]+) .*(/work/mozilla/builds/[^/]+/mozilla/' + self.product + '-' + self.buildtype + '|mozilla-build|java|wmplayer|mplayer2|wmpnetwk|Windows Media Player)'
             ps_args = ['ps', '-W']
 
         ps_proc = subprocess.Popen(ps_args,
                                    preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
-        for ps_line in ps_proc.stdout:
+        stdout, stderr = ps_proc.communicate()
+        ps_lines = stdout.split('\n')
+        for ps_line in ps_lines:
             ps_line = ps_line.replace('\\', '/')
             ps_match = re.match(pattern, ps_line)
             if ps_match and 'ssh-agent' not in ps_line:
@@ -1466,37 +1468,106 @@ class Worker(object):
                     self.logMessage("psTest: Invalid pid %s: line: %s" % (pid, ps_line))
                 process_dict[pid] = ps_line
 
-        ps_proc.wait()
-
         return process_dict
 
-    def killTest(self, pid = None):
-        # XXX: os.kill fails to kill the entire test process and children when
+    def killTest(self, test_pid = None):
+        # os.kill fails to kill the entire test process and children when
         # a test times out. This is most noticible on Windows but can occur on
         # Linux as well. To kill the test reliably, use the external kill program
         # to kill all test processes.
-
-        if pid is not None:
-            # Note: our calls to Popen used preexec_fn to set the process group of the
-            # Popened process to the same value as the child's pid.
-            try:
-                os.killpg(pid, 9)
-                os.waitpid(pid, os.WNOHANG)
-            except OSError:
-                pass
+        #
+        # First repeatedly attempt to kill the test processes by
+        # searching for them using ps, then killing them individually
+        # using /bin/kill.  Then attempt to kill the test process and
+        # the test process group directly using os.kill and os.killpg.
+        #
+        # I've chosen this order since performing the waitpid on windows
+        # can hang, thus preventing the worker from completing the kill
+        # task.
 
         process_dict = self.psTest()
         pids = [pid for pid in process_dict]
+        if len(pids) > 0:
+            for attempt in range(4):
+                # Repeatedly attempt to kill the test processes.
+                # If we can not kill the test processes, raise an
+                # Exception('Worker.killTest.FatalError').
+                for pid in process_dict:
+                    self.logMessage("killTest: attempt %d: %s" % (attempt, process_dict[pid].rstrip()))
 
-        if len(pids) == 0:
-            return
+                if self.os_name != "Windows NT":
+                    kill_args = ["/bin/kill", "-9"]
+                else:
+                    kill_args = ["/bin/kill", "-f", "-9"]
 
-        if self.os_name != "Windows NT":
-            kill_args = ["/bin/kill", "-9"]
-        else:
-            kill_args = ["/bin/kill", "-f", "-9"]
+                kill_args.extend(pids)
+                subprocess.call(kill_args)
 
-        kill_args.extend(pids)
-        self.debugMessage('killTests: %s' % kill_args)
-        subprocess.call(kill_args)
+                try:
+                    time.sleep(5)
+                except KeyboardInterrupt:
+                    pass
+
+                process_dict = self.psTest()
+                pids = [pid for pid in process_dict]
+
+                if len(pids) == 0:
+                    break
+
+        if test_pid is not None:
+            # Note: our calls to Popen used preexec_fn to set the process group of the
+            # Popened process to the same value as the child's pid.
+            try:
+                self.logMessage("killTest: os.kill(%d, 9)" % test_pid)
+                os.kill(test_pid, 9)
+            except OSError, oserror:
+                if oserror.errno == 3:
+                    pass # No such process
+                elif oserror.errno == 10:
+                    pass # No child process
+                elif oserror.errno == 32:
+                    pass # Broken pipe
+                else:
+                    exceptionType, exceptionValue, errorMessage = utils.formatException()
+                    self.logMessage('killTest: os.kill: %s: %s, %s' % (exceptionType,
+                                                                       exceptionValue,
+                                                                       errorMessage))
+            try:
+                self.logMessage("killTest: os.killpg(%d, 9)" % test_pid)
+                os.killpg(test_pid, 9)
+            except OSError, oserror:
+                if oserror.errno == 3:
+                    pass # No such process
+                elif oserror.errno == 10:
+                    pass # No child process
+                elif oserror.errno == 32:
+                    pass # Broken pipe
+                else:
+                    exceptionType, exceptionValue, errorMessage = utils.formatException()
+                    self.logMessage('killTest: os.killpg: %s: %s, %s' % (exceptionType,
+                                                                         exceptionValue,
+                                                                         errorMessage))
+            try:
+                (wait_pid, wait_status) = os.waitpid(-1, os.WNOHANG)
+                self.logMessage('killTest: pid: %s, waitpid(-1, os.WNOHANG) == (%s, %s)' % (test_pid, wait_pid, wait_status))
+            except OSError, oserror:
+                if oserror.errno == 3:
+                    pass # No such process
+                elif oserror.errno == 10:
+                    pass # No child process
+                elif oserror.errno == 32:
+                    pass # Broken pipe
+                else:
+                    exceptionType, exceptionValue, errorMessage = utils.formatException()
+                    self.logMessage('killTest: os.killpg: %s: %s, %s' % (exceptionType,
+                                                                         exceptionValue,
+                                                                         errorMessage))
+        process_dict = self.psTest()
+        pids = [pid for pid in process_dict]
+
+        if len(pids) > 0:
+            for pid in process_dict:
+                self.logMessage("killTest: unable to kill %s" % process_dict[pid].rstrip())
+            raise Exception('Worker.killTest.FatalError')
+
 
