@@ -39,7 +39,6 @@
 
 export MOZ_CVS_FLAGS="-z3 -q"
 export MOZILLA_OFFICIAL=1
-export BUILD_OFFICIAL=1
 
 if [[ -z "$CVSROOT" ]]; then
     if grep -q buildbot@qm ~/.ssh/id_dsa.pub; then
