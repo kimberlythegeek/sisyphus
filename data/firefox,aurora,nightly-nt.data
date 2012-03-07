@@ -1,0 +1,11 @@
+product=${product:-firefox}
+branch=${branch:-aurora}
+buildtype=nightly
+downloadurl=ftp://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-aurora/firefox-12.0a2.en-US.win32.zip
+profilename=${profilename:-firefox-aurora-profile}
+profiledirectory=${profiledirectory:-/tmp/firefox-aurora-profile}
+executablepath=/tmp/firefox-aurora
+userpreferences=${userpreferences:-$TEST_DIR/prefs/test-user.js}
+extensiondir=${extensiondir:-$TEST_DIR/xpi}
+TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-aurora}
+TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}

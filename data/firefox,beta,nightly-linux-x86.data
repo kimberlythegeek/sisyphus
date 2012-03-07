@@ -1,0 +1,11 @@
+product=${product:-firefox}
+branch=${branch:-beta}
+buildtype=nightly
+downloadurl=ftp://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/11.0b2-candidates/build1/linux-i686/en-US/firefox-11.0b2.tar.bz2
+profilename=${profilename:-firefox-beta-profile}
+profiledirectory=${profiledirectory:-/tmp/firefox-beta-profile}
+executablepath=/tmp/firefox-beta
+userpreferences=${userpreferences:-$TEST_DIR/prefs/test-user.js}
+extensiondir=${extensiondir:-$TEST_DIR/xpi}
+TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-beta}
+TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}

@@ -1,0 +1,11 @@
+product=${product:-firefox}
+branch=${branch:-release}
+buildtype=nightly
+downloadurl=ftp://ftp.mozilla.org/pub/mozilla.org/firefox/releases/10.0.2/win32/en-US/Firefox%20Setup%2010.0.2.exe
+profilename=${profilename:-firefox-release-profile}
+profiledirectory=${profiledirectory:-/tmp/firefox-release-profile}
+executablepath=/tmp/firefox-release
+userpreferences=${userpreferences:-$TEST_DIR/prefs/test-user.js}
+extensiondir=${extensiondir:-$TEST_DIR/xpi}
+TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-release}
+TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}

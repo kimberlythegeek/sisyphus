@@ -141,6 +141,9 @@ for step in step1; do # dummy loop for handling exits
     elif [[ $branch == "2.0.0" ]]; then
         TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-2.0}
         export BRANCH_CO_FLAGS="";
+    elif [[ $branch == "release" ]]; then
+        TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-release}
+        export BRANCH_CO_FLAGS="";
     elif [[ $branch == "beta" ]]; then
         TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-beta}
         export BRANCH_CO_FLAGS="";

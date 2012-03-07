@@ -51,7 +51,7 @@ $SCRIPT -p product -b branch -x executablepath -N profilename -E extensiondir
 variable            description
 ===============     ============================================================
 -p product          required. firefox.
--b branch           required. one of 1.9.0 1.9.1 1.9.2 2.0.0 beta aurora nightly
+-b branch           required. one of 1.9.0 1.9.1 1.9.2 2.0.0 release beta aurora nightly
                     tracemonkey.
 -x executablepath   required. directory-tree containing executable named
                     'product'

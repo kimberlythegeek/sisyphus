@@ -1,0 +1,11 @@
+product=${product:-firefox}
+branch=${branch:-nightly}
+buildtype=nightly
+downloadurl=ftp://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/firefox-9.0a1.en-US.win32.zip
+profilename=${profilename:-firefox-nightly-profile}
+profiledirectory=${profiledirectory:-/tmp/firefox-nightly-profile}
+executablepath=/tmp/firefox-nightly
+userpreferences=${userpreferences:-$TEST_DIR/prefs/test-user.js}
+extensiondir=${extensiondir:-$TEST_DIR/xpi}
+TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/mozilla-central}
+TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}
