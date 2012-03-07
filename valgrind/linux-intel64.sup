@@ -1,0 +1,850 @@
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   fun:_ZL14TouchBadMemoryv
+   fun:_Z14mozalloc_abortPKc
+   fun:_Z19mozalloc_handle_oomm
+   fun:moz_xmalloc
+   fun:_ZL9DecompileP11SprintStackPhi
+   fun:_ZN14nsContentUtils14StripNullCharsERK18nsAString_internalRS0_
+   fun:_ZL9dosprintfP15SprintfStateStrPKcP13__va_list_tag
+   fun:_ZN2js5typesL16HashSetInsertTryI4jsidNS0_8PropertyES3_EEPPT0_P13JSCompartmentRS6_RjT_
+   fun:_ZN20nsLinebreakConverter30ConvertUnicharLineBreaksInSituEPPtNS_14ELinebreakTypeES2_iPi
+   fun:_ZN2js12ProxyHandler19getElementIfPresentEP9JSContextP8JSObjectS4_jPN2JS5ValueEPb
+   fun:_ZNK7mozilla3dom8PBrowser20Msg_CompositionEvent3LogERKSsP8_IO_FILE
+   fun:_ZN3IPC11ParamTraitsI6nsRectE5WriteEPNS_7MessageERKS1_
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   fun:_ZL14TouchBadMemoryv
+   fun:_Z14mozalloc_abortPKc
+   fun:_Z19mozalloc_handle_oomm
+   fun:moz_xmalloc
+   fun:_ZL9DecompileP11SprintStackPhi
+   fun:_ZN16nsPreflightCache13RemoveEntriesEP6nsIURIP12nsIPrincipal
+   fun:_ZNK2js5Shape7matchesEPKS0_
+   fun:_ZN7mozilla7plugins13PPluginModule24Msg_SetParentHangTimeoutD1Ev
+   fun:_ZSt23__copy_move_backward_a2ILb1EPPN9__gnu_cxx15_Hashtable_nodeISt4pairIKiPN7mozilla3ipc12SharedMemoryEEEESB_ET1_T0_SD_SC_
+   fun:_ZN7mozilla3dom14PContentParent17OnMessageReceivedERKN3IPC7MessageE
+   fun:_ZN7mozilla3dom14PContentParent17OnMessageReceivedERKN3IPC7MessageE
+   fun:_ZN7mozilla3dom14PContentParent17OnMessageReceivedERKN3IPC7MessageE
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   fun:_ZL14TouchBadMemoryv
+   fun:_Z14mozalloc_abortPKc
+   fun:_Z19mozalloc_handle_oomm
+   fun:moz_xmalloc
+   fun:_ZL9DecompileP11SprintStackPhi
+   fun:_ZN8nsCOMPtrI17nsIDOMEventTargetE6forgetIS0_EEvPPT_
+   fun:JS_vsnprintf
+   fun:_ZN7mozilla7plugins19PPluginModuleParent29CallPCrashReporterConstructorEPiPj
+   fun:_ZN7mozilla7plugins19PPluginModuleParent30CallOptionalFunctionsSupportedEPbS2_S2_
+   fun:_ZN3IPCL9ReadParamI8nsTArrayI8nsString24nsTArrayDefaultAllocatorEEEbPKNS_7MessageEPPvPT_
+   fun:_ZN8nsTArrayIPN7mozilla3ipc23PDocumentRendererParentE27nsTArrayInfallibleAllocatorE15RemoveElementAtEj
+   fun:_ZNK8nsTArrayIPN7mozilla3dom20PContentDialogParentE27nsTArrayInfallibleAllocatorE17GreatestIndexLtEqIS3_19nsDefaultComparatorIS3_S3_EEEbRKT_RKT0_Pj
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   fun:_ZL5Crashv
+   fun:_ZL16IntentionalCrashv
+   fun:_ZL11crashPluginP8NPObjectPK10_NPVariantjPS1_
+   fun:_Z16scriptableInvokeP8NPObjectPvPK10_NPVariantjPS2_
+   fun:_Z28S16_opaque_D32_nofilter_DXDYRK17SkBitmapProcStatePKjiPj
+   fun:_ZN8JSObject33moveDenseArrayElementsUnbarrieredEjjj
+   fun:_ZNK2js6VectorIPN3JSC14ExecutablePoolELm4ENS_17SystemAllocPolicyEE6lengthEv
+   fun:_ZL18SkARGB4444_BlendBWRK8SkBitmapRK6SkMaskRK7SkIRecttj
+   fun:_ZL18SkARGB4444_BlendBWRK8SkBitmapRK6SkMaskRK7SkIRecttj
+   fun:_ZL17SkARGB4444_BlitBWRK8SkBitmapRK6SkMaskRK7SkIRectt
+   fun:_ZN16SkARGB32_Blitter8blitRectEiiii
+   fun:_ZN16SkARGB32_Blitter8blitRectEiiii
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   fun:_ZL5Crashv
+   fun:_ZL16IntentionalCrashv
+   fun:_ZL11crashPluginP8NPObjectPK10_NPVariantjPS1_
+   fun:_Z16scriptableInvokeP8NPObjectPvPK10_NPVariantjPS2_
+   fun:_Z6mergeTIjEvPKT_iPKhiPS0_
+   fun:_ZL19array_indexOfHelperP9JSContext11IndexOfKindRN2js8CallArgsE
+   fun:_ZN2JS12AutoGCRooterC1EP9JSContextl
+   fun:_ZL16SkCompact_rgb_16j
+   fun:_ZL11SkPackRGB16jjj
+   fun:_ZL8SkMulS16ii
+   fun:_ZN10Sk3DShader7flattenER24SkFlattenableWriteBuffer
+   fun:_ZN10Sk3DShader10endSessionEv
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   fun:_ZL5Crashv
+   fun:_ZL16IntentionalCrashv
+   fun:_ZL11crashPluginP8NPObjectPK10_NPVariantjPS1_
+   fun:_Z16scriptableInvokeP8NPObjectPvPK10_NPVariantjPS2_
+   fun:_ZL9operatorXRN8SkAAClip7BuilderEiR7RowIterS3_PFjjjERK7SkIRect
+   fun:_ZL13array_unshiftP9JSContextjPN2JS5ValueE
+   fun:JS_Stringify
+   fun:_ZL10int_repeatii
+   fun:_ZL11fixed_clampi
+   fun:_Z23GeneralXY_filter_affineRK17SkBitmapProcStatePjiii
+   fun:_ZN9SkBlitterD1Ev
+   fun:_ZN11SkAlphaRuns7BreakAtEPsPhi
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   fun:_ZL5Crashv
+   fun:_ZL16IntentionalCrashv
+   fun:_ZL11crashPluginP8NPObjectPK10_NPVariantjPS1_
+   fun:_Z16scriptableInvokeP8NPObjectPvPK10_NPVariantjPS2_
+   fun:_ZN8SkAAClip9setRegionERK8SkRegion
+   fun:_ZN12_GLOBAL__N_133SortComparatorStringifiedElementsC1EP9JSContextRKN2js12StringBufferE
+   fun:JS_CallFunction
+   fun:_Z26ClampX_ClampY_filter_scaleRK17SkBitmapProcStatePjiii
+   fun:_Z28ClampX_ClampY_nofilter_perspRK17SkBitmapProcStatePjiii
+   fun:_Z29ClampX_ClampY_nofilter_affineRK17SkBitmapProcStatePjiii
+   fun:_ZL23S32A_D565_Opaque_DitherPtPKjijii
+   fun:_ZL23S32A_D565_Opaque_DitherPtPKjijii
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   fun:_ZL5Crashv
+   fun:_ZL16IntentionalCrashv
+   fun:_ZL11crashPluginP8NPObjectPK10_NPVariantjPS1_
+   fun:_Z16scriptableInvokeP8NPObjectPvPK10_NPVariantjPS2_
+   fun:_ZN9VertState13TriangleStripEPS_
+   fun:_ZL10date_parseP9JSContextjPN2JS5ValueE
+   fun:_ZN2js5typesL13HashSetLookupI4jsidNS0_8PropertyES3_EEPT0_PS5_jT_
+   fun:_ZN6SkPath4swapERS_
+   fun:_ZN6SkPathaSERKS_
+   fun:_ZN22SkAutoPathBoundsUpdateC1EP6SkPathRK6SkRect
+   fun:_ZN13SkPathMeasure9getPosTanEfP7SkPointS1_
+   fun:_ZN13SkPathMeasure17distanceToSegmentEfPf
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   fun:_ZL5Crashv
+   fun:_ZL16IntentionalCrashv
+   fun:_ZL11crashPluginP8NPObjectPK10_NPVariantjPS1_
+   fun:_Z16scriptableInvokeP8NPObjectPvPK10_NPVariantjPS2_
+   fun:_ZNSt8_Rb_treeISbIcSt11char_traitsIcE14pool_allocatorIcEES4_St9_IdentityIS4_ESt4lessIS4_ESaIS4_EE14_M_create_nodeIIRKS4_EEEPSt13_Rb_tree_nodeIS4_EDpOT_
+   fun:_ZL18array_toString_subP9JSContextP8JSObjectiP8JSStringRN2js8CallArgsE
+   fun:JS_DefineFunction
+   fun:_Z19S32_D16_nofilter_DXRK17SkBitmapProcStatePKjiPt
+   fun:_Z21S32_D16_nofilter_DXDYRK17SkBitmapProcStatePKjiPt
+   fun:_Z25SA8_alpha_D32_filter_DXDYRK17SkBitmapProcStatePKjiPj
+   fun:_Z22GeneralXY_filter_perspRK17SkBitmapProcStatePjiii
+   fun:_Z22GeneralXY_filter_perspRK17SkBitmapProcStatePjiii
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZL13ExecuteRegExpP9JSContextPFiS0_jPN2JS5ValueEEjS3_
+   fun:_ZNK2js13RegExpStatics18createPendingInputEP9JSContextPN2JS5ValueE
+   fun:_ZN32nsScriptEventHandlerOwnerTearoff14QueryInterfaceERK4nsIDPPv
+   fun:_ZN2js5typesL7HashKeyI4jsidNS0_8PropertyEEEjT_
+   fun:_ZN2js5typesL16HashSetInsertTryI4jsidNS0_8PropertyES3_EEPPT0_P13JSCompartmentRS6_RjT_
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN11nsAttrValue16ParseDoubleValueERK18nsAString_internal
+   fun:_ZN11nsAttrValue19SetMiscAtomOrStringEPK18nsAString_internal
+   fun:_ZN16nsMathMLmtdFrame10GetRowSpanEv
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN11nsAttrValue18SetIntValueAndTypeEiNS_9ValueTypeEPK18nsAString_internal
+   fun:_ZN11nsAttrValue14ParseEnumValueERK18nsAString_internalPKNS_9EnumTableEbS5_
+   fun:_ZN24nsMathMLmtableOuterFrame13GetRowFrameAtEP13nsPresContexti
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN11nsAttrValue20ParseSpecialIntValueERK18nsAString_internal
+   fun:_ZN11nsAttrValue18ParseIntWithBoundsERK18nsAString_internalii
+   fun:_ZN24nsMathMLmtableOuterFrame6ReflowEP13nsPresContextR19nsHTMLReflowMetricsRK17nsHTMLReflowStateRj
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN11nsAttrValue24EnsureEmptyMiscContainerEv
+   fun:_ZNK11nsAttrValue15GetStringBufferERK18nsAString_internal
+   fun:_ZN8nsTArrayIPt24nsTArrayDefaultAllocatorE14AppendElementsIS0_EEPS0_PKT_j
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN11nsAttrValue24EnsureEmptyMiscContainerEv
+   fun:_ZNK11nsAttrValue15GetStringBufferERK18nsAString_internal
+   fun:_ZN8nsTArrayIPt24nsTArrayDefaultAllocatorEixEj
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN11nsAttrValue5SetToERKN7mozilla30SVGAnimatedPreserveAspectRatioEPK18nsAString_internal
+   fun:_ZNK11nsAttrValue8ToStringER18nsAString_internal
+   fun:_ZN26nsMathMLmmultiscriptsFrame5PlaceER18nsRenderingContextbR19nsHTMLReflowMetrics
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN11nsAttrValue5SetToERKS_
+   fun:_ZN11nsAttrValue5SetToEPN7mozilla3css9StyleRuleEPK18nsAString_internal
+   fun:_ZN26nsMathMLmmultiscriptsFrame5PlaceER18nsRenderingContextbR19nsHTMLReflowMetrics
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN11nsAttrValue5SetToERKS_
+   fun:_ZN11nsAttrValue5SetToERKS_
+   fun:_ZN26nsMathMLmmultiscriptsFrame5PlaceER18nsRenderingContextbR19nsHTMLReflowMetrics
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN13nsContentListD1Ev
+   fun:_ZN13nsContentList14QueryInterfaceERK4nsIDPPv
+   fun:_ZNK11nsAttrValue8ContainsEP7nsIAtom15nsCaseTreatment
+   fun:_ZL7do_mainPKciPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN16DragDataProducer24AddStringsToDataTransferEP10nsIContentP17nsDOMDataTransfer
+   fun:_ZN16DragDataProducer24AddStringsToDataTransferEP10nsIContentP17nsDOMDataTransfer
+   fun:_ZN21nsMathMLmencloseFrame13PlaceInternalER18nsRenderingContextbR19nsHTMLReflowMetricsb
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN16DragDataProducer7ProduceEP17nsDOMDataTransferPbPP12nsISelectionPP10nsIContent
+   fun:_ZN16DragDataProducer7ProduceEP17nsDOMDataTransferPbPP12nsISelectionPP10nsIContent
+   fun:_ZN21nsMathMLmencloseFrame16BuildDisplayListEP20nsDisplayListBuilderRK6nsRectRK16nsDisplayListSet
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN16nsContentListKeyC1EP7nsINodeiRK18nsAString_internal
+   fun:_ZNK20nsFuncStringCacheKey7GetHashEv
+   fun:_ZN19nsAttrAndChildArray16MakeMappedUniqueEP18nsMappedAttributes
+   fun:_ZL7do_mainPKciPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN17nsBaseContentList14QueryInterfaceERK4nsIDPPv
+   fun:_ZN17nsBaseContentList6AddRefEv
+   fun:_ZN11nsAttrValueC1EPN7mozilla3css9StyleRuleEPK18nsAString_internal
+   fun:_ZL7do_mainPKciPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN17nsBaseContentList6AddRefEv
+   fun:_ZN17nsBaseContentList7ReleaseEv
+   fun:_ZN11nsAttrValue5SetToERKS_
+   fun:_ZL7do_mainPKciPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN19nsAttrAndChildArray13SetChildAtPosEPPvP10nsIContentjj
+   fun:_ZNK8nsRefPtrI18nsMappedAttributesEptEv
+   fun:_ZN20nsMathMLmsubsupFrame17PlaceSubSupScriptEP13nsPresContextR18nsRenderingContextbR19nsHTMLReflowMetricsP22nsMathMLContainerFrameiii
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN19nsSimpleContentList15cycleCollection6UnlinkEPv
+   fun:_ZN19nsSimpleContentListD1Ev
+   fun:_ZNK11nsAttrValue13GetEnumStringER18nsAString_internalb
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN2js4mjit10FrameState22forgetMismatchedObjectEPNS0_10FrameEntryE
+   fun:_ZNK2js4mjit10FrameState16ensureTypeSyncedEPKNS0_10FrameEntryERNS0_9AssemblerE
+   fun:_ZN10nsTreeRows8iteratorC1ERKS0_
+   fun:_ZNK2js4mjit10FrameState16ensureTypeSyncedEPKNS0_10FrameEntryERNS0_9AssemblerE
+   fun:_ZNK2js4mjit10FrameState14ensureFeSyncedEPKNS0_10FrameEntryERNS0_9AssemblerE
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN2js4mjit8Compiler13updateVarTypeEv
+   fun:_ZN2js4mjit8Compiler11addTypeTestEPNS_5types7TypeSetEN3JSC12X86Registers10RegisterIDES7_
+   fun:_ZN8nsCOMPtrI16nsIDOMXULElementE20Assert_NoQueryNeededEv
+   fun:_ZN2js4mjit8Compiler11addTypeTestEPNS_5types7TypeSetEN3JSC12X86Registers10RegisterIDES7_
+   fun:_ZN2js4mjit8Compiler11addTypeTestEPNS_5types7TypeSetEN3JSC12X86Registers10RegisterIDES7_
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN2js5types20AutoEnterCompilationC1EP9JSContextP8JSScriptbj
+   fun:_ZN2js4mjit9Assembler20setupFallibleVMFrameEbPhPN3JSC22AbstractMacroAssemblerINS3_12X86AssemblerEE12DataLabelPtrEi
+   fun:_ZN21nsXULPrototypeElement9SetAttrAtEjRK18nsAString_internalP6nsIURI
+   fun:_ZN2js4mjit9Assembler20setupFallibleVMFrameEbPhPN3JSC22AbstractMacroAssemblerINS3_12X86AssemblerEE12DataLabelPtrEi
+   fun:_ZN2js4mjit9Assembler8storeArgEjN3JSC12X86Registers10RegisterIDE
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN2js7gcstats10Statistics10formatDataEv
+   fun:_ZN2js7gcstats10Statistics8endSliceEv
+   fun:_ZN12nsXULElement5FocusEv
+   fun:_ZN2js7gcstats10Statistics10beginSliceEP13JSCompartmentNS_8gcreason6ReasonE
+   fun:_ZN2js7gcstats10Statistics5endGCEv
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN33nsContentAreaDragDropDataProviderC1Ev
+   fun:_ZN16DragDataProducer24AddStringsToDataTransferEP10nsIContentP17nsDOMDataTransfer
+   fun:_ZN21nsMathMLmencloseFrame13PlaceInternalER18nsRenderingContextbR19nsHTMLReflowMetricsb
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN8nsCOMPtrI11nsIMIMEInfoE20Assert_NoQueryNeededEv
+   fun:_ZN8nsCOMPtrI18nsIWritableVariantE20Assert_NoQueryNeededEv
+   fun:_ZN8nsTArrayI12nsMathMLChar24nsTArrayDefaultAllocatorE5ClearEv
+   fun:_ZL7do_mainPKciPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN8nsCOMPtrI21nsIFlavorDataProviderEC1E16nsQueryInterface
+   fun:_ZN8nsCOMPtrI15nsITransferableE22assign_assuming_AddRefEPS0_
+   fun:_ZN27mozSanitizingHTMLSerializer18AppendCDATASectionEP10nsIContentiiR18nsAString_internal
+   fun:_ZL7do_mainPKciPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZN8nsTArrayIPKN11nsAttrValue9EnumTableE24nsTArrayDefaultAllocatorED1Ev
+   fun:_ZNK8nsTArrayI8nsCOMPtrI7nsIAtomE24nsTArrayDefaultAllocatorE8ContainsI18nsAString_internal25AtomArrayStringComparatorEEbRKT_RKT0_
+   fun:_ZThn112_N23nsMathMLmunderoverFrame33UpdatePresentationDataFromChildAtEiijj
+   obj:/work/mozilla/builds/nightly/mozilla/firefox-debug/toolkit/library/libxul.so
+   fun:_ZL7do_mainiPPc
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZNK11nsAttrValue12GetAtomValueEv
+   fun:_ZN11nsAttrValueC1ERK18nsAString_internal
+   fun:_ZN26nsMathMLmmultiscriptsFrame17ProcessAttributesEv
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZNK11nsAttrValue15StringToIntegerERK18nsAString_internalPbPibS3_
+   fun:_ZNK11nsAttrValue6SizeOfEv
+   fun:_ZN13nsMathMLFrame16GetBigOpSpacingsEP13nsFontMetricsRiS2_S2_S2_S2_
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZNK11nsAttrValue17GetAtomArrayValueEv
+   fun:_ZN11nsAttrValueD1Ev
+   fun:_ZN26nsMathMLmmultiscriptsFrame17ProcessAttributesEv
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZNK11nsAttrValue6EqualsERKS_
+   fun:_ZNK11nsAttrValue6EqualsERKS_
+   fun:_ZL23MapRowAttributesIntoCSSP8nsIFrameS0_
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZNK11nsAttrValue6SizeOfEv
+   fun:_ZNK8nsTArrayI8nsCOMPtrI7nsIAtomE24nsTArrayDefaultAllocatorEeqERKS4_
+   fun:_ZN23nsMathMLmunderoverFrame33UpdatePresentationDataFromChildAtEiijj
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZNK11nsAttrValue8ToStringER18nsAString_internal
+   fun:_ZNK11nsAttrValue8ToStringER18nsAString_internal
+   fun:_ZN26nsMathMLmmultiscriptsFrame5PlaceER18nsRenderingContextbR19nsHTMLReflowMetrics
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/libGL.so.1.2
+   fun:glXMakeContextCurrent
+   fun:_ZNK11nsAttrValue8ToStringER18nsAString_internal
+   fun:_ZNK11nsAttrValue9GetAsAtomEv
+   fun:_ZN19nsMathMLmtableFrameC1EP14nsStyleContext
+   fun:_ZL7do_mainiPPc
+   fun:main
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/libfontconfig.so.1.4.4
+   fun:FcConfigFilename
+   fun:FcConfigParseAndLoad
+   fun:FcInitLoadConfig
+   fun:FcInitLoadConfigAndFonts
+   fun:FcInit
+   fun:FcConfigGetCurrent
+   fun:FcConfigSubstituteWithPat
+   obj:/usr/lib64/libpangocairo-1.0.so.0.2800.4
+   obj:/usr/lib64/libpangoft2-1.0.so.0.2800.4
+   obj:/usr/lib64/libpango-1.0.so.0.2800.4
+   fun:pango_itemize_with_base_dir
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/libfontconfig.so.1.4.4
+   fun:FcConfigFilename
+   fun:FcConfigParseAndLoad
+   fun:FcInitLoadConfig
+   fun:FcInitLoadConfigAndFonts
+   fun:FcInit
+   fun:FcConfigGetCurrent
+   fun:FcInitBringUptoDate
+   fun:_ZN2js8frontend20FinishTakingSrcNotesEP9JSContextPNS_15BytecodeEmitterEPh
+   fun:_ZL12AllocSrcNoteP9JSContextPN2js15BytecodeEmitterE
+   fun:_ZL14BindNameToSlotP9JSContextPN2js15BytecodeEmitterEPNS1_9ParseNodeE
+   fun:_ZL10EmitObjectP9JSContextPN2js15BytecodeEmitterEPNS1_9ParseNodeE
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/libfontconfig.so.1.4.4
+   fun:FcConfigFilename
+   fun:FcConfigParseAndLoad
+   fun:FcInitLoadConfig
+   fun:FcInitLoadConfigAndFonts
+   fun:FcInit
+   fun:FcConfigGetCurrent
+   fun:FcInitBringUptoDate
+   fun:_ZN2js9InlineMapIP6JSAtomPNS_10DefinitionELm24EE3PtrC1ENS_6detail9HashTableINS_12HashMapEntryIS2_S4_EENS_7HashMapIS2_S4_NS_13DefaultHasherIS2_EENS_15TempAllocPolicyEE13MapHashPolicyESE_E3PtrE
+   fun:_ZN2js6VectorIjLm8ENS_15TempAllocPolicyEE6appendItEEbT_
+   fun:_ZL10EmitSwitchP9JSContextPN2js15BytecodeEmitterEPNS1_9ParseNodeE
+   fun:_ZN2js9ParseNode23asConditionalExpressionEv
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/libfontconfig.so.1.4.4
+   fun:FcConfigFilename
+   fun:FcConfigParseAndLoad
+   fun:FcInitLoadConfig
+   fun:FcInitLoadConfigAndFonts
+   fun:FcInit
+   fun:FcConfigGetCurrent
+   fun:FcInitBringUptoDate
+   fun:_ZN2js9SetObject4markEP8JSTracerP8JSObject
+   fun:_ZN2js9MapObject3getEP9JSContextjPN2JS5ValueE
+   fun:_ZN2js9LifoAlloc4new_INS_9ObjectBoxEEEPT_v
+   fun:_ZN2js6VectorItLm32ENS_15TempAllocPolicyEE6appendIcEEbPKT_m
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/libfontconfig.so.1.4.4
+   fun:FcConfigFilename
+   fun:FcConfigParseAndLoad
+   fun:FcInitLoadConfig
+   fun:FcInitLoadConfigAndFonts
+   fun:FcInit
+   fun:FcConfigGetCurrent
+   fun:FcInitBringUptoDate
+   fun:_ZNK2js6detail9HashTableINS_12HashMapEntryIP6JSAtomPNS_10DefinitionEEENS_7HashMapIS4_S6_NS_13DefaultHasherIS4_EENS_15TempAllocPolicyEE13MapHashPolicyESB_E6lookupERKS4_jj
+   fun:_ZN2js6detail9HashTableINS_12HashMapEntryIP6JSAtomN2JS5ValueEEENS_7HashMapIS4_S6_NS_13DefaultHasherIS4_EENS_15TempAllocPolicyEE13MapHashPolicyESB_E3PtrC1ERNS0_14HashTableEntryIS7_EE
+   fun:_ZL13EmitVariablesP9JSContextPN2js15BytecodeEmitterEPNS1_9ParseNodeE13VarEmitOptionP8LetNotes
+   fun:_ZN2js6VectorINS_11UpvarCookieELm8ENS_15TempAllocPolicyEE16replaceRawBufferEPS1_m
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/libfontconfig.so.1.4.4
+   fun:FcConfigFilename
+   fun:FcConfigParseAndLoad
+   obj:/usr/lib64/libfontconfig.so.1.4.4
+   obj:/lib64/libexpat.so.1.5.2
+   obj:/lib64/libexpat.so.1.5.2
+   obj:/lib64/libexpat.so.1.5.2
+   obj:/lib64/libexpat.so.1.5.2
+   fun:XML_ParseBuffer
+   fun:FcConfigParseAndLoad
+   fun:FcConfigParseAndLoad
+   obj:/usr/lib64/libfontconfig.so.1.4.4
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/libfontconfig.so.1.4.4
+   fun:FcConfigFilename
+   fun:FcConfigParseAndLoad
+   obj:/usr/lib64/libfontconfig.so.1.4.4
+   obj:/lib64/libexpat.so.1.5.2
+   obj:/lib64/libexpat.so.1.5.2
+   obj:/lib64/libexpat.so.1.5.2
+   obj:/lib64/libexpat.so.1.5.2
+   fun:XML_ParseBuffer
+   fun:FcConfigParseAndLoad
+   fun:FcInitLoadConfig
+   fun:FcInitLoadConfigAndFonts
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/libfontconfig.so.1.4.4
+   fun:FcConfigParseAndLoad
+   fun:FcConfigParseAndLoad
+   obj:/usr/lib64/libfontconfig.so.1.4.4
+   obj:/lib64/libexpat.so.1.5.2
+   obj:/lib64/libexpat.so.1.5.2
+   obj:/lib64/libexpat.so.1.5.2
+   obj:/lib64/libexpat.so.1.5.2
+   fun:XML_ParseBuffer
+   fun:FcConfigParseAndLoad
+   fun:FcInitLoadConfig
+   fun:FcInitLoadConfigAndFonts
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   obj:/usr/lib64/libfontconfig.so.1.4.4
+   fun:FcConfigParseAndLoad
+   obj:/usr/lib64/libfontconfig.so.1.4.4
+   obj:/lib64/libexpat.so.1.5.2
+   obj:/lib64/libexpat.so.1.5.2
+   obj:/lib64/libexpat.so.1.5.2
+   obj:/lib64/libexpat.so.1.5.2
+   fun:XML_ParseBuffer
+   fun:FcConfigParseAndLoad
+   fun:FcConfigParseAndLoad
+   obj:/usr/lib64/libfontconfig.so.1.4.4
+   obj:/lib64/libexpat.so.1.5.2
+}
+

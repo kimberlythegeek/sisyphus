@@ -1,0 +1,33 @@
+This directory contains valgrind suppression files generated from the
+Unit Test valgrind runs.
+
+To invoke valgrind ( 3.7 or later ) to run memcheck:
+
+Linux
+
+valgrind --trace-children=yes --track-origins=yes --smc-check=all-non-file --read-var-info=yes --gen-suppressions=all --suppressions=/work/mozilla/builds/hg.mozilla.org/sisyphus/valgrind/linux-intel64.sup --suppressions=/work/mozilla/builds/nightly/mozilla/build/valgrind/x86_64-redhat-linux-gnu.sup --suppressions=/work/mozilla/builds/nightly/mozilla/build/valgrind/i686-redhat-linux-gnu.sup 
+
+You can put this in ~/.valgrindrc as
+
+
+--trace-children=yes
+--track-origins=yes
+--smc-check=all-non-file
+--read-var-info=yes
+--gen-suppressions=all
+--suppressions=/work/mozilla/builds/hg.mozilla.org/sisyphus/valgrind/linux-intel64.sup --suppressions=/work/mozilla/builds/nightly/mozilla/build/valgrind/x86_64-redhat-linux-gnu.sup --suppressions=/work/mozilla/builds/nightly/mozilla/build/valgrind/i686-redhat-linux-gnu.sup
+
+Mac OS X
+
+valgrind --dsymutil=yes --trace-children=yes --track-origins=yes --smc-check=all-non-file --suppressions=$TEST_DIR/valgrind/darwin-intel64.sup
+
+
+You can put this in ~/.valgrindrc as
+
+--dsymutil=yes
+--trace-children=yes
+--track-origins=yes
+--smc-check=all-non-file
+--read-var-info=yes
+--gen-suppressions=all
+--suppressions=/work/mozilla/builds/hg.mozilla.org/sisyphus/valgrind/darwin-intel64.sup 
