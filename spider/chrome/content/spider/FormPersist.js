@@ -94,7 +94,7 @@ function FormInit(/*HTMLFormElement */ aForm, /* String */ aQueryString)
 
   // fill in form from the query string
 
-  if (aQueryString.indexOf('?') == 0);
+  if (aQueryString.indexOf('?') == 0)
   {
     aQueryString = aQueryString.substring(1);
   }

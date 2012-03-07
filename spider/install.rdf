@@ -6,7 +6,7 @@
 
                 <em:id>{47b978aa-2fbb-4f64-886f-b2845d76c709}</em:id>
                 <em:name>Spider</em:name>
-                <em:version>0.0.3.8</em:version>
+                <em:version>0.0.3.9</em:version>
                 <em:description>A Web Spider for Firefox, and Gecko applications</em:description>
                 <em:creator>Bob Clary</em:creator>
                 <em:homepageURL>http://bclary.com/projects/spider/</em:homepageURL>
