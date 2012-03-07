@@ -154,7 +154,7 @@ def encodeUrl(url):
 
     url            = makeUnicodeString(urllib.unquote(url))
     urlParseObject = urlparse.urlparse(url)
-    urlPieces      = [urllib.quote(urlpiece.encode('utf-8'), "/=:") for urlpiece in urlParseObject]
+    urlPieces      = [urllib.quote(urlpiece.encode('utf-8'), "/=:&;") for urlpiece in urlParseObject]
     url            = urlparse.urlunparse(urlPieces)
     return url
 
