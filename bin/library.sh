@@ -270,7 +270,7 @@ if [[ -z "$LIBRARYSH" ]]; then
                 get_executable_name="$get_executable_product${EXE_EXT}"
                 case "$OSID" in
                     darwin)
-                        get_executable_filter="/[a-zA-Z]*\.app/Contents/MacOS/$get_executable_product"
+                        get_executable_filter="/[a-zA-Z]*\.app/Contents/MacOS/+$get_executable_product"
                         get_executable_name="$get_executable_name-bin"
                         ;;
                     *)
@@ -279,14 +279,14 @@ if [[ -z "$LIBRARYSH" ]]; then
                 esac
                 if find "$get_executable_directory" -perm +111 -type f \
                     -name "$get_executable_name" | \
-                    grep "$get_executable_filter"; then
+                    grep -E "$get_executable_filter"; then
                     true
                 fi
                 )`
 
             if [[ -z "$executable" ]]; then
-                error "get_executable_name=$get_executable_name get_executable_filter=$get_executable_filter get_executable $product $branch $executablepath returned empty path" $LINENO
-                error "get_executable $product $branch $executablepath returned empty path" $LINENO
+                error "get_executable_name=$get_executable_name get_executable_filter=$get_executable_filter get_executable product=$get_executable_product branch=$get_executable_branch directory=$get_executable_directory returned empty path" $LINENO
+                error "get_executable $get_executable_product $get_executable_branch $get_executable_directory returned empty path" $LINENO
             fi
 
             if [[ ! -x "$executable" ]]; then
