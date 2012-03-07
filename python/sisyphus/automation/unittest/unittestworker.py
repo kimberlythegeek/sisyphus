@@ -118,6 +118,8 @@ class UnitTestWorker(worker.Worker):
         reProfileName    = re.compile(r'^environment: profilename=(.*)')
         reAssertionFail  = re.compile(r'^(Assertion failure: .*), at .*')
         reABORT          = re.compile(r'^.?###\!\!\! (ABORT: .*), file (.*), line [0-9]+.*')
+        reABORT2         = re.compile(r'^.?###\!\!\! (ABORT: .*), file (.*), line [0-9]+.*')
+        reABORT3         = re.compile(r'^.?###\!\!\! (ABORT: .*) file (.*), line [0-9]+.*')
         reASSERTION      = re.compile(r'^.?###\!\!\! ASSERTION: (.*), file (.*), line [0-9]+.*')
         reValgrindLeader = re.compile(r'^==[0-9]+==')
         # reftest
@@ -350,6 +352,12 @@ class UnitTestWorker(worker.Worker):
                 match = reABORT.match(line)
                 if match:
                     self.testrun_row.fatal_message = match.group(1)
+                    match = reABORT2.match(line)
+                    if match:
+                        self.testrun_row.fatal_message = match.group(1)
+                    match = reABORT3.match(line)
+                    if match:
+                        self.testrun_row.fatal_message = match.group(1)
 
                 line = utils.timedReadLine(proc.stdout, self.test_timeout)
                 line = utils.makeUnicodeString(line)
@@ -383,6 +391,9 @@ class UnitTestWorker(worker.Worker):
             raise KeyboardInterrupt
 
         logfile.close()
+
+        if self.testrun_row.fatal_message:
+            self.testrun_row.fatal_message = self.testrun_row.fatal_message.rstrip(',:')
 
         baselogfilename = os.path.basename(logfilename)
         loguploadpath = 'logs/' + baselogfilename[:13] # CCYY-MM-DD-HH

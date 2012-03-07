@@ -392,6 +392,9 @@ class CrashTestWorker(worker.Worker):
 
             logfile.close()
 
+            if self.testrun_row.fatal_message:
+                self.testrun_row.fatal_message = self.testrun_row.fatal_message.rstrip(',:')
+
             baselogfilename = os.path.basename(logfilename)
             loguploadpath = 'logs/' + baselogfilename[:13] # CCYY-MM-DD-HH
             dmpuploadpath = 'minidumps/' + baselogfilename[:13] # CCYY-MM-DD-HH
