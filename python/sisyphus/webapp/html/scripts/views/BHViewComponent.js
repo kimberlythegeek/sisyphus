@@ -100,7 +100,6 @@ var BHViewComponent = new Class({
          //and only run it if we are the first bhview.  The first bhview
          //cannot be deleted.
          this.updateDateRangeInterval = setInterval( _.bind(this.updateDateRange, this), 3600000 );
-
       }
 
       //We could be a child in a new window, register listener
@@ -130,7 +129,6 @@ var BHViewComponent = new Class({
 
          this.view.showNoDataMessage(this.bhviewIndex, 'sendsignal');
       }
-
    },
    /****************
     *PUBLIC INTERFACE
@@ -587,6 +585,20 @@ var BHViewComponent = new Class({
          //Set the chart types
          this.setVisEv();
 
+         //Columns holds an associative array where the key is
+         //the column name and the value is the array index of it's
+         //position in the display table
+         var columns = this._getColumnLookup(this.data.aoColumns);
+
+         //Sets a callback that is called after every draw event.  This
+         //allows us to set custom row colors and have them persist across
+         //a tables pages, filtering events, and dynamic sorting events.
+         data.fnDrawCallback = _.bind( this.view.showRowColors, 
+                                       this.view, 
+                                       this.bhviewIndex, 
+                                       columns,
+                                       this.model.exploitabilityCounts);
+
          //Load the table data
          this.dataTable = $(tableSel).dataTable( data );
 
@@ -1006,6 +1018,14 @@ var BHViewComponent = new Class({
             break;
          }
       }
+   },
+
+   _getColumnLookup: function(dataTableColumns){
+      var columns =  {};
+      for(var i=0; i<dataTableColumns.length; i++){
+         columns[dataTableColumns[i].sTitle] = i;
+      }
+      return columns;
    }
 });
 var BHViewView = new Class({
@@ -1109,6 +1129,10 @@ var BHViewView = new Class({
                                   primary_label_detail:'#bh_primary_detail_label_c',
                                   secondary_label_detail:'#bh_secondary_detail_label_c' };
 
+      this.colorRowMap = { exploitability:{ low:'bh-low-exploitability',
+                                            medium:'bh-medium-exploitability',
+                                            high:'bh-high-exploitability' } };
+
       this.visReadName = options.vis_read_name;
 
       //Spacer div between bhviews
@@ -1124,6 +1148,10 @@ var BHViewView = new Class({
 
       //Signal base id
       this.signalBaseSel = '#bh_post_';
+
+      //Lower status line id base
+      this.statusIdSel = '#bh_tview_c_';
+      this.statusIdSuffix = '_info';
 
       //Messages
       this.nodataMessage = 'No data available.';
@@ -1407,6 +1435,45 @@ var BHViewView = new Class({
    /*******************
     *TOGGLE METHODS
     *******************/
+   showRowColors: function(bhviewIndex, columns, exploitabilityCounts){
+
+      for( var column in this.colorRowMap ){
+         if( columns && columns[column] ){
+            var datatableWrapperSel = this.getIdSelector(this.tableSel, bhviewIndex);
+            var rowEls = $(datatableWrapperSel).find('tr');
+            for(var i=0; i<rowEls.length; i++){
+
+               var tds = $(rowEls[i]).find('td');
+               var tdEl = tds[ columns[column] ];
+               var textData = $(tdEl).find('a').text();
+
+               if( this.colorRowMap[column][textData] ){
+                  $(rowEls[i]).removeClass( 'odd' );
+                  $(rowEls[i]).removeClass( 'even' );
+                  $(rowEls[i]).addClass( this.colorRowMap[column][textData] );
+               }
+            }
+         }
+
+         var statusSel = this.statusIdSel + bhviewIndex + this.statusIdSuffix;
+         var statusLine = $(statusSel).text();
+
+         var countText = "";
+
+         //Don't report if none of the exploitability counts are > 0
+         if ( (exploitabilityCounts['low'] > 0) || 
+              (exploitabilityCounts['medium'] > 0) || 
+              (exploitabilityCounts['high'] > 0) ){
+
+            countText = ', Exploitability low:' + exploitabilityCounts['low'] + 
+                         ', medium:' + exploitabilityCounts['medium'] + 
+                         ', high:' + exploitabilityCounts['high'];
+         }
+
+         $(statusSel).text(statusLine + countText);
+      }
+   },
+
    displayVisualization: function(datatableWrapperSel, visContainerSel, spacerSel, visName){
 
       if(visName == 'table'){
@@ -1632,7 +1699,7 @@ var BHViewModel = new Class({
       this.end_date = "";
    },
    /***************
-    *GET METHODS
+    * GET METHODS
     ***************/
    getBHViewAttribute: function(attr){
       return this.bhviewHash[attr];
@@ -1746,7 +1813,7 @@ var BHViewModel = new Class({
       //their requirements
       var adapterName = this.getBHViewAttribute('data_adapter');
       var a = this.dataAdapters.getAdapter(adapterName);
-      a.processData(dataObject, datatableObject, signals);
+      this.exploitabilityCounts = a.processData(dataObject, datatableObject, signals, this.bhviewIndex);
 
       return JSON.stringify(datatableObject);
    },

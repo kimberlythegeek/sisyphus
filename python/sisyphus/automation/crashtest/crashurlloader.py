@@ -77,7 +77,7 @@ def get_skipurls(data):
        data['skipurls'].append(skipurl)
     skipurlsfilehandle.close()
 
-def load_urls(data):
+def load_urls(data, do_encode):
 
     get_skipurls(data)
 
@@ -159,7 +159,9 @@ def load_urls(data):
                 continue # skip private networks
 
             try:
-                url = utils.encodeUrl(url)
+                if do_encode:
+                    url = utils.encodeUrl(url)
+                    
             except Exception, e:
                 exceptionType, exceptionValue, errorMessage = utils.formatException()
                 print '%s, %s: url: %s' % (exceptionValue, errorMessage, url)
@@ -283,7 +285,7 @@ def load_urls(data):
             return message
 
 def main(data):
-    load_urls(data)
+    load_urls(data, True)
 
 if __name__ == '__main__':
 

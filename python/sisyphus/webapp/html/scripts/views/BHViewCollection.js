@@ -367,7 +367,7 @@ var BHViewCollection = new Class({
    _copyTextFromContextMenu: function(el){
       var text = "";
       if(this.contextMenuTarget){
-         text = $(this.contextMenuTarget).text();
+         text = BHPAGE.unescapeHtmlEntities( $(this.contextMenuTarget).text() );
       }
       try {
          netscape.security.PrivilegeManager.enablePrivilege('UniversalXPConnect');
@@ -484,12 +484,18 @@ var BHViewCollectionView = new Class({
       var count = 1;
       var uniqueUrls = [];
       for(var i=0; i<urls.length; i++){
+
+         var escapedUrl = BHPAGE.escapeForUrl( urls[i] );
+
          //Don't load duplicate urls
-         if( seen[ urls[i] ] != true){
-            uniqueUrls.push(urls[i]);
+         if( seen[ escapedUrl ] != true){
+
+            uniqueUrls.push( escapedUrl );
             var row = '<tr><td>' + count + '</td>' + '<td>' + urls[i] + '</td></tr>';
             $(this.resubmitUrlTextareaSel).append( $(row) );
-            seen[ urls[i] ] = true;
+
+            seen[ escapedUrl ] = true;
+
             count++;
          }
       }

@@ -77,12 +77,13 @@ var BHViewAdapter = new Class({
       //the derived classes that possess the tables.
       this.formatColumnMap = { crashreport:_.bind(this._mediaColumnFormatter, this),
                                log:_.bind(this._mediaColumnFormatter, this),
-                               url:_.bind(this._escapeColumnFormatter, this),
                                steps:_.bind(this._escapeColumnFormatter, this),
                                changeset:_.bind(this._externalLinkFormatter, this),
                                uuid:_.bind(this._externalLinkFormatter, this),
                                steps:_.bind(this._preTagFormatter, this),
-                               stack:_.bind(this._preTagFormatter, this) };
+                               stack:_.bind(this._preTagFormatter, this),
+                               exploitability:_.bind(this._exploitabilityCounter, this) };
+
 
       this.mediaColumns = { crashreport:true,
                             log:true };
@@ -344,6 +345,12 @@ var BHViewAdapter = new Class({
        *    signals - Associative array of signals that the bhview
        *              can receive/send
        * ***************************/
+
+      //exploitabilityCounts is only used by _exploitabilityCounter to 
+      //count the 3 different types of exploitability states and return
+      //them to the caller
+      var exploitabilityCounts = { "low":0, "medium":0, "high":0 };
+
       if(dataObject.data.length >= 1 ){
 
          if(this.sorting[ this.adapter ]){
@@ -363,7 +370,7 @@ var BHViewAdapter = new Class({
             //set of columns that need formatting.
             for( var formatCol in this.formatColumnMap ){
                if(dataObject.data[i][formatCol] != undefined){
-                  this.formatColumnMap[formatCol](i, formatCol, dataObject);
+                  this.formatColumnMap[formatCol](i, formatCol, dataObject, exploitabilityCounts);
                }
             }
             //Handling signal columns separately so we don't have to
@@ -371,6 +378,8 @@ var BHViewAdapter = new Class({
             this._signalColumnFormatter(i, signals, dataObject);
          }
       }
+
+      return exploitabilityCounts;
    },
    processPanelClick: function(elId, bhviewIndex){
       return;
@@ -411,6 +420,12 @@ var BHViewAdapter = new Class({
          var mediaHref = "/bughunter/media" + 
          dataObject.data[i][col].replace(/^.*media/, '').replace(/\.gz$/, '');
          dataObject.data[i][col] = '<a target="_blank" href="' + mediaHref + '">view</a>';
+      }
+   },
+   _exploitabilityCounter: function(i, col, dataObject, exploitabilityCounts){
+      if( dataObject.data[i][col] && 
+          (exploitabilityCounts[ dataObject.data[i][col] ] || exploitabilityCounts[ dataObject.data[i][col] ] === 0 )){
+         exploitabilityCounts[ dataObject.data[i][col] ]++;
       }
    },
    _signalColumnFormatter: function(i, signals, dataObject){

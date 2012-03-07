@@ -23,7 +23,6 @@ from django.utils.encoding import iri_to_uri, smart_str, smart_unicode, force_un
 from django.utils.http import urlquote
 
 from sisyphus.webapp.bughunter import models
-from sisyphus.webapp import settings
 from sisyphus.automation import utils
 from sisyphus.automation.crashtest import crashurlloader
 
@@ -510,7 +509,7 @@ def resubmit_urls(request):
 
    if 'urls' in raw_data:
       for url in raw_data['urls']:
-         urls.append( escape_func( urllib.unquote(url) ) )
+         urls.append( urllib.unquote(url) )
 
    if 'comments' in raw_data:
       comments = escape_func( urllib.unquote(raw_data['comments']) )
@@ -521,7 +520,7 @@ def resubmit_urls(request):
             'user_id':request.user.id,
             'skipurlsfile':""}
 
-   response = crashurlloader.load_urls(data)
+   response = crashurlloader.load_urls(data, True)
    json = simplejson.dumps( { 'message':response } )
 
    return HttpResponse(json, mimetype=APP_JS)
@@ -549,9 +548,8 @@ def get_bhview(request, **kwargs):
 
    See the datasource README for more documentation
 
-   named_field= The named_fields other than p,r,rq require a
-                view_adapter to manage their incorporation into
-                an arguments to execute().
+   named_field= The named_fields require a view_adapter to manage 
+                their incorporation into an arguments to execute().
 
    To add a new service method add SQL to bughunter.json and you're
    done unless you require named fields.  If you cannot get what you 

@@ -370,3 +370,16 @@ a.bh-help-link {
 .bh-status-completed {
   color: #007730;
 }
+
+/*******
+ * Exploitability styles
+ * *****/
+.bh-low-exploitability {
+   background-color: #FFAA73;
+}
+.bh-medium-exploitability {
+   background-color: #FF8B40;
+}
+.bh-high-exploitability {
+   background-color: #FF6400;
+}
