@@ -687,6 +687,9 @@ var ExternalLink = new Class({
          //ExternalLink actions have the following format
          // 2 letter link destination (bz bugzilla, cs crash-stats)_link type(sig, fm, url)_search target
          //bz_sig_socorro
+         
+         //escape the text for url based searching 
+         text = BHPAGE.escapeForUrl(text);
 
          if(actionComponents[0] == 'bz'){
 

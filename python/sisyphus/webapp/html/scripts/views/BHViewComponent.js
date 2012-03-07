@@ -698,7 +698,7 @@ var BHViewComponent = new Class({
 
             var adapterName = this.model.getBHViewAttribute('data_adapter');
             var a = this.dataAdapters.getAdapter(adapterName);
-            var targetData = BHPAGE.escapeForUrl($(event.target).text(), href);
+            var targetData = BHPAGE.escapeForUrl($(event.target).text());
 
 
             var controlPanelDropdownSel = this.view.getIdSelector(this.view.controlPanelDropdownSel, 

@@ -95,10 +95,10 @@ var BughunterPage = new Class( {
          }
       }
    },
-   escapeForUrl: function(s, signal){
+   escapeForUrl: function(s){
       return encodeURIComponent( BHPAGE.unescapeHtmlEntities(s) );
    },
-   unescapeForUrl: function(s, signal){
+   unescapeForUrl: function(s){
       return decodeURIComponent( BHPAGE.unescapeHtmlEntities(s) );
    }
 

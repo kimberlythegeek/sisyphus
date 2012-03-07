@@ -1269,12 +1269,13 @@ def _format_status_field(status_object, status_list):
 
          if s == 'completed':
             if int(status_object[s]) == status_object['total_count']:
+               ##All jobs are complete, set status and exit loop##
                status = '<span class="no-wrap bh-status-completed">ALL JOBS COMPLETE</span>'
                break
             else:
                status +='<span class="bh-status-' + s + '"><b>' + statusText + ':</b>' + str(count) + '</span>'
          else:
-            status = '<span class="bh-status-' + s + '"><b>' + statusText + ':</b>' + str(count) + '</span>&nbsp;&nbsp;'
+            status += '<span class="bh-status-' + s + '"><b>' + statusText + ':</b>' + str(count) + '</span>&nbsp;&nbsp;'
 
    return status
 
