@@ -748,6 +748,70 @@ class Worker(object):
 
             crash_data = sisyphus.automation.crashreports.parse_crashreport(crash_report)
 
+            # Augment the exploitable tool by attempting to use the
+            # crash address and registers of the crashing frame to
+            # detect anomolous memory patterns. If the eip register
+            # contains a bad value, treat the crash as exploitable
+            # high, otherwise treat it as medium.
+            #
+            # Windows
+            # http://msdn.microsoft.com/en-us/library/aa270812%28VS.60%29.aspx
+            # http://msdn.microsoft.com/en-us/library/bebs9zyz.aspx
+            # http://www.softwareverify.com/memory-bit-patterns.php
+            # http://www.nobugs.org/developer/win32/debug_crt_heap.html
+            #
+            # uninitialized stack memory       0xcc
+            # uninitialzed heap memory         0xcd
+            # guard for aligned heap memory    0xab
+            # guard for unaligned heap memory  0xfd
+            # freed memory                     0xdd
+            # uninitialized heap               0xbaadf00d, 0xf00dbaad (HeapAlloc)
+            # freed memory                     0xfeeefeee (HeapFree)
+            #
+            # Mac OS X builds are run under MallocScribble.
+            # https://developer.apple.com/library/mac/#documentation/Performance/Conceptual/ManagingMemory/Articles/MallocDebug.html#//apple_ref/doc/uid/20001884-CJBJFIDD
+            # freed memory                     0x55
+            # uninitialized memory             0xaa
+            #
+            # Mozilla
+            # http://mxr.mozilla.org/mozilla-central/source/js/public/Utility.h#70
+            # #define JS_FREE_PATTERN          0xda
+            # Another value used to poison data in various locations is 0xdb.
+            #
+            # http://mxr.mozilla.org/mozilla-central/source/nsprpub/lib/ds/plarena.h#145
+            # #define PL_FREE_PATTERN          0xda
+            #
+            # http://mxr.mozilla.org/mozilla-central/source/js/src/jshash.cpp#154
+            # deleted hash table?              0xdb
+            # Miscellaneous
+            # deleted memory?                  0xdeadbeef, 0xbeefdead
+
+
+            if 'frames' in crash_data and len(crash_data['frames']) > 0:
+                frame = crash_data['frames'][0]
+                if 'frame_address' in frame:
+                    # Check the crash address using a partial match
+                    # ignoring leading 0xf or 0x0 and only requiring 3
+                    # successive matches of the underlying pattern.
+                    reAddressPartial = re.compile(r'0x((f|0)*((cc){3,}|(cd){3,}|(ab){3,}|(fd){3,}|(dd){3,}|(da){3,}|(db){3,}|(aa){3,}|(55){3,}|baadf00d|f00dbaad|feeefeee|deadbeef|beefdead))')
+                    address = frame['frame_address']
+                    match = reAddressPartial.match(address)
+                    if match and exploitability != 'high' and exploitability != 'medium':
+                        exploitability = 'low'
+                if 'frame_registers' in frame:
+                    # Check the registers using an exact match ignoring leading 0xf
+                    frame_registers = frame['frame_registers']
+                    reAddressExact = re.compile(r'0x((f|0)*((cc)+|(cd)+|(ab)+|(fd)+|(dd)+|(da)+|(db)+|(aa)+|(55)+|baadf00d|f00dbaad|feeefeee|deadbeef|beefdead)$)')
+                    for register in frame_registers:
+                        address = frame_registers[register]
+                        match = reAddressExact.match(address)
+                        if not match:
+                            pass
+                        elif register == 'eip' or register == 'rip':
+                            exploitability = 'high'
+                        elif exploitability != 'high':
+                            exploitability = 'medium'
+
             count                = 0
             lastkey              = None
             result_crash_doc     = None
