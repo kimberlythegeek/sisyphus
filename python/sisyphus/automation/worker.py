@@ -534,20 +534,19 @@ class Worker(object):
             valgrind_signature = re.sub('\W+', ' ', valgrind_signature)
             valgrind_signature = re.sub(' {2,}', ' ', valgrind_signature)
 
-            if not re.search('^HEAP', valgrind_signature):
-                valgrind_msg       = valgrind_msg.strip()
-                valgrind_stack     =  valgrind_stack.strip()
-                valgrind_signature = valgrind_signature.strip()
-                valgrind_key       = valgrind_msg + ':' + valgrind_signature + ':' + valgrind_stack
-                if valgrind_key in valgrind_dict:
-                    valgrind_dict[valgrind_key]["count"] += 1
-                else:
-                    valgrind_dict[valgrind_key] = {
-                        "message"   : valgrind_msg,
-                        "stack"     : valgrind_stack,
-                        "signature" : valgrind_signature,
-                        "count"     : 1,
-                        }
+            valgrind_msg       = valgrind_msg.strip()
+            valgrind_stack     =  valgrind_stack.strip()
+            valgrind_signature = valgrind_signature.strip()
+            valgrind_key       = valgrind_msg + ':' + valgrind_signature + ':' + valgrind_stack
+            if valgrind_key in valgrind_dict:
+                valgrind_dict[valgrind_key]["count"] += 1
+            else:
+                valgrind_dict[valgrind_key] = {
+                    "message"   : valgrind_msg,
+                    "stack"     : valgrind_stack,
+                    "signature" : valgrind_signature,
+                    "count"     : 1,
+                    }
             valgrind_text = valgrind_text[len(match.group(0)):]
 
         return valgrind_dict
@@ -565,6 +564,9 @@ class Worker(object):
             valgrind_stack     = valgrind_dict[key]["stack"]
             valgrind_signature = valgrind_dict[key]["signature"]
             valgrind_count     = valgrind_dict[key]["count"]
+
+            if re.search('^HEAP', valgrind_signature):
+                continue
 
             valgrind_rows = models.Valgrind.objects.filter(
                 os_name         = self.os_name,
