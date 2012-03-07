@@ -268,6 +268,11 @@ var BHViewComponent = new Class({
          bhviewName = this.model.getBHViewAttribute('name');
       }
 
+      //Protect against user selecting a non-anchor region of the menu
+      if(bhviewName === ""){
+         return;
+      }
+
       //Check for any page targets
       var ptarget = this.model.getBHViewPageTarget(bhviewName);
       if(ptarget != undefined){
