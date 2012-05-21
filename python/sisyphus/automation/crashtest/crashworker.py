@@ -75,12 +75,6 @@ post_files_url    = sisyphus_url + '/post_files/'
 from sisyphus.webapp.bughunter import models
 from sisyphus.automation import utils, worker, program_info
 
-test_topsite_timeout = 300
-test_topsite_page_timeout = 120
-
-os.environ["TEST_TOPSITE_TIMEOUT"]=str(test_topsite_timeout)
-os.environ["TEST_TOPSITE_PAGE_TIMEOUT"]=str(test_topsite_page_timeout)
-
 os.environ["XPCOM_DEBUG_BREAK"]="stack"
 os.environ["userpreferences"]= sisyphus_dir + '/prefs/spider-user.js'
 
@@ -133,6 +127,9 @@ class CrashTestWorker(worker.Worker):
         # self.userhook is the url of the userhook script to be executed
         # for each page load.
         self.userhook = sisyphus.webapp.settings.SISYPHUS_URL + '/media/userhooks/' + options.userhook
+
+        self.page_timeout = options.page_timeout
+        self.site_timeout = options.site_timeout
 
         # self.invisible is the optional argument to the top-sites.sh test script
         # to make Spider hide the content being loaded.
@@ -254,7 +251,7 @@ class CrashTestWorker(worker.Worker):
             default_alarm_handler = signal.getsignal(signal.SIGALRM)
             try:
                 signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(test_topsite_timeout + 30)
+                signal.alarm(self.site_timeout + 30)
                 stdout = proc.communicate()[0]
             except OSError, oserror:
                 if oserror.errno != 10:
@@ -771,6 +768,18 @@ def main():
                       'Defaults to test-crash-on-load.js.',
                       default='test-crash-on-load.js')
 
+    parser.add_option('--page-timeout', action='store', type='int',
+                      dest='page_timeout',
+                      help='Time in seconds before a page load times out. ' +
+                      'Defaults to 180 seconds',
+                      default=180)
+
+    parser.add_option('--site-timeout', action='store', type='int',
+                      dest='site_timeout',
+                      help='Time in seconds before a site load times out. ' +
+                      'Defaults to 300 seconds',
+                      default=300)
+
     parser.add_option('--invisible', action='store_true',
                       dest='invisible',
                       help='Flag to start Spider with browser content set to invisible. ' +
@@ -803,6 +812,9 @@ def main():
         (options, args) = parser.parse_args()
     except:
         raise Exception("NormalExit")
+
+    os.environ["TEST_TOPSITE_TIMEOUT"]      = str(options.site_timeout)
+    os.environ["TEST_TOPSITE_PAGE_TIMEOUT"] = str(options.page_timeout)
 
     exception_counter = 0
 
