@@ -978,8 +978,8 @@ class Worker(object):
         self.save()
 
         if not self.build_row or not self.build_row.buildavailable:
-            self.debugMessage('installBuild: build not available %s %s %s' %
-                              (self.product, self.branch, self.buildtype))
+            self.logMessage('installBuild: build not available %s %s %s' %
+                            (self.product, self.branch, self.buildtype))
             return False
 
         self.logMessage("begin installing %s %s %s" % (self.product, self.branch, self.buildtype))
