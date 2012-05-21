@@ -651,18 +651,19 @@ class CrashTestWorker(worker.Worker):
             self.debugMessage("getJob: lock timed out")
         else:
             try:
+                # job index will present waiting high priority jobs in order
+                # state
+                # os_name
+                # os_version
+                # cpu_name
+                # build_cpu_name
+                # priority
                 sitetestrun_row = (models.SiteTestRun.objects.filter(
                         state__exact = "waiting",
                         os_name__exact = self.os_name,
                         os_version__exact = self.os_version,
                         cpu_name__exact = self.cpu_name,
-                        build_cpu_name__exact = self.build_cpu_name).order_by(
-                        'state',
-                        'os_name',
-                        'os_version',
-                        'cpu_name',
-                        'build_cpu_name',
-                        'priority')[0])
+                        build_cpu_name__exact = self.build_cpu_name)[0])
                 sitetestrun_row.worker = self.worker_row
                 sitetestrun_row.state = 'executing'
                 sitetestrun_row.save()
