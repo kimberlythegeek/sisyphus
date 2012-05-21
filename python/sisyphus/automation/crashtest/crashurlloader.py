@@ -125,7 +125,16 @@ def load_urls(data, do_encode):
         if build_cpu_name not in operating_systems[os_name][os_version][cpu_name]:
             operating_systems[os_name][os_version][cpu_name][build_cpu_name] = 1
 
-    rePrivateNetworks = re.compile(r'https?://(localhost|127\.0\.0\.1|192\.168\.[0-9]+\.[0-9]+|172\.16\.[0-9]+\.[0-9]+|10\.[0-9]+\.[0-9]+\.[0-9]+)')
+    rePrivateNetworks = re.compile(r'https?://(' +
+                                   'localhost|' +
+                                   '[^./]+\.localdomain|' +
+                                   '[^./]+\.local|' +
+                                   '[^./]+($|/)|' +
+                                   '127\.0\.0\.1|' +
+                                   '192\.168\.[0-9]+\.[0-9]+|' +
+                                   '172\.16\.[0-9]+\.[0-9]+|' +
+                                   '10\.[0-9]+\.[0-9]+\.[0-9]+' +
+                                   ')')
 
     starttime = datetime.datetime.now()
     url_counter = 0
