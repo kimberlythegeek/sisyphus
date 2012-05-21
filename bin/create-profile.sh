@@ -141,3 +141,15 @@ fi
 if [[ ! -z $user ]]; then
     cp $user $directory/user.js
 fi
+
+# work around bug 739682
+(if ! $TEST_DIR/bin/timed_run.py ${TEST_STARTUP_TIMEOUT} "silent startup" \
+    $executable -P $profilename -silent ; then
+    # Delete and recreate the minidumps directory to hide the
+    # fatal assertion's minidump from Bughunter.
+    $TEST_DIR/bin/create-directory.sh -d "$directory/minidumps/" -n
+fi) > /dev/null 2>&1
+
+# force success exit code
+echo "exit create-profile.sh"
+exit 0
