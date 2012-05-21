@@ -220,7 +220,6 @@ class CrashTestWorker(worker.Worker):
 
         # attempt to silence undefined errors if exception thrown during communicate.
         stdout = ''
-        stderr = ''
 
         fatal_error = False
 
@@ -237,7 +236,7 @@ class CrashTestWorker(worker.Worker):
                 ],
             preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             close_fds=True,
             env=environment)
 
@@ -256,7 +255,7 @@ class CrashTestWorker(worker.Worker):
             try:
                 signal.signal(signal.SIGALRM, timeout_handler)
                 signal.alarm(test_topsite_timeout + 30)
-                stdout, stderr = proc.communicate()
+                stdout = proc.communicate()[0]
             except OSError, oserror:
                 if oserror.errno != 10:
                     raise

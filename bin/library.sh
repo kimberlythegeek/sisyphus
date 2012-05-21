@@ -72,9 +72,8 @@ function debug_frames() {
 
 function _err()
 {
-    debug_frames
-
     local rc=$?
+    debug_frames
     debug "_err: $0"
 
     case "$rc" in

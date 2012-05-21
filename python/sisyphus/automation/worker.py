@@ -1199,11 +1199,11 @@ class Worker(object):
             builder_command_list,
             preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             close_fds=True)
 
         try:
-            stdout, stderr = proc.communicate()
+            stdout = proc.communicate()[0]
         except KeyboardInterrupt, SystemExit:
             raise
         except:
@@ -1217,11 +1217,14 @@ class Worker(object):
                 # fix the issue on Windows. Just restart the program.
                 self.reloadProgram()
 
-        if re.search('^FATAL ERROR', stderr, re.MULTILINE):
-            buildsuccess = False
+        reFatalError = re.compile(r'FATAL ERROR')
 
         logs = stdout.split('\n')
         for logline in logs:
+
+            if reFatalError.match(logline):
+                buildsuccess = False
+
             logpathmatch = re.search('log: (.*\.log)', logline)
             if logpathmatch:
                 logpath = logpathmatch.group(1)

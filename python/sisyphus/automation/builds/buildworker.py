@@ -67,7 +67,6 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
 
 from sisyphus.webapp.bughunter import models
 from sisyphus.automation import utils, program_info
-#import sisyphus.automation.builder
 import sisyphus.automation.worker
 
 options          = None
