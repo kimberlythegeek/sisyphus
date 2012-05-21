@@ -109,7 +109,7 @@ def worker_summary(request):
     worker_types = ['builder', 'crashtest', 'unittest']
     worker_data  = {}
 
-    worker_rows = models.Worker.objects.all()
+    worker_rows = models.Worker.objects.exclude(state='disabled')
 
     for worker_row in worker_rows:
         worker_key  = worker_row.os_name + ' ' + worker_row.os_version + ' ' + worker_row.cpu_name
@@ -307,7 +307,7 @@ def post_files(request):
 
 @login_required
 def workers_api(request):
-    json = serializers.serialize('json', models.Worker.objects.order_by('hostname').all())
+    json = serializers.serialize('json', models.Worker.objects.order_by('hostname').exclude(state='disabled'))
     return HttpResponse(json, mimetype=APP_JS)
 
 def crashes_by_date(request, start, end, other_parms):
