@@ -1361,13 +1361,17 @@ class Worker(object):
             os.unlink(productfile)
 
         # SYM_STORE_SOURCE_DIRS= required due to bug 534992
+        # XXX: Do not package-tests since:
+        # a) they are not used in bughunter
+        # b) tests do not currently build for the beta/12 branch under vc2010
+        #    due to the Moz_Assert/JS_Assert confusion there.
         proc = subprocess.Popen(
             [
                 sisyphus_dir + "/bin/set-build-env.sh",
                 "-p", self.product,
                 "-b", self.branch,
                 "-T", self.buildtype,
-                "-c", "make -C firefox-%s package package-tests buildsymbols SYM_STORE_SOURCE_DIRS=" % (self.buildtype)
+                "-c", "make -C firefox-%s package buildsymbols SYM_STORE_SOURCE_DIRS=" % (self.buildtype)
                 ],
             preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
             stdout=subprocess.PIPE,

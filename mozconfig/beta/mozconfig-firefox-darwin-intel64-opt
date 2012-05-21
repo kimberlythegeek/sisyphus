@@ -7,29 +7,24 @@ mk_add_options MOZ_MAKE_FLAGS=-j${J}
 mk_add_options MOZ_CO_PROJECT=browser
 mk_add_options AUTOCONF=autoconf213
 
-#ac_add_options --with-macos-sdk=/Developer/SDKs/MacOSX10.5.sdk
-
 ac_add_options --enable-application=browser
 ac_add_options --disable-debug
 ac_add_options --enable-optimize
-ac_add_options --enable-debug-symbols="-gdwarf-2"
 # libxul required for packaging.
 ac_add_options --enable-libxul
 # do not strip symbols in packaged builds
 ac_add_options --disable-install-strip
 
 ac_add_options --enable-tests
-#ac_add_options --enable-logrefcnt
 ac_add_options --enable-accessibility
 
-ac_add_options --disable-installer
 ac_add_options --enable-official-branding
-
-export CFLAGS="-gdwarf-2"
-export CXXFLAGS="-gdwarf-2"
 
 # For NSS symbols
 export MOZ_DEBUG_SYMBOLS=1
 
 # Needed to enable breakpad in application.ini
 export MOZILLA_OFFICIAL=1
+
+CC=clang
+CXX=clang++

@@ -25,7 +25,6 @@ ac_add_options --disable-install-strip
 ac_add_options --enable-tests
 #ac_add_options --enable-logrefcnt
 
-ac_add_options --disable-installer
 ac_add_options --enable-official-branding
 
 # For NSS symbols
@@ -35,4 +34,4 @@ export MOZ_DEBUG_SYMBOLS=1
 export MOZILLA_OFFICIAL=1
 
 # temporarily disable ANGLE due to build failures with DirectX
-ac_add_options --disable-angle
+#ac_add_options --disable-angle

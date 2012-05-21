@@ -12,7 +12,6 @@ mk_add_options AUTOCONF=autoconf213
 ac_add_options --enable-application=browser
 ac_add_options --enable-debug
 ac_add_options --disable-optimize
-ac_add_options --enable-debug-symbols="-gdwarf-2"
 # libxul required for packaging.
 ac_add_options --enable-libxul
 # do not strip symbols in packaged builds
@@ -34,11 +33,8 @@ fi
 
 ac_add_options --enable-accessibility
 
-ac_add_options --disable-installer
 ac_add_options --enable-official-branding
 
-export CFLAGS="-gdwarf-2"
-export CXXFLAGS="-gdwarf-2"
 
 # For NSS symbols
 export MOZ_DEBUG_SYMBOLS=1

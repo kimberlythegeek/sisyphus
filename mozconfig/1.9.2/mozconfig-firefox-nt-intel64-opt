@@ -26,7 +26,6 @@ ac_add_options --disable-install-strip
 ac_add_options --enable-tests
 #ac_add_options --enable-logrefcnt
 
-ac_add_options --disable-installer
 ac_add_options --enable-official-branding
 
 # For NSS symbols

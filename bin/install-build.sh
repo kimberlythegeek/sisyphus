@@ -154,11 +154,13 @@ else
 
     cd "$executabledir"
     if [ -e "$product" ]; then
-        echo "$SCRIPT: patching $product"
-        sed -i.bak 's|^\"$dist_bin/run-mozilla.sh|exec $dist_bin/run-mozilla.sh|' $product
+        if file "$product" | grep shell; then
+            echo "$SCRIPT: patching $product"
+            sed -i.bak 's|^\"$dist_bin/run-mozilla.sh|exec $dist_bin/run-mozilla.sh|' $product
+        fi
     fi
     if [ -e run-mozilla.sh ]; then
         echo "$SCRIPT: patching run-mozilla.sh"
-        tab=`echo -e '\t'` && sed "s|^\([$tab ]*\)\"\$prog|\1exec \"\$prog|" run-mozilla.sh
+        tab=`echo -e '\t'` && sed -i.bak "s|^\([$tab ]*\)\"\$prog|\1exec \"\$prog|" run-mozilla.sh
     fi
 fi

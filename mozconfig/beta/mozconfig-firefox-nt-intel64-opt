@@ -24,10 +24,13 @@ ac_add_options --enable-libxul
 # do not strip symbols in packaged builds
 ac_add_options --disable-install-strip
 
-ac_add_options --enable-tests
+# TestNativeXMLHttpRequest.cpp fails to build under
+# VS 2010 and 64bit however Firefox does build though
+# with warnings regarding local vs. imported JS_Assert
+# Temporarily disable tests on Windows Beta 64bit tests.
+ac_add_options --disable-tests
 #ac_add_options --enable-logrefcnt
 
-ac_add_options --disable-installer
 ac_add_options --enable-official-branding
 
 # For NSS symbols
@@ -35,4 +38,4 @@ export MOZ_DEBUG_SYMBOLS=1
 
 # Needed to enable breakpad in application.ini
 export MOZILLA_OFFICIAL=1
-ac_add_options --disable-angle
+#ac_add_options --disable-angle

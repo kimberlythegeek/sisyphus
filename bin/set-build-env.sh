@@ -169,6 +169,24 @@ for step in step1; do # dummy loop for handling exits
         fi
     fi
 
+    # here project refers to either browser or mail
+    # and is used to find mozilla/(browser|mail)/config/mozconfig
+    if [[ $product == "firefox" ]]; then
+        export project=browser
+        export MOZCONFIG=${MOZCONFIG:-"$TEST_DIR/mozconfig/$branch$extra/mozconfig-firefox-$OSID-$TEST_PROCESSORTYPE-$buildtype"}
+
+    else
+        echo "Assuming project=browser for product: $product"
+        export project=browser
+        export MOZCONFIG=${MOZCONFIG:-"$TEST_DIR/mozconfig/$branch$extra/mozconfig-firefox-$OSID-$TEST_PROCESSORTYPE-$buildtype"}
+    fi
+
+    if [[ ! -e "$MOZCONFIG" ]]; then
+        error "mozconfig $MOZCONFIG does not exist"
+    fi
+    echo "mozconfig: $MOZCONFIG"
+    cat $MOZCONFIG | sed 's/^/mozconfig: /'
+
     case $OSID in
         nt)
             # On Windows, Sisyphus is run under Cygwin, so the OS will be CYGWIN
@@ -193,114 +211,16 @@ for step in step1; do # dummy loop for handling exits
             export mozillabuild=${mozillabuild:-/c/mozilla-build}
             export BUILDDIR=${BUILDDIR:-/c/work/mozilla/builds}
 
-            # determine installed compilers
-            case "$TEST_PROCESSORTYPE" in
-                *32)
-                    export HKLM_SOFTWARE="/machine/SOFTWARE"
-                    ;;
-                *64)
-                    export HKLM_SOFTWARE="/machine/SOFTWARE/Wow6432Node"
-                    ;;
-            esac
-            export MSVCROOTKEY="$HKLM_SOFTWARE/Microsoft/VisualStudio"
-            export MSVC6KEY="$MSVCROOTKEY/6.0/Setup/Microsoft Visual C++"
-            export MSVC71KEY="$MSVCROOTKEY/7.1/Setup/VC"
-            export MSVC8KEY="$MSVCROOTKEY/8.0/Setup/VC"
-            export MSVC8EXPRESSKEY="$HKLM_SOFTWARE/Microsoft/VCExpress/8.0/Setup/VC"
-            export MSVC9KEY="$MSVCROOTKEY/9.0/Setup/VC"
-            export MSVC9EXPRESSKEY="$HKLM_SOFTWARE/Microsoft/VCExpress/9.0/Setup/VC"
-            export MSVC10KEY="$MSVCROOTKEY/10.0/Setup/VC"
-
-            if [[ -z "$VC6DIR" ]]; then
-                export VC6DIR=`regtool get "$MSVC6KEY/ProductDir" 2> /dev/null`
-            fi
-
-            if [[ -z "$VC71DIR" ]]; then
-                export VC71DIR=`regtool get "$MSVC71KEY/ProductDir" 2> /dev/null`
-            fi
-
-            if [[ -z "$VC8DIR" ]]; then
-                export VC8DIR=`regtool get "$MSVC8KEY/ProductDir" 2> /dev/null`
-            fi
-
-            if [[ -z "$VC8EXPRESSDIR" ]]; then
-                export VC8EXPRESSDIR=`regtool get "$MSVC8EXPRESSKEY/ProductDir" 2> /dev/null`
-            fi
-
-            if [[ -z "$VC9DIR" ]]; then
-                export VC9DIR=`regtool get "$MSVC9KEY/ProductDir" 2> /dev/null`
-            fi
-
-            if [[ -z "$VC9EXPRESSDIR" ]]; then
-                export VC9EXPRESSDIR=`regtool get "$MSVC9EXPRESSKEY/ProductDir" 2> /dev/null`
-            fi
-
-            if [[ -z "$VC10DIR" ]]; then
-                export VC10DIR=`regtool get "$MSVC10KEY/ProductDir" 2> /dev/null`
-            fi
-
-            # msvc8 official, vc7.1, (2003), vc9 (2009) supported
-            # for 1.9.0 and later
-            if [[ -n "$VC8DIR" ]]; then
-                case "$TEST_PROCESSORTYPE" in
-                    *32)
-                        startbat=start-msvc8.bat
-                        ;;
-                    *64)
-                        startbat=start-msvc8-x64.bat
-                        ;;
-                esac
-                # set VCINSTALLDIR for use in detecting the MS CRT
-                # source when building jemalloc.
-                VCINSTALLDIR=$VC8DIR
-            elif [[ -n "$VC8EXPRESSDIR" ]]; then
-                startbat=start-msvc8.bat
-            elif [[ -n "$VC71DIR" ]]; then
-                startbat=start-msvc71.bat
-            elif [[ -n "$VC9DIR" || -n "$VC9EXPRESSDIR" ]]; then
-                case "$TEST_PROCESSORTYPE" in
-                    *32)
-                        startbat=start-msvc9.bat
-                        ;;
-                    *64)
-                        startbat=start-msvc9-x64.bat
-                        ;;
-                esac
-            elif [[ -n "$VC10DIR" ]]; then
-                case "$TEST_PROCESSORTYPE" in
-                    *32)
-                        startbat=start-msvc10.bat
-                        ;;
-                    *64)
-                        startbat=start-msvc10-x64.bat
-                        ;;
-                esac
-            fi
-
-            if [[ -z "$startbat" ]]; then
-                error "startbat is not defined"
-            fi
-
-            startbat="$mozillabuild/$startbat"
-            if [[ ! -e "$startbat" ]]; then
-                error "startbat $startbat does not exist"
-            fi
-
-            # The start batch file changes directory and starts an msys bash shell
-            # which will block its execution. Create a working copy without the
-            # bash invocation to be used to execute commands in the appropriate
-            # msys environment from cygwin.
-            cmdbat=`echo $startbat | sed 's|start|msys-command|'`;
-            if [[ ! -e "$cmdbat" || "$startbat" -nt "$cmdbat" ]]; then
-                sed 's|\(^cd.*USERPROFILE.*\)|rem \1|; s|^start /d.*|cmd /c %MOZILLABUILD%\\msys\\bin\\bash --login -i  -c %1|; s|^"%MOZILLABUILD%\\msys\\bin\\bash" --login -i|cmd /c %MOZILLABUILD%\\msys\\bin\\bash --login -i  -c %1|' $startbat > $cmdbat
-            fi
+            source $TEST_DIR/bin/set-msvc-env.sh
 
             echo moztools Location: $MOZ_TOOLS
 
-            # now convert TEST_DIR and BUILDDIR to cross compatible paths using
+            # now convert paths to cross compatible paths using
             # the common cygdrive prefix for cygwin and msys
+            MOZCONFIG_WIN=`cygpath -w $MOZCONFIG`
             TEST_DIR_WIN=`cygpath -w $TEST_DIR`
             BUILDDIR_WIN=`cygpath -w $BUILDDIR`
+            export MOZCONFIG=`cygpath -u $MOZCONFIG_WIN`
             export TEST_DIR=`cygpath -u $TEST_DIR_WIN`
             export BUILDDIR=`cygpath -u $BUILDDIR_WIN`
             ;;
@@ -367,24 +287,6 @@ for step in step1; do # dummy loop for handling exits
         echo "Build directory $BUILDTREE does not exist"
         myexit $ERR_ERROR
     fi
-
-    # here project refers to either browser or mail
-    # and is used to find mozilla/(browser|mail)/config/mozconfig
-    if [[ $product == "firefox" ]]; then
-        export project=browser
-        export MOZCONFIG=${MOZCONFIG:-"$TEST_DIR/mozconfig/$branch$extra/mozconfig-firefox-$OSID-$TEST_PROCESSORTYPE-$buildtype"}
-
-    else
-        echo "Assuming project=browser for product: $product"
-        export project=browser
-        export MOZCONFIG=${MOZCONFIG:-"$TEST_DIR/mozconfig/$branch$extra/mozconfig-firefox-$OSID-$TEST_PROCESSORTYPE-$buildtype"}
-    fi
-
-    if [[ ! -e "$MOZCONFIG" ]]; then
-        error "mozconfig $MOZCONFIG does not exist"
-    fi
-    echo "mozconfig: $MOZCONFIG"
-    cat $MOZCONFIG | sed 's/^/mozconfig: /'
 
     if [[ -n "$TEST_MOZILLA_HG" ]]; then
         export TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}
