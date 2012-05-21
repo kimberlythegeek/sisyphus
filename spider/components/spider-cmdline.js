@@ -124,6 +124,7 @@ SpiderHandler.prototype = {
     oArguments.start        = getFlag('start');
     oArguments.quit         = getFlag('quit');
     oArguments.robot        = getFlag('robot');
+    oArguments.fileurls     = getFlag('fileurls');
     oArguments.debug        = getFlag('debug');
     oArguments.jserrors     = getFlag('jserrors');
     oArguments.jswarnings   = getFlag('jswarnings');
@@ -166,6 +167,7 @@ SpiderHandler.prototype = {
     "  -start               Automatically start Spider\n" +
     "  -quit                Automatically quit when finished\n" +
     "  -robot               Obey robots.txt\n" +
+    "  -fileurls            Allow file:// urls\n" +
     "  -debug               Debug Spider\n" +
     "  -jserrors            Display JavaScript errors\n" +
     "  -jswarnings          Display JavaScript warnings\n" +

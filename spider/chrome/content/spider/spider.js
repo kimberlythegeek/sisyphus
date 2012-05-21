@@ -126,6 +126,7 @@ function init(evt, querystring)
     gForm.autostart.checked  = (oArguments.start == true);
     gForm.autoquit.checked   = (oArguments.quit == true);
     gForm.respectrobotrules.checked = (oArguments.robot == true);
+    gForm.fileurls.checked   = (oArguments.fileurls == true);
     gForm.debug.checked      = (oArguments.debug == true);
     gForm.javascripterrors.checked  = (oArguments.jserrors == true);
     gForm.javascriptwarnings.checked  = (oArguments.jswarnings == true);
@@ -196,6 +197,7 @@ function main(form)
   var restrict = gForm.restrict.checked;
   var timeout = parseFloat(gForm.timeout.value);
   var respectrobotrules = gForm.respectrobotrules.checked;
+  var fileurls = gForm.fileurls.checked;
   gWaitTime = parseFloat(gForm.waittime.value) * 1000;
   gDebug = gForm.debug.checked;
 
@@ -240,7 +242,7 @@ function main(form)
   );
 
   gSpider = new CSpider(url, domain, restrict, depth, gPageLoader, timeout,
-                        true, respectrobotrules);
+                        true, respectrobotrules, fileurls);
 
   // CSpider is a strategy pattern. You customize its
   // behavior by specifying the following functions which
@@ -261,6 +263,7 @@ function main(form)
           (gForm.autostart.checked          ? '-start '                                   : '') +
           (gForm.autoquit.checked           ? '-quit '                                    : '') +
           (gForm.respectrobotrules.checked  ? '-robot '                                   : '') +
+          (gForm.fileurls.checked           ? '-fileurls '                                : '') +
           (gForm.debug.checked              ? '-debug '                                   : '') +
           (gForm.javascripterrors.checked   ? '-jserrors '                                : '') +
           (gForm.javascriptwarnings.checked ? '-jswarnings '                              : '') +

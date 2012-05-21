@@ -384,6 +384,7 @@ new in 0.0.2.0</a></strong></p>
 -start               Automatically start Spider
 -quit                Automatically quit when finished
 -robot               Obey robots.txt
+-fileurls            Allow file:// urls
 -debug               Debug Spider
 -jserrors            Display JavaScript errors
 -jswarnings          Display JavaScript warnings
@@ -528,6 +529,25 @@ The previous example can be rewritten as
     <p>
     If Respect robots.txt is checked, Spider will obey the rules specified
     in a site's robots.txt file and refuse to load blocked urls. 
+    </p>
+    </dd>
+
+    <dt>Allow file urls</dt>
+    <dd>
+    <p>
+    If Allow file urls is checked, Spider will follow file:/// urls. Note
+    that this can have security implications since it allows Spider to follow
+    file:// links from arbitrary pages on the web and is not enabled by default.
+    </p>
+    <p>
+    Starting in Spider 0.0.4.0, Spider will allow you to load a file url
+    as the starting url, but will not follow file links unless you have
+    specified Allow file urls.
+    </p>
+    <p>
+      This change has been made primarily to allow Spider to be used with
+      local file based test cases and it not intended for use when spidering
+      content on the wild wild web.
     </p>
     </dd>
 

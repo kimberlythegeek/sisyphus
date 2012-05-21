@@ -63,6 +63,7 @@ function CSpider(/* String */ aUrl,
   /* Seconds */ aOnLoadTimeoutInterval,
   /* Boolean */ aExtraPrivileges,
   /* Boolean */ aRespectRobotRules,
+  /* Boolean */ aFileUrls,
   /* String */ aUserAgent)
 {
   //@JSD_LOG
@@ -109,6 +110,7 @@ function CSpider(/* String */ aUrl,
   this.mOnLoadTimeoutInterval = (aOnLoadTimeoutInterval || 60) * 1000;
   this.mExtraPrivileges = aExtraPrivileges || false;
   this.mRespectRobotRules = aRespectRobotRules || false;
+  this.mFileUrls = aFileUrls || false;
   this.mUserAgent = aUserAgent || 'Gecko/';
   this.init(aUrl);
 
@@ -234,9 +236,14 @@ CSpider.prototype.addPage =
   // only spider http protocols
   var lhref = href.toLowerCase();
 
-  if (lhref.search(/^http:/) == -1 && lhref.search(/^https:/) == -1)
+  if (lhref.search(/^http(s)?:/) == -1)
   {
-    return;
+    if (lhref.search(/^file:/) == -1 || !this.mFileUrls)
+    {
+      // skip non http url if it is a non-file url or
+      // if it is a file url and we have not allowed them.
+      return;
+    }
   }
 
   var hashIndex = href.indexOf('#');

@@ -118,6 +118,11 @@
         </label>
 
         <label>
+          <input name="fileurls" type="checkbox" value="on" />
+          Allow file urls
+        </label>
+
+        <label>
           <input name="debug" type="checkbox" value="on" />
           Debug Spider
         </label>
