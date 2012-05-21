@@ -80,6 +80,9 @@ function _err()
         0|$ERR_TIMED_RUN_OS|$ERR_TIMED_RUN_SIGNAL|$ERR_TIMED_RUN_TIMEOUT|$ERR_TIMED_RUN_INTERRUPT)
             # ignore exit codes from timed_run.py?
             ;;
+        1)
+            # Do not treat exit 1 as a fatal error
+            ;;
         $ERR_SIGNAL_KILL)
             # terminated by kill.
             if [[ -n "$TEST_LOG" ]]; then
