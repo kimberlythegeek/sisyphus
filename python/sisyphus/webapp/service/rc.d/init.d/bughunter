@@ -20,6 +20,16 @@ prog=${exec##*/}
 
 #config="<path to major config file>"
 
+if [[ ! -d /var/log/bughunter ]]; then
+   mkdir /var/log/bughunter
+   chown bughunter:bughunter /var/log/bughunter
+fi
+
+if [[ ! -d /var/run/bughunter ]]; then
+   mkdir /var/run/bughunter
+   chown bughunter:bughunter /var/run/bughunter
+fi
+
 [ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
 
 lockfile=/var/lock/subsys/$prog
@@ -28,7 +38,7 @@ start() {
     [ -x $exec ] || exit 5
     #[ -f $config ] || exit 6
     echo -n $"Starting $prog: "
-    daemon $exec
+    daemon --user bughunter $exec
     retval=$?
     echo
     [ $retval -eq 0 ] && touch $lockfile
