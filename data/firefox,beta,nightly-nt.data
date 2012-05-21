@@ -1,10 +1,10 @@
 product=${product:-firefox}
 branch=${branch:-beta}
 buildtype=nightly
-downloadurl="ftp://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/11.0b2-candidates/build1/win32/en-US/Firefox Setup 11.0b2.exe"
+downloadurl="http://stage.mozilla.org/pub/mozilla.org/firefox/nightly/13.0b4-candidates/build1/win32/en-US/Firefox%20Setup%2013.0b4.exe"
 profilename=${profilename:-firefox-beta-profile}
 profiledirectory=${profiledirectory:-/tmp/firefox-beta-profile}
-executablepath=/tmp/firefox-beta
+executablepath=$HOME/bin/beta
 userpreferences=${userpreferences:-$TEST_DIR/prefs/test-user.js}
 extensiondir=${extensiondir:-$TEST_DIR/xpi}
 TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-beta}

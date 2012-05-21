@@ -158,10 +158,10 @@ if [[ -z "$LIBRARYSH" ]]; then
         esac
 
         case $branch in
-            1.9.0|1.9.1|1.9.2|2.0.0|release|beta|aurora|nightly|tracemonkey)
+            release|beta|aurora|nightly)
                 ;;
             *)
-                error "branch \"$branch\" must be one of 1.9.0 1.9.1 1.9.2 2.0.0 release beta aurora nightly tracemonkey" $LINENO
+                error "branch \"$branch\" must be one of release beta aurora nightly" $LINENO
         esac
 
      }

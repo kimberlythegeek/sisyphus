@@ -130,18 +130,7 @@ for step in step1; do # dummy loop for handling exits
         myexit $ERR_ARGS
     fi
 
-    if [[ $branch == "1.9.0" ]]; then
-        export BRANCH_CO_FLAGS="";
-    elif [[ $branch == "1.9.1" ]]; then
-        TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-1.9.1}
-        export BRANCH_CO_FLAGS="";
-    elif [[ $branch == "1.9.2" ]]; then
-        TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-1.9.2}
-        export BRANCH_CO_FLAGS="";
-    elif [[ $branch == "2.0.0" ]]; then
-        TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-2.0}
-        export BRANCH_CO_FLAGS="";
-    elif [[ $branch == "release" ]]; then
+    if [[ $branch == "release" ]]; then
         TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/releases/mozilla-release}
         export BRANCH_CO_FLAGS="";
     elif [[ $branch == "beta" ]]; then
@@ -153,20 +142,13 @@ for step in step1; do # dummy loop for handling exits
     elif [[ $branch == "nightly" ]]; then
         TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/mozilla-central}
         export BRANCH_CO_FLAGS="";
-    elif [[ $branch == "tracemonkey" ]]; then
-        TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/tracemonkey}
-        export BRANCH_CO_FLAGS="";
     else
         echo "Unknown branch: $branch"
         myexit $ERR_ARGS
     fi
 
     if [[ -n "$MOZ_CO_DATE" ]]; then
-        if [[ $branch == "1.9.0" ]]; then
-            export DATE_CO_FLAGS="-D \"$MOZ_CO_DATE\""
-        else
-            export DATE_CO_FLAGS="--date \"<$MOZ_CO_DATE\""
-        fi
+        export DATE_CO_FLAGS="--date \"<$MOZ_CO_DATE\""
     fi
 
     # here project refers to either browser or mail
