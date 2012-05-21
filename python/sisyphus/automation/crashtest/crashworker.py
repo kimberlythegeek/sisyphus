@@ -268,12 +268,36 @@ class CrashTestWorker(worker.Worker):
             exceptionType, exceptionValue, errorMessage = utils.formatException()
             self.logMessage('runTest: %s, exception: %s, %s' % (url, exceptionValue, errorMessage))
 
-            if errorMessage.find('filedescriptor out of range') != -1:
-                self.logMessage('runTest: %s, filedescriptors %d out of range. Restarting.' %
-                                (url, utils.openFileDescriptorCount()))
-                # Closing file descriptors and trying again does not
-                # fix the issue on Windows. Just restart the program.
-                self.reloadProgram()
+            if exceptionType == OSError:
+                if (oserror.errno == 12 or
+                    oserror.errno == 23 or
+                    oserror.errno == 24):
+                    # Either out of memory or too many open files. We
+                    # can not reliably recover so just reload the
+                    # program and start over.
+                    try:
+                        self.logMessage('runTest: %s, OSError.errno=%d. Restarting.' %
+                                        (url, oserror.errno))
+                    except:
+                        # Just ignore the error if we can't log the problem.
+                        pass
+                    try:
+                        self.reloadProgram()
+                    except:
+                        # Exit if we can't restart the program.
+                        sys.exit(2)
+
+            elif exceptionType == ValueError:
+                if errorMessage.find('filedescriptor out of range') != -1:
+                    self.logMessage('runTest: %s, filedescriptors %d out of range. Restarting.' %
+                                    (url, utils.openFileDescriptorCount()))
+                    # Closing file descriptors and trying again does not
+                    # fix the issue on Windows. Just restart the program.
+                    try:
+                        self.reloadProgram()
+                    except:
+                        # Exit if we can't restart the program.
+                        sys.exit(2)
 
         match = re.search('log: (.*\.log) ', stdout)
         if match:
@@ -736,6 +760,12 @@ class CrashTestWorker(worker.Worker):
                 # test process.
                 extra_test_args = None
                 self.runTest(extra_test_args)
+                if self.testrun_row:
+                    self.testrun_row.state = 'completed'
+                    self.testrun_row.save()
+                self.state            = 'completed'
+                self.testrun_row  = None
+                self.save()
             except KeyboardInterrupt, SystemExit:
                 raise
             except:
@@ -744,9 +774,28 @@ class CrashTestWorker(worker.Worker):
                     raise
                 self.logMessage("doWork: error in runTest. %s signature: %s, url: %s, exception: %s" %
                                 (exceptionValue, self.testrun_row.socorro.signature, self.testrun_row.socorro.url, errorMessage))
+
+                if exceptionType == OSError:
+                    if (oserror.errno == 12 or
+                        oserror.errno == 23 or
+                        oserror.errno == 24):
+                        # Either out of memory or too many open files. We
+                        # can not reliably recover so just reload the
+                        # program and start over.
+                        try:
+                            self.logMessage('runTest: %s, OSError.errno=%d. Restarting.' %
+                                            (url, oserror.errno))
+                        except:
+                            # Just ignore the error if we can't log the problem.
+                            pass
+                        try:
+                            self.reloadProgram()
+                        except:
+                            # Exit if we can't restart the program.
+                            sys.exit(2)
             finally:
                 if self.testrun_row:
-                    self.testrun_row.state = 'completed'
+                    self.testrun_row.state = 'waiting'
                     self.testrun_row.save()
                 self.state            = 'completed'
                 self.testrun_row  = None
