@@ -292,7 +292,7 @@ def load_crashdata(crashlogfile):
             private_counter += 1
             continue # skip private networks
 
-        if signature.find('hang ') == 0:
+        if signature.find('hang ') == 0 and not options.include_hangs:
             # ignore hang signatures since their urls are duplicate in the matched crash signature.
             hang_counter += 1
             continue
@@ -581,6 +581,11 @@ Example:
                       dest='skipurlsfile',
                       default=None,
                       help='file containing url patterns to skip when uploading.')
+
+    parser.add_option('--include-hangs', action='store_true',
+                      dest='include_hangs',
+                      default=False,
+                      help='Include hang signatures. The default is to exclude them.')
 
     (options, args) = parser.parse_args()
 
