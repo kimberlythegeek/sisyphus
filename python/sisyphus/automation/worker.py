@@ -818,16 +818,20 @@ class Worker(object):
                 crash_row.save()
 
             if 'PluginFilename' in extradict:
-                crashtype = 'plugin'
                 pluginfilename = extradict['PluginFilename']
             else:
-                crashtype = 'browser'
                 pluginfilename = None
 
             if 'PluginVersion' in extradict:
                 pluginversion = extradict['PluginVersion']
             else:
                 pluginversion = None
+
+            crashtype = 'browser'
+            if 'FlashProcessDump' in extradict:
+                crashtype = extradict['FlashProcessDump']
+            elif 'ProcessType' in extradict:
+                crashtype = extradict['ProcessType']
 
             try:
                 reason = crash_data["crash_reason"]
@@ -841,7 +845,7 @@ class Worker(object):
 
             testcrash_row = self.model_test_crash(
                 url            = page,
-                exploitability  = exploitability,
+                exploitability = exploitability,
                 reason         = reason,
                 address        = address,
                 crashreport    = None,

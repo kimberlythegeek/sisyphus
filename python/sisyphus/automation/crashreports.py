@@ -191,12 +191,15 @@ def parse_crashreport(crashreport):
     reCrashReason         = re.compile(r'Crash reason:\s+(.*)')
     reCrashAddress        = re.compile(r'Crash address:\s+(.*)')
     reCrashThread         = re.compile(r'Thread ([0-9]+) [(]crashed[)]')
+    reThread              = re.compile(r'Thread ([0-9]+)')
     reFrameModuleSrce     = re.compile(r'\s*([0-9]+)\s+([^!]+)!(.*) [\[](.*) : ([0-9]+) \+ 0x[0-9a-fA-F]+[\]]')
     reFrameModuleNoSrce   = re.compile(r'\s*([0-9]+)\s+([^!]+)!(.*)')
     reFrameLibrary        = re.compile(r'\s*([0-9]+)\s+([^+]+)\s\+\s(0x[0-9a-fA-F]+)')
     reFrameAddress        = re.compile(r'\s*([0-9]+)\s+(0x[0-9a-fA-F]+)')
     reFrameRegister       = re.compile(r'\s+([a-zA-Z0-9]+)\s=\s(0x[0-9a-fA-F]+)')
     reFrameFoundBy        = re.compile(r'\s+Found by:')
+    reLoadedModules       = re.compile(r'Loaded modules:')
+    reMainModule          = re.compile(r'0x[a-zA-Z0-9]+\s-\s0x[a-zA-Z0-9]+\s+([^\s]+)\s+[^\s]+\s+[(]main[)]')
 
     # socorro processor
     reFixupSpace = re.compile(r' (?=[\*&,])')
@@ -212,7 +215,8 @@ def parse_crashreport(crashreport):
         "crash_address" : "",
         "crashing_thread" : "",
         "frames" : [],
-        "messages": []
+        "messages": [],
+        "main": ""
         }
 
     frames = crash_data['frames']
@@ -318,7 +322,21 @@ def parse_crashreport(crashreport):
                 crash_data['crashing_thread'] = match.group(1)
                 state = 'expect_frame_start'
             else:
-                messages.append('error state: %s, unexpected: %s' % (state, line))
+                match = reThread.match(line)
+                if match:
+                    # Our first thread is not marked as crashing
+                    # but we will pretend it is the crashing thread.
+                    crash_data['crashing_thread'] = match.group(1)
+                    state = 'expect_frame_start'
+                else:
+                    messages.append('checking reLoadedModules')
+                    match = reLoadedModules.match(line)
+                    if match:
+                        # In this case, there are no threads.
+                        messages.append('found')
+                        state = 'expect_main_module'
+                    else:
+                        messages.append('error state: %s, unexpected: %s' % (state, line))
             continue
 
         if state == 'expect_frame_start':
@@ -415,22 +433,43 @@ def parse_crashreport(crashreport):
                             match = reBlankLine.match(line)
                             if match:
                                 messages.append('found')
-                                state = 'complete'
-                                break
+                                state = 'expect_loaded_modules'
             continue
 
         if state == 'expect_frame_registers':
+            messages.append('checking reFrameRegister')
             match = re.search(reFrameRegister, line)
             if match:
+                messages.append('found')
                 while match:
                     frames[-1]['frame_registers'][match.group(1)] = match.group(2)
                     match = reFrameRegister.search(line, match.end(0))
             else:
+                messages.append('checking reFrameFoundBy')
                 match = reFrameFoundBy.match(line)
                 if match:
+                    messages.append('found')
                     state = 'expect_frame_start'
                 else:
                     messages.append('error state: %s, unexpected: %s' % (state, line))
+            continue
+
+        if state == 'expect_loaded_modules':
+            messages.append('checking reLoadedModules')
+            match = reLoadedModules.match(line)
+            if match:
+                messages.append('found')
+                state = 'expect_main_module'
+            continue
+
+        if state == 'expect_main_module':
+            messages.append('checking reMainModule')
+            match = reMainModule.match(line)
+            if match:
+                messages.append('found')
+                crash_data['main'] = match.group(1)
+                state = 'complete'
+                break
             continue
 
         messages.append('error state: %s, unexpected: %s' % (state, line))
@@ -440,6 +479,8 @@ def parse_crashreport(crashreport):
 
     signatureList = [frame['frame_signature'] for frame in crash_data['frames']]
 
+    if len(signatureList) == 0 and crash_data['main']:
+        signatureList = ['(' + crash_data['main'] + ')']
     crash_data['signature_list'] = generateSignatureFromList(signatureList)
 
     return crash_data
@@ -8908,6 +8949,138 @@ Loaded modules:
 0x7e410000 - 0x7e4a0fff  user32.dll  5.1.2600.5512
 
  EXIT STATUS: NORMAL (30.593000 seconds)
+""",
+"""
+Operating system: Windows NT
+                  6.1.7601 Service Pack 1
+CPU: x86
+     GenuineIntel family 6 model 37 stepping 1
+     2 CPUs
+
+Crash reason:  EXCEPTION_ACCESS_VIOLATION_READ
+Crash address: 0x88
+Assertion: Unknown assertion type 0x00000000
+
+Loaded modules:
+0x011e0000 - 0x0135cfff  FlashPlayerPlugin_11_3_300_265.exe  11.3.300.265  (main)
+0x6e010000 - 0x6e049fff  schannel.dll  6.1.7601.17856
+0x6e050000 - 0x6e057fff  credssp.dll  6.1.7601.17514
+0x6e060000 - 0x6e0e3fff  comctl32.dll  5.82.7601.17514
+0x715f0000 - 0x71601fff  mpr.dll  6.1.7600.16385
+0x71610000 - 0x71617fff  secur32.dll  6.1.7601.17856
+0x721c0000 - 0x721e0fff  ntmarta.dll  6.1.7600.16385
+0x72920000 - 0x72970fff  winspool.drv  6.1.7601.17514
+0x729c0000 - 0x729f1fff  winmm.dll  6.1.7601.17514
+0x72a00000 - 0x72a7ffff  uxtheme.dll  6.1.7600.16385
+0x72d80000 - 0x72d8afff  profapi.dll  6.1.7600.16385
+0x73150000 - 0x7319bfff  apphelp.dll  6.1.7601.17514
+0x74670000 - 0x7467bfff  CRYPTBASE.dll  6.1.7600.16385
+0x74680000 - 0x746dffff  sspicli.dll  6.1.7601.17856
+0x746e0000 - 0x746e4fff  psapi.dll  6.1.7600.16385
+0x746f0000 - 0x7477efff  oleaut32.dll  6.1.7601.17676
+0x74840000 - 0x74858fff  sechost.dll  6.1.7600.16385
+0x74860000 - 0x74862fff  normaliz.dll  6.1.7600.16385
+0x74870000 - 0x7498afff  wininet.dll  9.0.8112.16447
+0x74990000 - 0x74a2cfff  usp10.dll  1.626.7601.17514
+0x74a30000 - 0x75679fff  shell32.dll  6.1.7601.17859
+0x75680000 - 0x756dffff  imm32.dll  6.1.7601.17514
+0x756f0000 - 0x757dffff  rpcrt4.dll  6.1.7601.17514
+0x75870000 - 0x7593bfff  msctf.dll  6.1.7600.16385
+0x75940000 - 0x75a5dfff  crypt32.dll  6.1.7601.17827
+0x75a60000 - 0x75a69fff  lpk.dll  6.1.7600.16385
+0x75a70000 - 0x75ab5fff  KERNELBASE.dll  6.1.7601.17651
+0x75ac0000 - 0x75b4ffff  gdi32.dll  6.1.7601.17514
+0x75b50000 - 0x75c4ffff  user32.dll  6.1.7601.17514
+0x75c50000 - 0x75d5ffff  kernel32.dll  6.1.7601.17651
+0x75f20000 - 0x75f64fff  Wldap32.dll  6.1.7601.17514
+0x75fd0000 - 0x7607bfff  msvcrt.dll  7.0.7601.17744
+0x76080000 - 0x760fafff  comdlg32.dll  6.1.7601.17514
+0x76140000 - 0x761dffff  advapi32.dll  6.1.7601.17514
+0x761e0000 - 0x7633bfff  ole32.dll  6.1.7601.17514
+0x76340000 - 0x764f7fff  iertutil.dll  9.0.8112.16447
+0x76530000 - 0x76586fff  shlwapi.dll  6.1.7601.17514
+0x765c0000 - 0x766d0fff  urlmon.dll  9.0.8112.16447
+0x76f70000 - 0x76f7bfff  msasn1.dll  6.1.7601.17514
+0x76fa0000 - 0x7711ffff  ntdll.dll  6.1.7601.17725
+
+ EXIT STATUS: NORMAL (0.015600 seconds)
+""",
+"""
+Operating system: Windows NT
+                  6.1.7601 Service Pack 1
+CPU: x86
+     GenuineIntel family 6 model 37 stepping 1
+     2 CPUs
+
+Crash reason:  EXCEPTION_ACCESS_VIOLATION_READ
+Crash address: 0x88
+Assertion: Unknown assertion type 0x00000000
+
+Thread 0
+ 0  ntdll.dll + 0x1f8b1
+    eip = 0x76fbf8b1   esp = 0x031ffd6c   ebp = 0x031ffdd8   ebx = 0x00000000
+    esi = 0x00000188   edi = 0x031ffdb4   eax = 0x01330a80   ecx = 0x00000000
+    edx = 0x00000000   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x11193
+    eip = 0x76081194   esp = 0x031ffde0   ebp = 0x031ffdf0
+    Found by: previous frame's frame pointer
+ 2  kernel32.dll + 0x11147
+    eip = 0x76081148   esp = 0x031ffdf8   ebp = 0x031ffe04
+    Found by: previous frame's frame pointer
+ 3  FlashPlayerPlugin_11_3_300_265.exe + 0x70aa9
+    eip = 0x01330aaa   esp = 0x031ffe0c   ebp = 0x031ffe20
+    Found by: previous frame's frame pointer
+ 4  ntdll.dll + 0x39ef1
+    eip = 0x76fd9ef2   esp = 0x031ffe28   ebp = 0x031ffe60
+    Found by: previous frame's frame pointer
+ 5  ntdll.dll + 0x39ec4
+    eip = 0x76fd9ec5   esp = 0x031ffe68   ebp = 0x031ffe78
+    Found by: previous frame's frame pointer
+
+Loaded modules:
+0x012c0000 - 0x0143cfff  FlashPlayerPlugin_11_3_300_265.exe  11.3.300.265  (main)
+0x6d600000 - 0x6d639fff  schannel.dll  6.1.7601.17856
+0x6d670000 - 0x6d6f3fff  comctl32.dll  5.82.7601.17514
+0x71560000 - 0x71580fff  ntmarta.dll  6.1.7600.16385
+0x71cb0000 - 0x71cc1fff  mpr.dll  6.1.7600.16385
+0x72690000 - 0x72697fff  credssp.dll  6.1.7601.17514
+0x726b0000 - 0x726b7fff  secur32.dll  6.1.7601.17856
+0x72890000 - 0x728e0fff  winspool.drv  6.1.7601.17514
+0x72910000 - 0x7291afff  profapi.dll  6.1.7600.16385
+0x72a40000 - 0x72a71fff  winmm.dll  6.1.7601.17514
+0x72e10000 - 0x72e8ffff  uxtheme.dll  6.1.7600.16385
+0x73140000 - 0x7318bfff  apphelp.dll  6.1.7601.17514
+0x74670000 - 0x7467bfff  CRYPTBASE.dll  6.1.7600.16385
+0x74680000 - 0x746dffff  sspicli.dll  6.1.7601.17856
+0x746e0000 - 0x7477ffff  advapi32.dll  6.1.7601.17514
+0x74780000 - 0x747dffff  imm32.dll  6.1.7601.17514
+0x747e0000 - 0x74997fff  iertutil.dll  9.0.8112.16447
+0x749b0000 - 0x74a5bfff  msvcrt.dll  7.0.7601.17744
+0x74a60000 - 0x74a62fff  normaliz.dll  6.1.7600.16385
+0x74a70000 - 0x756b9fff  shell32.dll  6.1.7601.17859
+0x756c0000 - 0x7574efff  oleaut32.dll  6.1.7601.17676
+0x75750000 - 0x7586dfff  crypt32.dll  6.1.7601.17827
+0x758a0000 - 0x759fbfff  ole32.dll  6.1.7601.17514
+0x75b20000 - 0x75b38fff  sechost.dll  6.1.7600.16385
+0x75b40000 - 0x75c0bfff  msctf.dll  6.1.7600.16385
+0x75c10000 - 0x75c14fff  psapi.dll  6.1.7600.16385
+0x75c40000 - 0x75c4bfff  msasn1.dll  6.1.7601.17514
+0x75c50000 - 0x75c94fff  Wldap32.dll  6.1.7601.17514
+0x75ca0000 - 0x75cf6fff  shlwapi.dll  6.1.7601.17514
+0x75d00000 - 0x75dfffff  user32.dll  6.1.7601.17514
+0x75e40000 - 0x75ecffff  gdi32.dll  6.1.7601.17514
+0x75ed0000 - 0x75fe0fff  urlmon.dll  9.0.8112.16447
+0x75ff0000 - 0x7606afff  comdlg32.dll  6.1.7601.17514
+0x76070000 - 0x7617ffff  kernel32.dll  6.1.7601.17651
+0x76180000 - 0x7626ffff  rpcrt4.dll  6.1.7601.17514
+0x76270000 - 0x7630cfff  usp10.dll  1.626.7601.17514
+0x763d0000 - 0x76415fff  KERNELBASE.dll  6.1.7601.17651
+0x765c0000 - 0x766dafff  wininet.dll  9.0.8112.16447
+0x76f70000 - 0x76f79fff  lpk.dll  6.1.7600.16385
+0x76fa0000 - 0x7711ffff  ntdll.dll  6.1.7601.17725
+
+ EXIT STATUS: NORMAL (0.031194 seconds)
 """,]
 
     for crashreport in crashreport_list:
