@@ -338,13 +338,14 @@ class CrashTestWorker(worker.Worker):
                     page_http_403 = True
                     continue
 
+                # Collect the first occurrence of a fatal message
                 match = reAssertionFail.match(line)
-                if match:
+                if match and not self.testrun_row.fatal_message:
                     self.testrun_row.fatal_message = match.group(1)
                     continue
 
                 match = reABORT.match(line)
-                if match:
+                if match and not self.testrun_row.fatal_message:
                     self.testrun_row.fatal_message = match.group(1).rstrip()
                     match = reABORT2.match(line)
                     if match:
@@ -387,7 +388,11 @@ class CrashTestWorker(worker.Worker):
             logfile.close()
 
             if self.testrun_row.fatal_message:
+                # remove any trailing commas or colons and convert any raw hex addresses to 0x
+                # so that fatal_messages can be combined regardless of the runtime values of
+                # the addresses.
                 self.testrun_row.fatal_message = self.testrun_row.fatal_message.rstrip(',:')
+                self.testrun_row.fatal_message = re.sub('0x[0-9a-fA-F]+', '0x', self.testrun_row.fatal_message)
 
             baselogfilename = os.path.basename(logfilename)
             loguploadpath = 'logs/' + baselogfilename[:13] # CCYY-MM-DD-HH
