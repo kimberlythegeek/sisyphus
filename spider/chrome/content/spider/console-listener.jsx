@@ -67,20 +67,6 @@ var gConsoleListener =
     var excp2;
     var msg = '';
 
-    if (window.document.location.href.indexOf('chrome://') == -1)
-    {
-      try
-      {
-        window.netscape.security.PrivilegeManager.
-          enablePrivilege(window.gConsoleSecurityPrivileges);
-      }
-      catch(e)
-      {
-        //window.cdump('gConsoleListener_Observe: ' + window.gConsoleSecurityMessage);
-        return;
-      }
-    }
-
     try
     {
       var category;
@@ -256,20 +242,6 @@ function registerConsoleListener()
   gConsoleListener.chromeErrors = false;
   gConsoleListener.xblErrors = false;
 
-  if (document.location.href.indexOf('chrome://') == -1)
-  {
-    try
-    {
-      netscape.security.PrivilegeManager.
-        enablePrivilege(gConsoleSecurityPrivileges);
-    }
-    catch(excp)
-    {
-      alert(gConsoleSecurityMessage);
-      return;
-    }
-  }
-
   try
   {
     var consoleService = getConsoleService();
@@ -344,20 +316,6 @@ function unregisterConsoleListener()
 {
   var excp;
 
-  if (document.location.href.indexOf('chrome://') == -1)
-  {
-    try
-    {
-      netscape.security.PrivilegeManager.
-        enablePrivilege(gConsoleSecurityPrivileges);
-    }
-    catch(excp)
-    {
-      alert(gConsoleSecurityMessage);
-      return;
-    }
-  }
-
   try
   {
     var consoleService = getConsoleService();
@@ -376,20 +334,6 @@ function getConsoleService()
   }
 
   var excp;
-
-  if (document.location.href.indexOf('chrome://') == -1)
-  {
-    try
-    {
-      netscape.security.PrivilegeManager.
-        enablePrivilege(gConsoleSecurityPrivileges);
-    }
-    catch(excp)
-    {
-      alert(gConsoleSecurityMessage);
-      return gConsoleService;
-    }
-  }
 
   try
   {
@@ -410,20 +354,6 @@ function cdump(s)
   var consoleService = getConsoleService();
 
   var excp;
-
-  if (document.location.href.indexOf('chrome://') == -1)
-  {
-    try
-    {
-      netscape.security.PrivilegeManager.
-        enablePrivilege(gConsoleSecurityPrivileges);
-    }
-    catch(excp)
-    {
-      alert(gConsoleSecurityMessage);
-      return;
-    }
-  }
 
   try
   {

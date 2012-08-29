@@ -94,19 +94,6 @@ isRobotBlocked.inChrome  = (document.location.href.indexOf('chrome://') == 0);
 function loadRobotsTxt(ua, protocol, domain)
 {
   var excp;
-  if (!gInChrome && gCanHaveChromePermissions)
-  {
-    try
-    {
-      netscape.security.PrivilegeManager.
-        enablePrivilege('UniversalBrowserRead');
-    }
-    catch(excp)
-    {
-      msg(excp);
-    }
-  }
-
   try
   {
     var robotstxt = protocol + '//' + domain + '/robots.txt';

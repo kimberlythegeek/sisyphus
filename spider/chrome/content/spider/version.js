@@ -5,8 +5,8 @@
   div with id="version" to output the version string.
 */
 
-var _version = '0.0.4.0';
-var _date = 'May 3, 2012';
+var _version = '0.0.5.0';
+var _date = 'August 29, 2012';
 
 function sayVersion()
 {
@@ -21,6 +21,6 @@ function sayVersion()
     version.removeChild(version.firstChild);
   }
   version.appendChild(
-    document.createTextNode('Spider/' + _version + ' ' + _date + ' rv:' + rv + ' Gecko/' + navigator.productSub)
+    document.createTextNode('Spider/' + _version + ' ' + _date + ' rv:' + rv + ' ' + navigator.buildID)
     );
 }

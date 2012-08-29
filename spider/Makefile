@@ -2,7 +2,7 @@
 
 all: spider.xpi
 
-FILES=$(shell cat ./file.manifest)
+FILES=$(shell cat ./file.manifest | grep -v spider.jar)
 
 chrome/spider.jar: $(FILES)
 	make -C chrome -f Makejar

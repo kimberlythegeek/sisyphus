@@ -61,7 +61,7 @@ function CSpider(/* String */ aUrl,
   /* Number */ aDepth,
   /* CPageLoader */ aPageLoader,
   /* Seconds */ aOnLoadTimeoutInterval,
-  /* Boolean */ aExtraPrivileges,
+  /* Boolean */ aExtraPrivileges, // no longer used
   /* Boolean */ aRespectRobotRules,
   /* Boolean */ aFileUrls,
   /* String */ aUserAgent)
@@ -281,18 +281,6 @@ CSpider.prototype.loadPage =
 
   dlog('CSpider.loadPage ' + this.mState);
 
-  if (!gInChrome && gCanHaveChromePermissions)
-  {
-    try
-    {
-      netscape.security.PrivilegeManager.enablePrivilege(gSecurityPrivileges);
-    }
-    catch(e)
-    {
-      msg(e);
-    }
-  }
-
   if (this.mState != 'running')
   {
     dlog('CSpider.loadPage not running. ' + this.mState);
@@ -443,20 +431,6 @@ CSpider.prototype.onLoadPageTimeout =
 
   dlog('CSpider.onLoadPageTimeout ' + this.mState);
 
-  if (!gInChrome && gCanHaveChromePermissions)
-  {
-    var e;
-    try
-    {
-      netscape.security.PrivilegeManager.enablePrivilege(gSecurityPrivileges);
-    }
-    catch(e)
-    {
-      msg(e);
-      dlog(e);
-    }
-  }
-
   // call mOnPageTimeout prior to the mPageLoader.cancel
   // so that the timeout handler has access to the document
   // object.
@@ -491,19 +465,6 @@ CSpider.prototype.onLoadPage =
 
 
   dlog('CSpider.onLoadPage ' + this.mState);
-
-  if (!gInChrome && gCanHaveChromePermissions)
-  {
-    try
-    {
-      netscape.security.PrivilegeManager.enablePrivilege(gSecurityPrivileges);
-    }
-    catch(e)
-    {
-      msg(e);
-      this.stop();
-    }
-  }
 
   if (this.mPageLoader.ontimeout_ccallwrapper)
   {

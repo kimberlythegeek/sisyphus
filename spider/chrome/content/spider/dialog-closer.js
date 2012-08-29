@@ -41,19 +41,6 @@ var gDialogCloserObserver;
 function registerDialogCloser()
 {
   dlog('registerDialogCloser: start');
-  if (!inChrome())
-  {
-    try
-    {
-      netscape.security.PrivilegeManager.
-        enablePrivilege(gConsoleSecurityPrivileges);
-    }
-    catch(excp)
-    {
-      alert(gConsoleSecurityMessage);
-      return;
-    }
-  }
 
   gDialogCloser = Components.
     classes['@mozilla.org/embedcomp/window-watcher;1'].
@@ -73,19 +60,6 @@ function unregisterDialogCloser()
   if (!gDialogCloserObserver || !gDialogCloser)
   {
     return;
-  }
-  if (!inChrome())
-  {
-    try
-    {
-      netscape.security.PrivilegeManager.
-        enablePrivilege(gConsoleSecurityPrivileges);
-    }
-    catch(excp)
-    {
-      alert(gConsoleSecurityMessage);
-      return;
-    }
   }
 
   gDialogCloser.unregisterNotification(gDialogCloserObserver);

@@ -90,25 +90,6 @@ observe:function gConsoleListener_Observe( aMessage )
   var excp2;
   var msg = '';
 
-  if (!gInChrome)
-  {
-    if (!gCanHaveChromePermissions)
-    {
-      return;
-    }
-
-    try
-    {
-      window.netscape.security.PrivilegeManager.
-        enablePrivilege(window.gConsoleSecurityPrivileges);
-    }
-    catch(e)
-    {
-      //window.cdump('gConsoleListener_Observe: ' + window.gConsoleSecurityMessage);
-      return;
-    }
-  }
-
   try
   {
     var category;
@@ -284,25 +265,6 @@ function registerConsoleListener()
   gConsoleListener.chromeErrors = false;
   gConsoleListener.xblErrors = false;
 
-  if (!gInChrome)
-  {
-    if (!gCanHaveChromePermissions)
-    {
-      return;
-    }
-
-    try
-    {
-      netscape.security.PrivilegeManager.
-        enablePrivilege(gConsoleSecurityPrivileges);
-    }
-    catch(excp)
-    {
-      msg(gConsoleSecurityMessage);
-      return;
-    }
-  }
-
   try
   {
     var consoleService = getConsoleService();
@@ -377,25 +339,6 @@ function unregisterConsoleListener()
 {
   var excp;
 
-  if (!gInChrome)
-  {
-    if (!gCanHaveChromePermissions)
-    {
-      return;
-    }
-
-    try
-    {
-      netscape.security.PrivilegeManager.
-        enablePrivilege(gConsoleSecurityPrivileges);
-    }
-    catch(excp)
-    {
-      msg(gConsoleSecurityMessage);
-      return;
-    }
-  }
-
   try
   {
     var consoleService = getConsoleService();
@@ -414,25 +357,6 @@ function getConsoleService()
   }
 
   var excp;
-
-  if (!gInChrome)
-  {
-    if (!gCanHaveChromePermissions)
-    {
-      return null;
-    }
-
-    try
-    {
-      netscape.security.PrivilegeManager.
-        enablePrivilege(gConsoleSecurityPrivileges);
-    }
-    catch(excp)
-    {
-      msg(gConsoleSecurityMessage);
-      return gConsoleService;
-    }
-  }
 
   try
   {
@@ -453,29 +377,6 @@ function cdump(s)
   var consoleService = getConsoleService();
 
   var excp;
-
-  if (!gInChrome)
-  {
-    if (!gCanHaveChromePermissions)
-    {
-      if (typeof dump == 'function')
-      {
-        dump(s + '\n');
-      }
-      return;
-    }
-
-    try
-    {
-      netscape.security.PrivilegeManager.
-        enablePrivilege(gConsoleSecurityPrivileges);
-    }
-    catch(excp)
-    {
-      msg(gConsoleSecurityMessage);
-      return;
-    }
-  }
 
   try
   {
@@ -535,25 +436,3 @@ function collectGarbage()
   }
 }
 
-function checkChromePrivs()
-{
-  var chromeprivs = false;
-  try
-  {
-    netscape.security.PrivilegeManager.enablePrivilege(gConsoleSecurityPrivileges);
-    chromeprivs = true;
-  }
-  catch(e)
-  {
-    msg('checkChromePrivs: ' + gConsoleSecurityMessage);
-  }
-  return chromeprivs;
-}
-
-function inChrome()
-{
-  return document.location.href.indexOf('chrome://') != -1;
-}
-
-var gInChrome = inChrome();
-var gCanHaveChromePermissions = checkChromePrivs();

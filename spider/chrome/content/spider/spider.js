@@ -177,20 +177,6 @@ function main(form)
     gOutput = document.getElementById('output');
   }
 
-  if (!gInChrome && gCanHaveChromePermissions)
-  {
-    try
-    {
-      netscape.security.PrivilegeManager.
-        enablePrivilege(gConsoleSecurityPrivileges);
-    }
-    catch(e)
-    {
-      msg(e);
-      return;
-    }
-  }
-
   var url = gForm.url.value;
   var domain = gForm.domain.value;
   var depth = parseInt(gForm.depth.value);
@@ -274,21 +260,6 @@ function main(form)
           (gForm.invisible                  ? '-invisible '                               : '')
          );
 
-    if (!gInChrome && gCanHaveChromePermissions)
-    {
-      var e;
-      try
-      {
-        netscape.security.PrivilegeManager.
-          enablePrivilege(gConsoleSecurityPrivileges);
-      }
-      catch(e)
-      {
-        msg(e);
-        return false;
-      }
-    }
-
     gForm.run.disabled = true;
     gForm.save.disabled = true;
     gForm.reset.disabled = true;
@@ -325,21 +296,6 @@ function main(form)
         'Total loaded : ' + this.mPagesVisited.length);
 
     cdump('Spider: Begin loading ' + this.mCurrentUrl.mUrl);
-
-    if (!gInChrome && gCanHaveChromePermissions)
-    {
-      var e;
-      try
-      {
-        netscape.security.PrivilegeManager.
-          enablePrivilege(gConsoleSecurityPrivileges);
-      }
-      catch(e)
-      {
-        msg(e);
-        return false;
-      }
-    }
 
     if (typeof(userOnBeforePage) == 'function')
     {
@@ -386,19 +342,6 @@ function main(form)
               ' status text: ' + response.responseStatusText +
               ' content-type: ' + response.contentType +
               ' succeeded: ' + response.requestSucceeded);
-      }
-    }
-
-    if (!gInChrome && gCanHaveChromePermissions)
-    {
-      try
-      {
-        netscape.security.PrivilegeManager.
-          enablePrivilege(gConsoleSecurityPrivileges);
-      }
-      catch(e)
-      {
-        msg(gConsoleSecurityMessage);
       }
     }
 
@@ -462,20 +405,6 @@ function main(form)
 
     msg('Stopping... ');
 
-    if (!gInChrome && gCanHaveChromePermissions)
-    {
-      try
-      {
-        netscape.security.PrivilegeManager.
-          enablePrivilege(gConsoleSecurityPrivileges);
-      }
-      catch(e)
-      {
-        msg(e);
-        return false;
-      }
-    }
-
     gForm.run.disabled = false;
     gForm.save.disabled = false;
     gForm.reset.disabled = false;
@@ -512,21 +441,6 @@ function main(form)
   gSpider.mOnPause = function CSpider_mOnPause()
   {
     dlog('CSpider.mOnPause() ' + gSpider.mState);
-
-    if (!gInChrome && gCanHaveChromePermissions)
-    {
-      var e;
-      try
-      {
-        netscape.security.PrivilegeManager.
-          enablePrivilege(gConsoleSecurityPrivileges);
-      }
-      catch(e)
-      {
-        msg(e);
-        return false;
-      }
-    }
 
     gForm.run.disabled = true;
     gForm.save.disabled = true;
@@ -583,20 +497,6 @@ function main(form)
     dlog('CSpider.mOnRestart()');
     msg('Restarting...');
 
-    if (!gInChrome && gCanHaveChromePermissions)
-    {
-      try
-      {
-        netscape.security.PrivilegeManager.
-          enablePrivilege(gConsoleSecurityPrivileges);
-      }
-      catch(e)
-      {
-        msg(e);
-        return false;
-      }
-    }
-
     if (gRestartThread)
     {
       clearTimeout(gRestartThread);
@@ -645,26 +545,6 @@ function main(form)
 
     msg(s);
     cdump('Spider: ' + s);
-
-    if (!gInChrome && gCanHaveChromePermissions)
-    {
-      try
-      {
-        netscape.security.PrivilegeManager.
-          enablePrivilege(gConsoleSecurityPrivileges);
-      }
-      catch(e)
-      {
-        msg(e);
-        return false;
-      }
-    }
-    //gForm.run.disabled = true;
-    //gForm.save.disabled = true;
-    //gForm.reset.disabled = true;
-    //gForm.pause.disabled = true;
-    //gForm.restart.disabled = false;
-    //gForm.stop.disabled = false;
 
     if (typeof(userOnPageTimeout) == 'function')
     {
@@ -1087,15 +967,6 @@ function CHTTPResponseObserver(onresponse_callback) {
     var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
       'UniversalXPConnect';
 
-    try
-    {
-      window.netscape.security.PrivilegeManager.enablePrivilege(privs);
-    }
-    catch(ex)
-    {
-      throw('CHTTPResponseObserver.observe: privilege failure ' + ex);
-    }
-
     var response = {};
 
     try
@@ -1232,21 +1103,6 @@ function CHTTPResponseObserver(onresponse_callback) {
     var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
       'UniversalXPConnect';
 
-    if (!gInChrome && !gCanHaveChromePermissions)
-    {
-      //dlog('CHTTPResponseObserver.observerService permissions abort');
-      return null;
-    }
-
-    try
-    {
-      netscape.security.PrivilegeManager.enablePrivilege(privs);
-    }
-    catch(ex)
-    {
-      throw('CHTTPResponseObserver.observerService: privilege failure ' + ex);
-    }
-
     try
     {
       return Components.classes["@mozilla.org/observer-service;1"]
@@ -1271,21 +1127,6 @@ function CHTTPResponseObserver(onresponse_callback) {
     var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
       'UniversalXPConnect';
 
-    if (!gInChrome && !gCanHaveChromePermissions)
-    {
-      //dlog('CHTTPResponseObserver.register() permissions abort');
-      return;
-    }
-
-    try
-    {
-      netscape.security.PrivilegeManager.enablePrivilege(privs);
-    }
-    catch(ex)
-    {
-      throw('CHTTPResponseObserver.register: privilege failure ' + ex);
-    }
-
     try
     {
       this.observerService.addObserver(this, "http-on-examine-response", false);
@@ -1303,21 +1144,6 @@ function CHTTPResponseObserver(onresponse_callback) {
 
     var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
       'UniversalXPConnect';
-
-    if (!gInChrome && !gCanHaveChromePermissions)
-    {
-      //dlog('CHTTPResponseObserver.register() permissions abort');
-      return;
-    }
-
-    try
-    {
-      netscape.security.PrivilegeManager.enablePrivilege(privs);
-    }
-    catch(ex)
-    {
-      throw('CHTTPResponseObserver.unregister: privilege failure ' + ex);
-    }
 
     try
     {
@@ -1392,15 +1218,6 @@ function goQuitApplication()
 
   var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
     'UniversalXPConnect';
-
-  try
-  {
-    netscape.security.PrivilegeManager.enablePrivilege(privs);
-  }
-  catch(ex)
-  {
-    throw('goQuitApplication: privilege failure ' + ex);
-  }
 
   if (!canQuitApplication())
   {
