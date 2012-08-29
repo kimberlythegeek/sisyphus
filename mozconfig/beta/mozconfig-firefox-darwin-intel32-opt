@@ -1,3 +1,8 @@
+# convert a.b.c to 100*a + 10*b + c for numeric comparisons.
+tonumber() (IFS='. ';let v=0; m=100;digits="$1";for d in $digits; do let v=v+d*m; let m=m/10; done; echo $v)
+# compare two numbers
+lessthan() (if [[ `tonumber $1` -lt `tonumber $2` ]]; then return 0; else return 1; fi )
+
 CPU=`sysctl -a hw 2>&1 | grep 'hw.availcpu' | sed 's|hw.availcpu = *||'`
 let J=$CPU+1
 if [[ $J -gt 4 ]]; then let J=4; fi
@@ -29,3 +34,13 @@ export MOZ_DEBUG_SYMBOLS=1
 
 # Needed to enable breakpad in application.ini
 export MOZILLA_OFFICIAL=1
+
+# select clang only on OSX 10.7 and higher
+# or if a custom build of clang is available
+if ! lessthan $(uname -r) 11; then
+  CC=clang
+  CXX=clang++
+elif [[ -e /usr/local/bin/clang ]]; then
+  CC=clang
+  CXX=clang++
+fi

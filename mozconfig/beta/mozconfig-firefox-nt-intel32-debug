@@ -29,4 +29,6 @@ export MOZ_DEBUG_SYMBOLS=1
 
 # Needed to enable breakpad in application.ini
 export MOZILLA_OFFICIAL=1
+
+# temporarily disable ANGLE due to build failures with DirectX
 #ac_add_options --disable-angle
