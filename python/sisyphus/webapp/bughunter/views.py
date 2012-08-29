@@ -200,7 +200,8 @@ def all_workers_log_api(request, start, end):
         json = serializers.serialize("json", logs, relations={'worker': {'fields': ('hostname',)}})
         return HttpResponse(json, mimetype=APP_JS)
     if request.method == 'DELETE':
-        logs.delete()
+        # Clear Logs should clear entire log, not just displayed entries.
+        models.Log.objects.all().delete()
     return HttpResponse('[]', mimetype=APP_JS)
 
 @csrf_exempt
