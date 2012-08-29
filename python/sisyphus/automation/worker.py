@@ -573,7 +573,7 @@ class Worker(object):
             testvalgrind_row.save()
 
 
-    def process_dump_files(self, profilename, page, symbolsPath, uploadpath):
+    def process_dump_files(self, profilename, page, symbolsPathList, uploadpath):
         """
         process_dump_files looks for any minidumps that may have been written, parses them,
         then creates the necessary Crash, SiteTestCrash, SiteTestCrashDumpMetaData or
@@ -583,10 +583,10 @@ class Worker(object):
         stackwalkPath = os.environ.get('MINIDUMP_STACKWALK', "/usr/local/bin/minidump_stackwalk")
         exploitablePath = os.environ.get('BREAKPAD_EXPLOITABLE', "/usr/local/bin/exploitable")
 
-        self.debugMessage("stackwalkPath: %s, exists: %s, exploitablePath: %s, exists: %s, symbolsPath: %s, exists: %s" %
-                          (stackwalkPath, os.path.exists(stackwalkPath), exploitablePath, os.path.exists(exploitablePath), symbolsPath, os.path.exists(symbolsPath)))
+        self.debugMessage("stackwalkPath: %s, exists: %s, exploitablePath: %s, exists: %s, symbolsPathList: %s" %
+                          (stackwalkPath, os.path.exists(stackwalkPath), exploitablePath, os.path.exists(exploitablePath), symbolsPathList))
 
-        if not stackwalkPath or not os.path.exists(stackwalkPath) or not os.path.exists(symbolsPath):
+        if not stackwalkPath or not os.path.exists(stackwalkPath):
             raise Exception('Worker.FatalError.MinidumpStackwalk.DoesNotExist')
 
         if not exploitablePath or not os.path.exists(exploitablePath) or not os.path.exists(exploitablePath):
@@ -633,16 +633,18 @@ class Worker(object):
 
             # use timed_run.py to run stackwalker since it can hang.
             try:
+                arglist = [
+                    "python",
+                    sisyphus_dir + "/bin/timed_run.py",
+                    "300",
+                    "-",
+                    stackwalkPath,
+                    dumpFile,
+                    ]
+                arglist.extend(symbolsPathList)
+
                 proc = subprocess.Popen(
-                    [
-                        "python",
-                        sisyphus_dir + "/bin/timed_run.py",
-                        "300",
-                        "-",
-                        stackwalkPath,
-                        dumpFile,
-                        symbolsPath
-                        ],
+                    arglist,
                     preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,

@@ -105,6 +105,10 @@ class CrashTestWorker(worker.Worker):
         else:
             self.invisible = ''
 
+        # string containing a space delimited list of paths to third-party symbols
+        # for use by minidump_stackwalk
+        self.symbols_paths = options.symbols_paths.split(' ')
+
         # Use a property to record whether the test process has been hung in order
         # to allow the hung alarm signal to set its value.
         self.hung_process = False
@@ -406,7 +410,11 @@ class CrashTestWorker(worker.Worker):
 
             symbolsPath = os.path.join(executablepath, 'crashreporter-symbols')
 
-            self.process_dump_files(profilename, page, symbolsPath, dmpuploadpath)
+            symbolsPathList = [symbolsPath]
+            symbolsPathList.extend(self.symbols_paths)
+            self.process_dump_files(profilename, page,
+                                    symbolsPathList,
+                                    dmpuploadpath)
 
 
         test_process_dict = self.psTest()
@@ -824,6 +832,11 @@ def main():
                        dest='processor_type',
                        help='Override default processor type: intel32, intel64, amd32, amd64',
                        default=None)
+
+    parser.add_option('--symbols-paths', action='store', type='string',
+                       dest='symbols_paths',
+                       help='Space delimited list of paths to third party symbols. Defaults to /work/mozilla/flash-symbols',
+                       default='/work/mozilla/flash-symbols')
 
     try:
         (options, args) = parser.parse_args()
