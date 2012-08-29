@@ -1,7 +1,7 @@
 product=${product:-firefox}
 branch=${branch:-beta}
 buildtype=nightly
-downloadurl="http://stage.mozilla.org/pub/mozilla.org/firefox/nightly/13.0b4-candidates/build1/mac/en-US/Firefox%2013.0b4.dmg"
+downloadurl="http://stage.mozilla.org/pub/mozilla.org/firefox/nightly/16.0b1-candidates/build1/mac/en-US/Firefox%2016.0b1.dmg"
 profilename=${profilename:-firefox-beta-profile}
 profiledirectory=${profiledirectory:-/tmp/firefox-beta-profile}
 executablepath=$HOME/bin/beta
