@@ -111,7 +111,7 @@ class PlatformData():
         elif os_name.find("Darwin") != -1:
             self.suffix   = 'dmg'
             self.platform = "mac"
-            self.cpu_name = ''
+            self.cpu_name = '(64)?'
         elif os_name.find("CYGWIN") != -1:
             self.suffix = '(zip|installer\.exe)'
             if "PROCESSOR_ARCHITEW6432" in os.environ and os.environ["PROCESSOR_ARCHITEW6432"]:
@@ -156,9 +156,9 @@ def build_database(options):
         raise
 
     re_branches = re.compile(r'mozilla-(aurora|beta|central)(-debug)?/')
-    re_builds   = re.compile(r'firefox.*.(debug)?%s%s.%s' % (platform_data.platform,
-                                                             platform_data.cpu_name,
-                                                             platform_data.suffix))
+    re_builds   = re.compile(r'firefox.*(\.debug)?-%s%s\.%s' % (platform_data.platform,
+                                                                platform_data.cpu_name,
+                                                                platform_data.suffix))
     httplib = httplib2.Http();
     ftpurl = 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly'
 
