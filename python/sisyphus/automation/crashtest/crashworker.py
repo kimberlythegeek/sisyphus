@@ -116,6 +116,8 @@ class CrashTestWorker(worker.Worker):
         # to allow the hung alarm signal to set its value.
         self.hung_process = False
 
+        self.do_not_reproduce_bogus_signatures = options.do_not_reproduce_bogus_signatures
+
     def runTest(self, extra_test_args):
 
         self.debugMessage("testing firefox %s %s %s" % (self.branch, self.buildtype, self.testrun_row.socorro.url))
@@ -439,7 +441,39 @@ class CrashTestWorker(worker.Worker):
 
         self.testrun_row.save()
 
-        if self.testrun_row.crashed and self.testrun_row.priority not in '01':
+        reproduce_signature = True
+
+        if self.testrun_row.crashed and self.do_not_reproduce_bogus_signatures:
+            # Bogus signatures consist of a single frame surrounded by parentheses.
+            # Flash 11.4+ crashes on Windows 7 64bit with 32bit builds generate a large
+            # number of such crashes which are not reproducible on other systems.
+            # To keep other workers from attempting to reproduce these crashes,
+            # we've introduced an option to ignore them when generating crashes
+            # to be reproduced.
+
+            # We will check each crash signature reported for this url and if all
+            # signatures are bogus, we will ignore it.
+
+            self.debugMessage('Checking if this crash produced a bogus signature.')
+
+            is_bogus_signature = True
+            reBogusSignature = re.compile(r'[(][^)]+[)]$')
+
+            testcrash_rows = models.SiteTestCrash.objects.filter(testrun = self.testrun_row.id)
+            for testcrash_row in testcrash_rows:
+                if reBogusSignature.match(testcrash_row.crash.signature):
+                    self.debugMessage('Bogus signature: %s' % testcrash_row.crash.signature)
+                else:
+                    self.debugMessage('Non-Bogus signature: %s' % testcrash_row.crash.signature)
+                    is_bogus_signature = False
+                    break
+            if is_bogus_signature:
+                self.debugMessage('Skipping reproduction of crash with bogus signature.')
+                reproduce_signature = False
+
+        if (reproduce_signature and
+            self.testrun_row.crashed and
+            self.testrun_row.priority not in '01'):
 
             # Generate new priority 0 jobs for the other operating systems if the job
             # was not a priority 0 or priority 1 (user submitted).
@@ -845,6 +879,11 @@ def main():
                        dest='symbols_paths',
                        help='Space delimited list of paths to third party symbols. Defaults to /work/mozilla/flash-symbols',
                        default='/work/mozilla/flash-symbols')
+
+    parser.add_option('--do-not-reproduce-bogus-signatures', action='store_true',
+                       dest='do_not_reproduce_bogus_signatures',
+                       help='Do not attempt to reproduce crashes with signatures of the form (frame)',
+                       default=False)
 
     try:
         (options, args) = parser.parse_args()
