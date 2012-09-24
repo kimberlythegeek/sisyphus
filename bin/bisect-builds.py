@@ -112,7 +112,10 @@ def test_build(url, branch, test_path, timeout=300):
     executablepath = "/tmp/firefox-" + branch
 
     download_build(url, filepath, timeout)
-    install_build(branch, executablepath, filepath)
+    try:
+        install_build(branch, executablepath, filepath)
+    except:
+        return 125
 
     returncode = subprocess.call([test_path])
     return returncode
