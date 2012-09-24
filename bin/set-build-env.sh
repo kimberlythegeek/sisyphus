@@ -196,6 +196,14 @@ for step in step1; do # dummy loop for handling exits
 
     export BUILDTREE="${BUILDTREE:-$BUILDDIR/$branch$extra}"
 
+    export PYMAKE=make
+
+    case $OSID in
+        nt)
+            export PYMAKE=${BUILDTREE}/mozilla/build/pymake/make.py
+            ;;
+    esac
+
     #
     # extras can't be placed in mozconfigs since not all parts
     # of the build system use mozconfig (e.g. js shell) and since

@@ -1,7 +1,6 @@
 export WANT_AUTOCONF=2.1
 
-#CPU=$NUMBER_OF_PROCESSORS
-CPU=0
+CPU=$NUMBER_OF_PROCESSORS
 
 let J=$CPU+1
 if [[ $J -gt 4 ]]; then let J=4; fi

@@ -12,7 +12,7 @@ case $product in
     firefox)
         cd $BUILDTREE/mozilla
 
-        if ! $TEST_DIR/bin/set-build-env.sh $@ -c "make -f client.mk build" 2>&1; then
+        if ! $TEST_DIR/bin/set-build-env.sh $@ -c "${PYMAKE} -f client.mk build" 2>&1; then
             error "error during build" $LINENO
         fi
 
