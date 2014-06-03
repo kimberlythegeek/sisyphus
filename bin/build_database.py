@@ -155,10 +155,11 @@ def build_database(options):
     except Exception, e:
         raise
 
-    re_branches = re.compile(r'mozilla-(aurora|beta|central)(-debug)?/')
-    re_builds   = re.compile(r'firefox.*(\.debug)?-%s%s\.%s' % (platform_data.platform,
-                                                                platform_data.cpu_name,
-                                                                platform_data.suffix))
+    re_branches = re.compile(r'mozilla-(aurora|beta|central|inbound)(-debug)?/')
+    re_builds   = re.compile(r'firefox.*(\.debug-%s|.%s)?%s\.%s' %
+                             (platform_data.platform, platform_data.platform,
+                              platform_data.cpu_name,
+                              platform_data.suffix))
     httplib = httplib2.Http();
     ftpurl = 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly'
 

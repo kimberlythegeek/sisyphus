@@ -58,7 +58,7 @@ def cmp_builds(x,y):
         return +1
     return 0
 
-def download_build(url, filepath, timeout=300):
+def download_build(url, filepath, timeout=1800):
     # download.sh -u downloadurl -f filepath -t timeout
     args = [
         sisyphus_dir + "/bin/download.sh",
@@ -75,8 +75,8 @@ def download_build(url, filepath, timeout=300):
                                 close_fds=True)
         stdout = proc.communicate()[0]
         if proc.returncode != 0:
-            print "install_build.sh: %d: %s, %s, %s: %s" % (proc.returncode, branch, executablepath, filepath, stdout)
-            raise Exception("install_build")
+            print "download.sh: %d: %s, %s: %s" % (proc.returncode, url, filepath, stdout)
+            raise Exception("download_build")
 
     except subprocess.CalledProcessError, e:
         print "download.sh: %d: %s, %s, %d: %s" % (e.returncode, url, filepath, timeout, e.output)
@@ -107,7 +107,7 @@ def install_build(branch, executablepath, filepath):
         print "install_build.sh: %d: %s, %s, %s: %s" % (e.returncode, branch, executablepath, filepath, e.output)
         raise
 
-def test_build(url, branch, test_path, timeout=300):
+def test_build(url, branch, test_path, timeout=1800):
     filepath = "/tmp/" + os.path.basename(url)
     executablepath = "/tmp/firefox-" + branch
 
@@ -188,6 +188,8 @@ def bisect_builds(options):
         repo = r"mozilla-aurora"
     elif options.branch == "nightly":
         repo = r"mozilla-central"
+    elif options.branch == "inbound":
+        repo = r"mozilla-inbound"
     else:
         raise Exception("Invalid branch: " + branch)
 
@@ -247,11 +249,11 @@ def bisect_builds(options):
     # train schedule 42/2 = 21 days then increase the jump by 21 days
     # each time we do not find the starting point. Hopefully this
     # won't skip over a passed-failed boundary but will not take too
-    # long to find the beginning changeset.  XXX Make this an option?
+    # long to find the beginning changeset.
 
-    build_window = 0
+    build_window = options.build_window
     while True:
-        build_window += 21
+        build_window += options.build_window_increment
         lower_index = upper_index - build_window
         if lower_index < 0:
             lower_index = 0
@@ -303,13 +305,13 @@ def bisect_builds(options):
         if prev_build_index < 0:
             prev_build_index = 0
         prev_build = bisection_array[prev_build_index]
-        reChangeset = re.compile("http://hg.mozilla.org/(.*)/rev/(.*)")
+        reChangeset = re.compile("https://hg.mozilla.org/(.*)/rev/(.*)")
         match = reChangeset.match(prev_build["changeset"])
         repo = match.group(1)
         fromchangeset = match.group(2)
         match = reChangeset.match(build["changeset"])
         tochangeset = match.group(2)
-        pushlog = "http://hg.mozilla.org/%s/pushloghtml?fromchange=%s&tochange=%s" % (repo, fromchangeset, tochangeset)
+        pushlog = "https://hg.mozilla.org/%s/pushloghtml?fromchange=%s&tochange=%s" % (repo, fromchangeset, tochangeset)
 
         print "Found %s between %s-%s" % (tag, prev_build["buildid"], build["buildid"])
         print "Pushlog: %s" % pushlog
@@ -328,7 +330,7 @@ if __name__ == "__main__":
 
     parser.add_option("--branch", action="store",
                       dest="branch",
-                      help="Branch to test: beta, aurora, nightly. Defaults to nighlty.",
+                      help="Branch to test: beta, aurora, nightly, inbound. Defaults to nighlty.",
                       default="nightly")
 
     parser.add_option("--build-type", action="store",
@@ -350,6 +352,16 @@ if __name__ == "__main__":
                        dest="buildid",
                        help="Maximum BuildID (CCYYMMDDHHSS) of first build to test. Defaults to latest.",
                        default=None)
+
+    parser.add_option("--build-window", action="store", type="int",
+                       dest="build_window",
+                       help="Number of days in initial build window during search. Defaults to 21 days.",
+                       default=7)
+
+    parser.add_option("--build-window-increment", action="store", type="int",
+                       dest="build_window_increment",
+                       help="Number of days to increase build window date increment during search. Defaults to 0 days.",
+                       default=0)
 
     (options, args) = parser.parse_args()
 

@@ -125,10 +125,10 @@ if [[ -z "$LIBRARYSH" ]]; then
         esac
 
         case $branch in
-            release|beta|aurora|nightly)
+            release|beta|aurora|nightly|inbound)
                 ;;
             *)
-                error "branch \"$branch\" must be one of release beta aurora nightly" $LINENO
+                error "branch \"$branch\" must be one of release beta aurora nightly inbound" $LINENO
         esac
 
      }
