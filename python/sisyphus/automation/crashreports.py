@@ -154,24 +154,31 @@ def generateSignatureFromList(signatureList):
     prefixFound = False
     ignored_frame_count = 0
 
+    # Remove parenthesised argument declaration list from the frames.
+    # This helps consolidate signatures across platforms which may or
+    # may not include argument declartion lists.
+
     for aSignature in signatureList:
         if reIrrelevantSignature.match(aSignature):
             if prefixFound:
-                newSignatureList.append(aSignature)
+                newSignatureList.append(aSignature.partition('(')[0])
             else:
                 ignored_frame_count += 1
             continue
-        newSignatureList.append(aSignature)
+        newSignatureList.append(aSignature.partition('(')[0])
         if not rePrefixSignature.match(aSignature):
             break
         prefixFound = True
+
+    remainderSignatureList = signatureList[len(newSignatureList) + ignored_frame_count:]
+    remainderSignatureList = [remainderSignature.partition('(')[0] for remainderSignature in remainderSignatureList]
 
     socorroSignature = ' | '.join(newSignatureList)
     if socorroSignature == "":
         socorroSignature = '(no signature)'
 
     sisyphusSignatureList = [socorroSignature]
-    sisyphusSignatureList.extend(signatureList[len(newSignatureList) + ignored_frame_count:])
+    sisyphusSignatureList.extend(remainderSignatureList)
     # remove irrelevant signatures from the non-socorro part of the signature.
     indices = range(1,len(sisyphusSignatureList))
     indices.reverse()
@@ -9080,8 +9087,1419 @@ Loaded modules:
 0x76f70000 - 0x76f79fff  lpk.dll  6.1.7600.16385
 0x76fa0000 - 0x7711ffff  ntdll.dll  6.1.7601.17725
 
- EXIT STATUS: NORMAL (0.031194 seconds)
-""",]
+ EXIT STATUS: NORMAL (0.031194 seconds)""",
+"""Operating system: Windows NT
+                  5.1.2600 Service Pack 3
+CPU: x86
+     GenuineIntel family 6 model 37 stepping 1
+     1 CPU
+
+Crash reason:  EXCEPTION_BREAKPOINT
+Crash address: 0x7c90120e
+
+Thread 5 (crashed)
+ 0  ntdll.dll + 0x120e
+    eip = 0x7c90120e   esp = 0x0717f544   ebp = 0x0717f548   ebx = 0x009bda18
+    esi = 0x00000280   edi = 0x0012e2e0   eax = 0x00000000   ecx = 0x00000001
+    edx = 0x00000000   efl = 0x00000216
+    Found by: given as instruction pointer in context
+ 1  xul.dll!NS_DebugBreak_P [nsDebugImpl.cpp : 375 + 0x4]
+    eip = 0x03bb8231   esp = 0x0717f550   ebp = 0x0717f968
+    Found by: previous frame's frame pointer
+ 2  xul.dll!mozilla::net::SpdySession3::AddStream(nsAHttpTransaction *,int) [SpdySession3.cpp : 306 + 0x2d]
+    eip = 0x022ecf37   esp = 0x0717f970   ebp = 0x0717f998
+    Found by: call frame info
+ 3  xul.dll!nsHttpConnection::AddTransaction(nsAHttpTransaction *,int) [nsHttpConnection.cpp : 449 + 0x25]
+    eip = 0x02288d2f   esp = 0x0717f9a0   ebp = 0x0717f9b0
+    Found by: call frame info
+ 4  xul.dll!nsHttpConnection::Activate(nsAHttpTransaction *,unsigned int,int) [nsHttpConnection.cpp : 310 + 0xf]
+    eip = 0x0228864c   esp = 0x0717f9b8   ebp = 0x0717f9d8
+    Found by: call frame info
+ 5  xul.dll!nsHttpConnectionMgr::DispatchTransaction(nsHttpConnectionMgr::nsConnectionEntry *,nsHttpTransaction *,nsHttpConnection *) [nsHttpConnectionMgr.cpp : 1599 + 0x13]
+    eip = 0x02290868   esp = 0x0717f9e0   ebp = 0x0717fa40
+    Found by: call frame info
+ 6  xul.dll!nsHttpConnectionMgr::ProcessSpdyPendingQ(nsHttpConnectionMgr::nsConnectionEntry *) [nsHttpConnectionMgr.cpp : 1874 + 0x13]
+    eip = 0x022918eb   esp = 0x0717fa48   ebp = 0x0717fa68
+    Found by: call frame info
+ 7  xul.dll!nsHttpConnectionMgr::ProcessSpdyPendingQCB(nsACString_internal const &,nsAutoPtr<nsHttpConnectionMgr::nsConnectionEntry> &,void *) [nsHttpConnectionMgr.cpp : 1893 + 0x10]
+    eip = 0x022919ab   esp = 0x0717fa70   ebp = 0x0717fa78
+    Found by: call frame info
+ 8  xul.dll!nsBaseHashtable<nsCStringHashKey,nsAutoPtr<nsHttpConnectionMgr::nsConnectionEntry>,nsHttpConnectionMgr::nsConnectionEntry *>::s_EnumStub(PLDHashTable *,PLDHashEntryHdr *,unsigned int,void *) [nsBaseHashtable.h : 419 + 0x1d]
+    eip = 0x02297ba0   esp = 0x0717fa80   ebp = 0x0717fa94
+    Found by: call frame info
+ 9  xul.dll!PL_DHashTableEnumerate [pldhash.cpp : 717 + 0x18]
+    eip = 0x03b41465   esp = 0x0717fa9c   ebp = 0x0717fae0
+    Found by: call frame info
+10  xul.dll!nsBaseHashtable<nsCStringHashKey,nsAutoPtr<nsHttpConnectionMgr::nsConnectionEntry>,nsHttpConnectionMgr::nsConnectionEntry *>::Enumerate(PLDHashOperator (*)(nsACString_internal const &,nsAutoPtr<nsHttpConnectionMgr::nsConnectionEntry> &,void *),void *) [nsBaseHashtable.h : 223 + 0x11]
+    eip = 0x022964d2   esp = 0x0717fae8   ebp = 0x0717fb00
+    Found by: call frame info
+11  xul.dll!nsHttpConnectionMgr::ProcessAllSpdyPendingQ() [nsHttpConnectionMgr.cpp : 1900 + 0x13]
+    eip = 0x022919db   esp = 0x0717fb08   ebp = 0x0717fb14
+    Found by: call frame info
+12  xul.dll!nsHttpConnectionMgr::ReportSpdyConnection(nsHttpConnection *,bool) [nsHttpConnectionMgr.cpp : 544 + 0x7]
+    eip = 0x0228e1ff   esp = 0x0717fb1c   ebp = 0x0717fb3c
+    Found by: call frame info
+13  xul.dll!nsHttpConnection::OnSocketWritable() [nsHttpConnection.cpp : 1245 + 0x26]
+    eip = 0x0228adeb   esp = 0x0717fb44   ebp = 0x0717fb74
+    Found by: call frame info
+14  xul.dll!nsHttpConnection::OnOutputStreamReady(nsIAsyncOutputStream *) [nsHttpConnection.cpp : 1540 + 0xa]
+    eip = 0x0228bc5c   esp = 0x0717fb7c   ebp = 0x0717fb80
+    Found by: call frame info
+15  xul.dll!nsHttpConnection::Activate(nsAHttpTransaction *,unsigned int,int) [nsHttpConnection.cpp : 350 + 0x1d]
+    eip = 0x02288815   esp = 0x0717fb88   ebp = 0x0717fba8
+    Found by: call frame info
+16  xul.dll!nsHttpConnectionMgr::DispatchAbstractTransaction(nsHttpConnectionMgr::nsConnectionEntry *,nsAHttpTransaction *,unsigned int,nsHttpConnection *,int) [nsHttpConnectionMgr.cpp : 1675 + 0x18]
+    eip = 0x02290caa   esp = 0x0717fbb0   ebp = 0x0717fbf8
+    Found by: call frame info
+17  xul.dll!nsHttpConnectionMgr::DispatchTransaction(nsHttpConnectionMgr::nsConnectionEntry *,nsHttpTransaction *,nsHttpConnection *) [nsHttpConnectionMgr.cpp : 1617 + 0x1b]
+    eip = 0x02290991   esp = 0x0717fc00   ebp = 0x0717fc68
+    Found by: call frame info
+18  xul.dll!nsHttpConnectionMgr::TryDispatchTransaction(nsHttpConnectionMgr::nsConnectionEntry *,bool,nsHttpTransaction *) [nsHttpConnectionMgr.cpp : 1535 + 0x18]
+    eip = 0x02290678   esp = 0x0717fc70   ebp = 0x0717fcac
+    Found by: call frame info
+19  xul.dll!nsHttpConnectionMgr::ProcessPendingQForEntry(nsHttpConnectionMgr::nsConnectionEntry *,bool) [nsHttpConnectionMgr.cpp : 949 + 0x14]
+    eip = 0x0228f0d6   esp = 0x0717fcb4   ebp = 0x0717fcdc
+    Found by: call frame info
+20  xul.dll!nsHttpConnectionMgr::ProcessAllTransactionsCB(nsACString_internal const &,nsAutoPtr<nsHttpConnectionMgr::nsConnectionEntry> &,void *) [nsHttpConnectionMgr.cpp : 748 + 0x12]
+    eip = 0x0228e99d   esp = 0x0717fce4   ebp = 0x0717fcf0
+    Found by: call frame info
+21  xul.dll!nsBaseHashtable<nsCStringHashKey,nsAutoPtr<nsHttpConnectionMgr::nsConnectionEntry>,nsHttpConnectionMgr::nsConnectionEntry *>::s_EnumStub(PLDHashTable *,PLDHashEntryHdr *,unsigned int,void *) [nsBaseHashtable.h : 419 + 0x1d]
+    eip = 0x02297ba0   esp = 0x0717fcf8   ebp = 0x0717fd0c
+    Found by: call frame info
+22  xul.dll!PL_DHashTableEnumerate [pldhash.cpp : 717 + 0x18]
+    eip = 0x03b41465   esp = 0x0717fd14   ebp = 0x0717fd58
+    Found by: call frame info
+23  xul.dll!nsBaseHashtable<nsCStringHashKey,nsAutoPtr<nsHttpConnectionMgr::nsConnectionEntry>,nsHttpConnectionMgr::nsConnectionEntry *>::Enumerate(PLDHashOperator (*)(nsACString_internal const &,nsAutoPtr<nsHttpConnectionMgr::nsConnectionEntry> &,void *),void *) [nsBaseHashtable.h : 223 + 0x11]
+    eip = 0x022964d2   esp = 0x0717fd60   ebp = 0x0717fd78
+    Found by: call frame info
+24  xul.dll!nsHttpConnectionMgr::OnMsgProcessPendingQ(int,void *) [nsHttpConnectionMgr.cpp : 2045 + 0x13]
+    eip = 0x02291fc7   esp = 0x0717fd80   ebp = 0x0717fd94
+    Found by: call frame info
+25  xul.dll!nsHttpConnectionMgr::nsConnEvent::Run() [nsHttpConnectionMgr.h : 564 + 0x1b]
+    eip = 0x0228d43f   esp = 0x0717fd9c   ebp = 0x0717fda4
+    Found by: call frame info
+26  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 627 + 0x18]
+    eip = 0x03ba9c4b   esp = 0x0717fdac   ebp = 0x0717fe24
+    Found by: call frame info
+27  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x0717fe2c   ebp = 0x0717fe40
+    Found by: call frame info
+28  xul.dll!nsSocketTransportService::Run() [nsSocketTransportService2.cpp : 648 + 0xa]
+    eip = 0x021e5c3f   esp = 0x0717fe48   ebp = 0x0717fe78
+    Found by: call frame info
+29  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 627 + 0x18]
+    eip = 0x03ba9c4b   esp = 0x0717fe80   ebp = 0x0717fef8
+    Found by: call frame info
+30  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x0717ff00   ebp = 0x0717ff14
+    Found by: call frame info
+31  xul.dll!nsThread::ThreadFunc(void *) [nsThread.cpp : 265 + 0xa]
+    eip = 0x03ba8a54   esp = 0x0717ff1c   ebp = 0x0717ff4c
+    Found by: call frame info
+32  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0717ff54   ebp = 0x0717ff5c
+    Found by: call frame info
+33  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0717ff64   ebp = 0x0717ff6c
+    Found by: call frame info
+34  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0717ff74   ebp = 0x0717ffa8
+    Found by: call frame info
+35  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0717ffb0   ebp = 0x0717ffb4
+    Found by: previous frame's frame pointer
+36  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0717ffbc   ebp = 0x0717ffec
+    Found by: previous frame's frame pointer
+
+Thread 0
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0012d718   ebp = 0x0012d764   ebx = 0x00000000
+    esi = 0x00934e40   edi = 0x00000010   eax = 0x009db258   ecx = 0x00000000
+    edx = 0x00000000   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  xul.dll!nsBaseAppShell::DoProcessNextNativeEvent(bool,unsigned int) [nsBaseAppShell.cpp : 139 + 0x11]
+    eip = 0x036834ad   esp = 0x0012d76c   ebp = 0x0012d77c
+    Found by: previous frame's frame pointer
+ 2  xul.dll!nsBaseAppShell::OnProcessNextEvent(nsIThreadInternal *,bool,unsigned int) [nsBaseAppShell.cpp : 298 + 0x13]
+    eip = 0x03683874   esp = 0x0012d784   ebp = 0x0012d7a4
+    Found by: call frame info
+ 3  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 600 + 0x49]
+    eip = 0x03ba9ab6   esp = 0x0012d7ac   ebp = 0x0012d830
+    Found by: call frame info
+ 4  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x0012d838   ebp = 0x0012d84c
+    Found by: call frame info
+ 5  xul.dll!mozilla::ipc::MessagePump::Run(base::MessagePump::Delegate *) [MessagePump.cpp : 117 + 0xd]
+    eip = 0x037e2713   esp = 0x0012d854   ebp = 0x0012d880
+    Found by: call frame info
+ 6  xul.dll!MessageLoop::RunInternal() [message_loop.cc : 215 + 0x1e]
+    eip = 0x03bfdb5e   esp = 0x0012d888   ebp = 0x0012d8a4
+    Found by: call frame info
+ 7  xul.dll!MessageLoop::RunHandler() [message_loop.cc : 208 + 0x7]
+    eip = 0x03bfdaa2   esp = 0x0012d8ac   ebp = 0x0012d8dc
+    Found by: call frame info
+ 8  xul.dll!MessageLoop::Run() [message_loop.cc : 182 + 0x7]
+    eip = 0x03bfd9cd   esp = 0x0012d8e4   ebp = 0x0012d8fc
+    Found by: call frame info
+ 9  xul.dll!nsBaseAppShell::Run() [nsBaseAppShell.cpp : 163 + 0xb]
+    eip = 0x03683560   esp = 0x0012d904   ebp = 0x0012d908
+    Found by: call frame info
+10  xul.dll!nsAppShell::Run() [nsAppShell.cpp : 232 + 0x8]
+    eip = 0x0362f177   esp = 0x0012d910   ebp = 0x0012f85c
+    Found by: call frame info
+11  xul.dll!nsAppStartup::Run() [nsAppStartup.cpp : 288 + 0x1b]
+    eip = 0x0339e3da   esp = 0x0012f864   ebp = 0x0012f870
+    Found by: call frame info
+12  xul.dll!XREMain::XRE_mainRun() [nsAppRunner.cpp : 3823 + 0x21]
+    eip = 0x0214f53d   esp = 0x0012f878   ebp = 0x0012fabc
+    Found by: call frame info
+13  xul.dll!XREMain::XRE_main(int,char * * const,nsXREAppData const *) [nsAppRunner.cpp : 3890 + 0x7]
+    eip = 0x0214fc47   esp = 0x0012fac4   ebp = 0x0012fb20
+    Found by: call frame info
+14  xul.dll!XRE_main [nsAppRunner.cpp : 4088 + 0x16]
+    eip = 0x021501a5   esp = 0x0012fb28   ebp = 0x0012fc3c
+    Found by: call frame info
+15  firefox.exe!do_main [nsBrowserApp.cpp : 174 + 0x14]
+    eip = 0x0040232f   esp = 0x0012fc44   ebp = 0x0012fd98
+    Found by: call frame info
+16  firefox.exe!NS_internal_main(int,char * *) [nsBrowserApp.cpp : 279 + 0xc]
+    eip = 0x00401d53   esp = 0x0012fda0   ebp = 0x0012ff34
+    Found by: call frame info
+17  firefox.exe!wmain [nsWindowsWMain.cpp : 105 + 0xc]
+    eip = 0x00401299   esp = 0x0012ff3c   ebp = 0x0012ff68
+    Found by: call frame info
+18  firefox.exe!__tmainCRTStartup [crtexe.c : 552 + 0x18]
+    eip = 0x00404ebf   esp = 0x0012ff70   ebp = 0x0012ffb8
+    Found by: call frame info
+19  firefox.exe!wmainCRTStartup [crtexe.c : 370 + 0x4]
+    eip = 0x00404cef   esp = 0x0012ffc0   ebp = 0x0012ffc0
+    Found by: call frame info
+20  kernel32.dll + 0x1776e
+    eip = 0x7c81776f   esp = 0x0012ffc8   ebp = 0x0012fff0
+    Found by: call frame info
+
+Thread 1
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0615fd28   ebp = 0x0615fd54   ebx = 0x00000000
+    esi = 0x7c9101db   edi = 0x7c911086   eax = 0x0094d000   ecx = 0x0615faac
+    edx = 0x00001000   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  xul.dll!base::MessagePumpForIO::GetIOItem(unsigned long,base::MessagePumpForIO::IOItem *) [message_pump_win.cc : 536 + 0x24]
+    eip = 0x03c66d8c   esp = 0x0615fd5c   ebp = 0x0615fd7c
+    Found by: previous frame's frame pointer
+ 2  xul.dll!base::MessagePumpForIO::WaitForIOCompletion(unsigned long,base::MessagePumpForIO::IOHandler *) [message_pump_win.cc : 507 + 0xf]
+    eip = 0x03c66c92   esp = 0x0615fd84   ebp = 0x0615fdb4
+    Found by: call frame info
+ 3  xul.dll!base::MessagePumpForIO::WaitForWork() [message_pump_win.cc : 500 + 0xd]
+    eip = 0x03c66c4c   esp = 0x0615fdbc   ebp = 0x0615fddc
+    Found by: call frame info
+ 4  xul.dll!base::MessagePumpForIO::DoRunLoop() [message_pump_win.cc : 485 + 0x7]
+    eip = 0x03c66bc8   esp = 0x0615fde4   ebp = 0x0615fdf0
+    Found by: call frame info
+ 5  xul.dll!base::MessagePumpWin::RunWithDispatcher(base::MessagePump::Delegate *,base::MessagePumpWin::Dispatcher *) [message_pump_win.cc : 53 + 0xc]
+    eip = 0x03c65dff   esp = 0x0615fdf8   ebp = 0x0615fe14
+    Found by: call frame info
+ 6  xul.dll!base::MessagePumpWin::Run(base::MessagePump::Delegate *) [message_pump_win.h : 78 + 0x14]
+    eip = 0x03c65f65   esp = 0x0615fe1c   ebp = 0x0615fe28
+    Found by: call frame info
+ 7  xul.dll!MessageLoop::RunInternal() [message_loop.cc : 215 + 0x1e]
+    eip = 0x03bfdb5e   esp = 0x0615fe30   ebp = 0x0615fe4c
+    Found by: call frame info
+ 8  xul.dll!MessageLoop::RunHandler() [message_loop.cc : 208 + 0x7]
+    eip = 0x03bfdaa2   esp = 0x0615fe54   ebp = 0x0615fe84
+    Found by: call frame info
+ 9  xul.dll!MessageLoop::Run() [message_loop.cc : 182 + 0x7]
+    eip = 0x03bfd9cd   esp = 0x0615fe8c   ebp = 0x0615fea4
+    Found by: call frame info
+10  xul.dll!base::Thread::ThreadMain() [thread.cc : 156 + 0xa]
+    eip = 0x03c2419a   esp = 0x0615feac   ebp = 0x0615ffa8
+    Found by: call frame info
+11  xul.dll!`anonymous namespace'::ThreadFunc(void *) [platform_thread_win.cc : 26 + 0xc]
+    eip = 0x03c69ae7   esp = 0x0615ffb0   ebp = 0x0615ffb4
+    Found by: call frame info
+12  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0615ffbc   ebp = 0x0615ffec
+    Found by: call frame info
+
+Thread 2
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0626fd5c   ebp = 0x0626fdc0   ebx = 0x00971130
+    esi = 0x00000608   edi = 0x00000000   eax = 0x09433cc0   ecx = 0xffffff87
+    edx = 0x00000011   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x0626fdc8   ebp = 0x0626fdd4
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x0626fddc   ebp = 0x0626fdf4
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x0626fdfc   ebp = 0x0626fe10
+    Found by: call frame info
+ 4  nspr4.dll!PR_WaitCondVar [prucv.c : 515 + 0x16]
+    eip = 0x1002b56f   esp = 0x0626fe18   ebp = 0x0626fe2c
+    Found by: call frame info
+ 5  xul.dll!mozilla::CondVar::Wait(unsigned int) [BlockingResourceBase.cpp : 340 + 0x10]
+    eip = 0x03b424c0   esp = 0x0626fe34   ebp = 0x0626fe54
+    Found by: call frame info
+ 6  xul.dll!nsCycleCollectorRunner::Run() [nsCycleCollector.cpp : 3232 + 0xc]
+    eip = 0x03bc3b56   esp = 0x0626fe5c   ebp = 0x0626fe78
+    Found by: call frame info
+ 7  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 627 + 0x18]
+    eip = 0x03ba9c4b   esp = 0x0626fe80   ebp = 0x0626fef8
+    Found by: call frame info
+ 8  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x0626ff00   ebp = 0x0626ff14
+    Found by: call frame info
+ 9  xul.dll!nsThread::ThreadFunc(void *) [nsThread.cpp : 265 + 0xa]
+    eip = 0x03ba8a54   esp = 0x0626ff1c   ebp = 0x0626ff4c
+    Found by: call frame info
+10  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0626ff54   ebp = 0x0626ff5c
+    Found by: call frame info
+11  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0626ff64   ebp = 0x0626ff6c
+    Found by: call frame info
+12  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0626ff74   ebp = 0x0626ffa8
+    Found by: call frame info
+13  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0626ffb0   ebp = 0x0626ffb4
+    Found by: previous frame's frame pointer
+14  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0626ffbc   ebp = 0x0626ffec
+    Found by: previous frame's frame pointer
+
+Thread 3
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0656fd7c   ebp = 0x0656fe18   ebx = 0x0656fda4
+    esi = 0x00000000   edi = 0x7ffdd000   eax = 0x1024a180   ecx = 0x00370000
+    edx = 0x009ba370   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0xa114
+    eip = 0x7c80a115   esp = 0x0656fe20   ebp = 0x0656fe34
+    Found by: previous frame's frame pointer
+ 2  xul.dll!nsNotifyAddrListener::Run() [nsNotifyAddrListener.cpp : 120 + 0xf]
+    eip = 0x023a9140   esp = 0x0656fe3c   ebp = 0x0656fe78
+    Found by: previous frame's frame pointer
+ 3  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 627 + 0x18]
+    eip = 0x03ba9c4b   esp = 0x0656fe80   ebp = 0x0656fef8
+    Found by: call frame info
+ 4  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x0656ff00   ebp = 0x0656ff14
+    Found by: call frame info
+ 5  xul.dll!nsThread::ThreadFunc(void *) [nsThread.cpp : 265 + 0xa]
+    eip = 0x03ba8a54   esp = 0x0656ff1c   ebp = 0x0656ff4c
+    Found by: call frame info
+ 6  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0656ff54   ebp = 0x0656ff5c
+    Found by: call frame info
+ 7  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0656ff64   ebp = 0x0656ff6c
+    Found by: call frame info
+ 8  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0656ff74   ebp = 0x0656ffa8
+    Found by: call frame info
+ 9  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0656ffb0   ebp = 0x0656ffb4
+    Found by: previous frame's frame pointer
+10  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0656ffbc   ebp = 0x0656ffec
+    Found by: previous frame's frame pointer
+
+Thread 4
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0707ff7c   ebp = 0x0707ffb4   ebx = 0xc0000000
+    esi = 0x00000000   edi = 0x71a8793c   eax = 0x00188aa8   ecx = 0x00000004
+    edx = 0x7c90e514   efl = 0x00000202
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0707ffbc   ebp = 0x0707ffec
+    Found by: previous frame's frame pointer
+
+Thread 6
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0734fcf0   ebp = 0x0734fd54   ebx = 0x009b58a0
+    esi = 0x000005b0   edi = 0x00000000   eax = 0x0734fe18   ecx = 0x0734fe18
+    edx = 0x0734fe18   efl = 0x00000297
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x0734fd5c   ebp = 0x0734fd68
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x0734fd70   ebp = 0x0734fd88
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x0734fd90   ebp = 0x0734fda4
+    Found by: call frame info
+ 4  nspr4.dll!PR_WaitCondVar [prucv.c : 515 + 0x16]
+    eip = 0x1002b56f   esp = 0x0734fdac   ebp = 0x0734fdc0
+    Found by: call frame info
+ 5  xul.dll!mozilla::CondVar::Wait(unsigned int) [BlockingResourceBase.cpp : 340 + 0x10]
+    eip = 0x03b424c0   esp = 0x0734fdc8   ebp = 0x0734fde8
+    Found by: call frame info
+ 6  xul.dll!mozilla::Monitor::Wait(unsigned int) [Monitor.h : 47 + 0xe]
+    eip = 0x02e14bd6   esp = 0x0734fdf0   ebp = 0x0734fdf8
+    Found by: call frame info
+ 7  xul.dll!TimerThread::Run() [TimerThread.cpp : 350 + 0xe]
+    eip = 0x03bb1f29   esp = 0x0734fe00   ebp = 0x0734fe78
+    Found by: call frame info
+ 8  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 627 + 0x18]
+    eip = 0x03ba9c4b   esp = 0x0734fe80   ebp = 0x0734fef8
+    Found by: call frame info
+ 9  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x0734ff00   ebp = 0x0734ff14
+    Found by: call frame info
+10  xul.dll!nsThread::ThreadFunc(void *) [nsThread.cpp : 265 + 0xa]
+    eip = 0x03ba8a54   esp = 0x0734ff1c   ebp = 0x0734ff4c
+    Found by: call frame info
+11  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0734ff54   ebp = 0x0734ff5c
+    Found by: call frame info
+12  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0734ff64   ebp = 0x0734ff6c
+    Found by: call frame info
+13  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0734ff74   ebp = 0x0734ffa8
+    Found by: call frame info
+14  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0734ffb0   ebp = 0x0734ffb4
+    Found by: previous frame's frame pointer
+15  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0734ffbc   ebp = 0x0734ffec
+    Found by: previous frame's frame pointer
+
+Thread 7
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0744fe08   ebp = 0x0744fe6c   ebx = 0x009da880
+    esi = 0x00000538   edi = 0x00000000   eax = 0x1024a180   ecx = 0x00370000
+    edx = 0x00930000   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x0744fe74   ebp = 0x0744fe80
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x0744fe88   ebp = 0x0744fea0
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x0744fea8   ebp = 0x0744febc
+    Found by: call frame info
+ 4  nspr4.dll!PR_WaitCondVar [prucv.c : 515 + 0x16]
+    eip = 0x1002b56f   esp = 0x0744fec4   ebp = 0x0744fed8
+    Found by: call frame info
+ 5  xul.dll!mozilla::CondVar::Wait(unsigned int) [BlockingResourceBase.cpp : 340 + 0x10]
+    eip = 0x03b424c0   esp = 0x0744fee0   ebp = 0x0744ff00
+    Found by: call frame info
+ 6  xul.dll!mozilla::Monitor::Wait(unsigned int) [Monitor.h : 47 + 0xe]
+    eip = 0x02e14bd6   esp = 0x0744ff08   ebp = 0x0744ff10
+    Found by: call frame info
+ 7  xul.dll!mozilla::MonitorAutoLock::Wait(unsigned int) [Monitor.h : 102 + 0xd]
+    eip = 0x02fdcf15   esp = 0x0744ff18   ebp = 0x0744ff20
+    Found by: call frame info
+ 8  xul.dll!mozilla::HangMonitor::ThreadMain(void *) [HangMonitor.cpp : 218 + 0xb]
+    eip = 0x03bb2cc0   esp = 0x0744ff28   ebp = 0x0744ff4c
+    Found by: call frame info
+ 9  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0744ff54   ebp = 0x0744ff5c
+    Found by: call frame info
+10  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0744ff64   ebp = 0x0744ff6c
+    Found by: call frame info
+11  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0744ff74   ebp = 0x0744ffa8
+    Found by: call frame info
+12  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0744ffb0   ebp = 0x0744ffb4
+    Found by: previous frame's frame pointer
+13  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0744ffbc   ebp = 0x0744ffec
+    Found by: previous frame's frame pointer
+
+Thread 8
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0774fea8   ebp = 0x0774ff44   ebx = 0x0774fed0
+    esi = 0x00000000   edi = 0x7ffdd000   eax = 0x77df848a   ecx = 0x00000000
+    edx = 0x00000011   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  advapi32.dll + 0x28630
+    eip = 0x77df8631   esp = 0x0774ff4c   ebp = 0x0774ffb4
+    Found by: previous frame's frame pointer
+ 2  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0774ffbc   ebp = 0x0774ffec
+    Found by: previous frame's frame pointer
+
+Thread 9
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0784fe40   ebp = 0x0784fea4   ebx = 0x00a02430
+    esi = 0x00000560   edi = 0x00000000   eax = 0x00000000   ecx = 0x10362de0
+    edx = 0x10362de0   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x0784feac   ebp = 0x0784feb8
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x0784fec0   ebp = 0x0784fed8
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x0784fee0   ebp = 0x0784fef4
+    Found by: call frame info
+ 4  nspr4.dll!PR_WaitCondVar [prucv.c : 515 + 0x16]
+    eip = 0x1002b56f   esp = 0x0784fefc   ebp = 0x0784ff10
+    Found by: call frame info
+ 5  mozjs.dll!js::GCHelperThread::threadLoop() [jsgc.cpp : 2184 + 0xe]
+    eip = 0x00bce211   esp = 0x0784ff18   ebp = 0x0784ff44
+    Found by: call frame info
+ 6  mozjs.dll!js::GCHelperThread::threadMain(void *) [jsgc.cpp : 2166 + 0x7]
+    eip = 0x00bce199   esp = 0x0784ff4c   ebp = 0x0784ff4c
+    Found by: call frame info
+ 7  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0784ff54   ebp = 0x0784ff5c
+    Found by: call frame info
+ 8  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0784ff64   ebp = 0x0784ff6c
+    Found by: call frame info
+ 9  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0784ff74   ebp = 0x0784ffa8
+    Found by: call frame info
+10  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0784ffb0   ebp = 0x0784ffb4
+    Found by: previous frame's frame pointer
+11  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0784ffbc   ebp = 0x0784ffec
+    Found by: previous frame's frame pointer
+
+Thread 10
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x07d4fe5c   ebp = 0x07d4fec0   ebx = 0x063dd538
+    esi = 0x0000055c   edi = 0x00000000   eax = 0x00000000   ecx = 0x0b10e808
+    edx = 0x0000fffe   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x07d4fec8   ebp = 0x07d4fed4
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x07d4fedc   ebp = 0x07d4fef4
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x07d4fefc   ebp = 0x07d4ff10
+    Found by: call frame info
+ 4  nspr4.dll!PR_WaitCondVar [prucv.c : 515 + 0x16]
+    eip = 0x1002b56f   esp = 0x07d4ff18   ebp = 0x07d4ff2c
+    Found by: call frame info
+ 5  mozjs.dll!js::SourceCompressorThread::threadLoop() [jsscript.cpp : 1027 + 0xe]
+    eip = 0x00cee0e9   esp = 0x07d4ff34   ebp = 0x07d4ff44
+    Found by: call frame info
+ 6  mozjs.dll!js::SourceCompressorThread::compressorThread(void *) [jsscript.cpp : 905 + 0x7]
+    eip = 0x00ced989   esp = 0x07d4ff4c   ebp = 0x07d4ff4c
+    Found by: call frame info
+ 7  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x07d4ff54   ebp = 0x07d4ff5c
+    Found by: call frame info
+ 8  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x07d4ff64   ebp = 0x07d4ff6c
+    Found by: call frame info
+ 9  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x07d4ff74   ebp = 0x07d4ffa8
+    Found by: call frame info
+10  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x07d4ffb0   ebp = 0x07d4ffb4
+    Found by: previous frame's frame pointer
+11  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x07d4ffbc   ebp = 0x07d4ffec
+    Found by: previous frame's frame pointer
+
+Thread 11
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x07e4fe54   ebp = 0x07e4feb8   ebx = 0x063df888
+    esi = 0x00000558   edi = 0x00000000   eax = 0x1024a180   ecx = 0x00934e40
+    edx = 0x00000010   efl = 0x00000297
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x07e4fec0   ebp = 0x07e4fecc
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x07e4fed4   ebp = 0x07e4feec
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x07e4fef4   ebp = 0x07e4ff08
+    Found by: call frame info
+ 4  nspr4.dll!PR_WaitCondVar [prucv.c : 515 + 0x16]
+    eip = 0x1002b56f   esp = 0x07e4ff10   ebp = 0x07e4ff24
+    Found by: call frame info
+ 5  xul.dll!XPCJSRuntime::WatchdogMain(void *) [XPCJSRuntime.cpp : 1019 + 0x13]
+    eip = 0x031f8e3f   esp = 0x07e4ff2c   ebp = 0x07e4ff4c
+    Found by: call frame info
+ 6  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x07e4ff54   ebp = 0x07e4ff5c
+    Found by: call frame info
+ 7  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x07e4ff64   ebp = 0x07e4ff6c
+    Found by: call frame info
+ 8  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x07e4ff74   ebp = 0x07e4ffa8
+    Found by: call frame info
+ 9  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x07e4ffb0   ebp = 0x07e4ffb4
+    Found by: previous frame's frame pointer
+10  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x07e4ffbc   ebp = 0x07e4ffec
+    Found by: previous frame's frame pointer
+
+Thread 12
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x080ffe18   ebp = 0x080fff80   ebx = 0x00000000
+    esi = 0x00153458   edi = 0x001534fc   eax = 0x00000000   ecx = 0x00175ab8
+    edx = 0xffffffff   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  rpcrt4.dll + 0x6cae
+    eip = 0x77e76caf   esp = 0x080fff88   ebp = 0x080fff88
+    Found by: previous frame's frame pointer
+ 2  rpcrt4.dll + 0x6ad0
+    eip = 0x77e76ad1   esp = 0x080fff90   ebp = 0x080fffa8
+    Found by: previous frame's frame pointer
+ 3  rpcrt4.dll + 0x6c96
+    eip = 0x77e76c97   esp = 0x080fffb0   ebp = 0x080fffb4
+    Found by: previous frame's frame pointer
+ 4  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x080fffbc   ebp = 0x080fffec
+    Found by: previous frame's frame pointer
+
+Thread 13
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x086fff20   ebp = 0x086fff78   ebx = 0x00007530
+    esi = 0x00000000   edi = 0x086fff50   eax = 0x774fe4ef   ecx = 0x0012eac4
+    edx = 0x00000001   efl = 0x00000206
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2454
+    eip = 0x7c802455   esp = 0x086fff80   ebp = 0x086fff88
+    Found by: previous frame's frame pointer
+ 2  ole32.dll + 0x1e3e2
+    eip = 0x774fe3e3   esp = 0x086fff90   ebp = 0x086fffb4
+    Found by: previous frame's frame pointer
+ 3  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x086fffbc   ebp = 0x086fffec
+    Found by: previous frame's frame pointer
+
+Thread 14
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x095cfc98   ebp = 0x095cfcfc   ebx = 0x08d836b0
+    esi = 0x0000052c   edi = 0x00000000   eax = 0x095d0000   ecx = 0x00000170
+    edx = 0x00000001   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x095cfd04   ebp = 0x095cfd10
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x095cfd18   ebp = 0x095cfd30
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x095cfd38   ebp = 0x095cfd4c
+    Found by: call frame info
+ 4  nspr4.dll!PR_WaitCondVar [prucv.c : 515 + 0x16]
+    eip = 0x1002b56f   esp = 0x095cfd54   ebp = 0x095cfd68
+    Found by: call frame info
+ 5  xul.dll!mozilla::CondVar::Wait(unsigned int) [BlockingResourceBase.cpp : 340 + 0x10]
+    eip = 0x03b424c0   esp = 0x095cfd70   ebp = 0x095cfd90
+    Found by: call frame info
+ 6  xul.dll!mozilla::dom::workers::WorkerPrivate::DoRunLoop(JSContext *) [WorkerPrivate.cpp : 2756 + 0xc]
+    eip = 0x02d8ebcd   esp = 0x095cfd98   ebp = 0x095cfe50
+    Found by: call frame info
+ 7  xul.dll!`anonymous namespace'::WorkerThreadRunnable::Run() [RuntimeService.cpp : 471 + 0xb]
+    eip = 0x02d80d29   esp = 0x095cfe58   ebp = 0x095cfe78
+    Found by: call frame info
+ 8  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 627 + 0x18]
+    eip = 0x03ba9c4b   esp = 0x095cfe80   ebp = 0x095cfef8
+    Found by: call frame info
+ 9  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x095cff00   ebp = 0x095cff14
+    Found by: call frame info
+10  xul.dll!nsThread::ThreadFunc(void *) [nsThread.cpp : 265 + 0xa]
+    eip = 0x03ba8a54   esp = 0x095cff1c   ebp = 0x095cff4c
+    Found by: call frame info
+11  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x095cff54   ebp = 0x095cff5c
+    Found by: call frame info
+12  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x095cff64   ebp = 0x095cff6c
+    Found by: call frame info
+13  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x095cff74   ebp = 0x095cffa8
+    Found by: call frame info
+14  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x095cffb0   ebp = 0x095cffb4
+    Found by: previous frame's frame pointer
+15  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x095cffbc   ebp = 0x095cffec
+    Found by: previous frame's frame pointer
+
+Thread 15
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x097ffd44   ebp = 0x097ffda8   ebx = 0x08e9bb58
+    esi = 0x00000524   edi = 0x00000000   eax = 0x097ffd94   ecx = 0x097ffd94
+    edx = 0x097ffd94   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x097ffdb0   ebp = 0x097ffdbc
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x097ffdc4   ebp = 0x097ffddc
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x097ffde4   ebp = 0x097ffdf8
+    Found by: call frame info
+ 4  nspr4.dll!PR_Wait [prmon.c : 152 + 0x1c]
+    eip = 0x1002a613   esp = 0x097ffe00   ebp = 0x097ffe1c
+    Found by: call frame info
+ 5  xul.dll!mozilla::ReentrantMonitor::Wait(unsigned int) [BlockingResourceBase.cpp : 313 + 0x10]
+    eip = 0x03b423f7   esp = 0x097ffe24   ebp = 0x097ffe48
+    Found by: call frame info
+ 6  xul.dll!mozilla::ReentrantMonitorAutoEnter::Wait(unsigned int) [ReentrantMonitor.h : 192 + 0xd]
+    eip = 0x023d0455   esp = 0x097ffe50   ebp = 0x097ffe58
+    Found by: call frame info
+ 7  xul.dll!nsEventQueue::GetEvent(bool,nsIRunnable * *) [nsEventQueue.cpp : 58 + 0x9]
+    eip = 0x03ba751a   esp = 0x097ffe60   ebp = 0x097ffe74
+    Found by: call frame info
+ 8  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 619 + 0x48]
+    eip = 0x03ba9bce   esp = 0x097ffe7c   ebp = 0x097ffef8
+    Found by: call frame info
+ 9  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x097fff00   ebp = 0x097fff14
+    Found by: call frame info
+10  xul.dll!nsThread::ThreadFunc(void *) [nsThread.cpp : 265 + 0xa]
+    eip = 0x03ba8a54   esp = 0x097fff1c   ebp = 0x097fff4c
+    Found by: call frame info
+11  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x097fff54   ebp = 0x097fff5c
+    Found by: call frame info
+12  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x097fff64   ebp = 0x097fff6c
+    Found by: call frame info
+13  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x097fff74   ebp = 0x097fffa8
+    Found by: call frame info
+14  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x097fffb0   ebp = 0x097fffb4
+    Found by: previous frame's frame pointer
+15  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x097fffbc   ebp = 0x097fffec
+    Found by: previous frame's frame pointer
+
+Thread 16
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x098ffe18   ebp = 0x098fff80   ebx = 0x00000000
+    esi = 0x00153458   edi = 0x001534fc   eax = 0x77e76c7d   ecx = 0x7c90e920
+    edx = 0x080ffaec   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  rpcrt4.dll + 0x6cae
+    eip = 0x77e76caf   esp = 0x098fff88   ebp = 0x098fff88
+    Found by: previous frame's frame pointer
+ 2  rpcrt4.dll + 0x6ad0
+    eip = 0x77e76ad1   esp = 0x098fff90   ebp = 0x098fffa8
+    Found by: previous frame's frame pointer
+ 3  rpcrt4.dll + 0x6c96
+    eip = 0x77e76c97   esp = 0x098fffb0   ebp = 0x098fffb4
+    Found by: previous frame's frame pointer
+ 4  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x098fffbc   ebp = 0x098fffec
+    Found by: previous frame's frame pointer
+
+Thread 17
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x09affd44   ebp = 0x09affda8   ebx = 0x0912b200
+    esi = 0x000004fc   edi = 0x00000000   eax = 0x00000007   ecx = 0x00000010
+    edx = 0x0104edfc   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x09affdb0   ebp = 0x09affdbc
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x09affdc4   ebp = 0x09affddc
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x09affde4   ebp = 0x09affdf8
+    Found by: call frame info
+ 4  nspr4.dll!PR_Wait [prmon.c : 152 + 0x1c]
+    eip = 0x1002a613   esp = 0x09affe00   ebp = 0x09affe1c
+    Found by: call frame info
+ 5  xul.dll!mozilla::ReentrantMonitor::Wait(unsigned int) [BlockingResourceBase.cpp : 313 + 0x10]
+    eip = 0x03b423f7   esp = 0x09affe24   ebp = 0x09affe48
+    Found by: call frame info
+ 6  xul.dll!mozilla::ReentrantMonitorAutoEnter::Wait(unsigned int) [ReentrantMonitor.h : 192 + 0xd]
+    eip = 0x023d0455   esp = 0x09affe50   ebp = 0x09affe58
+    Found by: call frame info
+ 7  xul.dll!nsEventQueue::GetEvent(bool,nsIRunnable * *) [nsEventQueue.cpp : 58 + 0x9]
+    eip = 0x03ba751a   esp = 0x09affe60   ebp = 0x09affe74
+    Found by: call frame info
+ 8  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 619 + 0x48]
+    eip = 0x03ba9bce   esp = 0x09affe7c   ebp = 0x09affef8
+    Found by: call frame info
+ 9  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x09afff00   ebp = 0x09afff14
+    Found by: call frame info
+10  xul.dll!nsThread::ThreadFunc(void *) [nsThread.cpp : 265 + 0xa]
+    eip = 0x03ba8a54   esp = 0x09afff1c   ebp = 0x09afff4c
+    Found by: call frame info
+11  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x09afff54   ebp = 0x09afff5c
+    Found by: call frame info
+12  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x09afff64   ebp = 0x09afff6c
+    Found by: call frame info
+13  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x09afff74   ebp = 0x09afffa8
+    Found by: call frame info
+14  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x09afffb0   ebp = 0x09afffb4
+    Found by: previous frame's frame pointer
+15  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x09afffbc   ebp = 0x09afffec
+    Found by: previous frame's frame pointer
+
+Thread 18
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x09cffd0c   ebp = 0x09cffd70   ebx = 0x09174280
+    esi = 0x000004e4   edi = 0x00000000   eax = 0xcdcdcdcd   ecx = 0x00000432
+    edx = 0x00000000   efl = 0x00000297
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x09cffd78   ebp = 0x09cffd84
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x09cffd8c   ebp = 0x09cffda4
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x09cffdac   ebp = 0x09cffdc0
+    Found by: call frame info
+ 4  nspr4.dll!PR_Wait [prmon.c : 152 + 0x1c]
+    eip = 0x1002a613   esp = 0x09cffdc8   ebp = 0x09cffde4
+    Found by: call frame info
+ 5  xul.dll!mozilla::ReentrantMonitor::Wait(unsigned int) [BlockingResourceBase.cpp : 313 + 0x10]
+    eip = 0x03b423f7   esp = 0x09cffdec   ebp = 0x09cffe10
+    Found by: call frame info
+ 6  xul.dll!mozilla::ReentrantMonitorAutoEnter::Wait(unsigned int) [ReentrantMonitor.h : 192 + 0xd]
+    eip = 0x023d0455   esp = 0x09cffe18   ebp = 0x09cffe20
+    Found by: call frame info
+ 7  xul.dll!nsThreadPool::Run() [nsThreadPool.cpp : 185 + 0xb]
+    eip = 0x03bad2ab   esp = 0x09cffe28   ebp = 0x09cffe78
+    Found by: call frame info
+ 8  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 627 + 0x18]
+    eip = 0x03ba9c4b   esp = 0x09cffe80   ebp = 0x09cffef8
+    Found by: call frame info
+ 9  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x09cfff00   ebp = 0x09cfff14
+    Found by: call frame info
+10  xul.dll!nsThread::ThreadFunc(void *) [nsThread.cpp : 265 + 0xa]
+    eip = 0x03ba8a54   esp = 0x09cfff1c   ebp = 0x09cfff4c
+    Found by: call frame info
+11  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x09cfff54   ebp = 0x09cfff5c
+    Found by: call frame info
+12  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x09cfff64   ebp = 0x09cfff6c
+    Found by: call frame info
+13  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x09cfff74   ebp = 0x09cfffa8
+    Found by: call frame info
+14  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x09cfffb0   ebp = 0x09cfffb4
+    Found by: previous frame's frame pointer
+15  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x09cfffbc   ebp = 0x09cfffec
+    Found by: previous frame's frame pointer
+
+Thread 19
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x09ffff9c   ebp = 0x09ffffb4   ebx = 0x00000000
+    esi = 0x7c916538   edi = 0x0012b1c0   eax = 0x7c927d83   ecx = 0x7c912230
+    edx = 0x7c90e920   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x09ffffbc   ebp = 0x09ffffec
+    Found by: previous frame's frame pointer
+
+Thread 20
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0a5fff70   ebp = 0x0a5fffb4   ebx = 0x00000000
+    esi = 0x7c97e440   edi = 0x7c97e460   eax = 0x0000000a   ecx = 0x001893a8
+    edx = 0x00000000   efl = 0x00000286
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0a5fffbc   ebp = 0x0a5fffec
+    Found by: previous frame's frame pointer
+
+Thread 21
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0a7ffd44   ebp = 0x0a7ffda8   ebx = 0x0aa0b9b0
+    esi = 0x000003a0   edi = 0x00000000   eax = 0x00000001   ecx = 0x3e1a000c
+    edx = 0x00000000   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x0a7ffdb0   ebp = 0x0a7ffdbc
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x0a7ffdc4   ebp = 0x0a7ffddc
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x0a7ffde4   ebp = 0x0a7ffdf8
+    Found by: call frame info
+ 4  nspr4.dll!PR_Wait [prmon.c : 152 + 0x1c]
+    eip = 0x1002a613   esp = 0x0a7ffe00   ebp = 0x0a7ffe1c
+    Found by: call frame info
+ 5  xul.dll!mozilla::ReentrantMonitor::Wait(unsigned int) [BlockingResourceBase.cpp : 313 + 0x10]
+    eip = 0x03b423f7   esp = 0x0a7ffe24   ebp = 0x0a7ffe48
+    Found by: call frame info
+ 6  xul.dll!mozilla::ReentrantMonitorAutoEnter::Wait(unsigned int) [ReentrantMonitor.h : 192 + 0xd]
+    eip = 0x023d0455   esp = 0x0a7ffe50   ebp = 0x0a7ffe58
+    Found by: call frame info
+ 7  xul.dll!nsEventQueue::GetEvent(bool,nsIRunnable * *) [nsEventQueue.cpp : 58 + 0x9]
+    eip = 0x03ba751a   esp = 0x0a7ffe60   ebp = 0x0a7ffe74
+    Found by: call frame info
+ 8  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 619 + 0x48]
+    eip = 0x03ba9bce   esp = 0x0a7ffe7c   ebp = 0x0a7ffef8
+    Found by: call frame info
+ 9  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x0a7fff00   ebp = 0x0a7fff14
+    Found by: call frame info
+10  xul.dll!nsThread::ThreadFunc(void *) [nsThread.cpp : 265 + 0xa]
+    eip = 0x03ba8a54   esp = 0x0a7fff1c   ebp = 0x0a7fff4c
+    Found by: call frame info
+11  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0a7fff54   ebp = 0x0a7fff5c
+    Found by: call frame info
+12  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0a7fff64   ebp = 0x0a7fff6c
+    Found by: call frame info
+13  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0a7fff74   ebp = 0x0a7fffa8
+    Found by: call frame info
+14  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0a7fffb0   ebp = 0x0a7fffb4
+    Found by: previous frame's frame pointer
+15  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0a7fffbc   ebp = 0x0a7fffec
+    Found by: previous frame's frame pointer
+
+Thread 22
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0b9ffdb4   ebp = 0x0b9ffe18   ebx = 0x0aa2db38
+    esi = 0x00000384   edi = 0x00000000   eax = 0x0b9fff34   ecx = 0x0b9fff34
+    edx = 0x0b9fff34   efl = 0x00000297
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x0b9ffe20   ebp = 0x0b9ffe2c
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x0b9ffe34   ebp = 0x0b9ffe4c
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x0b9ffe54   ebp = 0x0b9ffe68
+    Found by: call frame info
+ 4  nspr4.dll!PR_WaitCondVar [prucv.c : 515 + 0x16]
+    eip = 0x1002b56f   esp = 0x0b9ffe70   ebp = 0x0b9ffe84
+    Found by: call frame info
+ 5  xul.dll!mozilla::CondVar::Wait(unsigned int) [BlockingResourceBase.cpp : 340 + 0x10]
+    eip = 0x03b424c0   esp = 0x0b9ffe8c   ebp = 0x0b9ffeac
+    Found by: call frame info
+ 6  xul.dll!nsHostResolver::GetHostToLookup(nsHostRecord * *) [nsHostResolver.cpp : 813 + 0xe]
+    eip = 0x02204ee5   esp = 0x0b9ffeb4   ebp = 0x0b9ffee0
+    Found by: call frame info
+ 7  xul.dll!nsHostResolver::ThreadFunc(void *) [nsHostResolver.cpp : 974 + 0xb]
+    eip = 0x0220545e   esp = 0x0b9ffee8   ebp = 0x0b9fff4c
+    Found by: call frame info
+ 8  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0b9fff54   ebp = 0x0b9fff5c
+    Found by: call frame info
+ 9  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0b9fff64   ebp = 0x0b9fff6c
+    Found by: call frame info
+10  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0b9fff74   ebp = 0x0b9fffa8
+    Found by: call frame info
+11  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0b9fffb0   ebp = 0x0b9fffb4
+    Found by: previous frame's frame pointer
+12  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0b9fffbc   ebp = 0x0b9fffec
+    Found by: previous frame's frame pointer
+
+Thread 23
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0c13fe00   ebp = 0x0c13fe64   ebx = 0x0aac8c68
+    esi = 0x00000328   edi = 0x00000000   eax = 0x1024a180   ecx = 0x08800000
+    edx = 0x0aac7308   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x0c13fe6c   ebp = 0x0c13fe78
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x0c13fe80   ebp = 0x0c13fe98
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x0c13fea0   ebp = 0x0c13feb4
+    Found by: call frame info
+ 4  nspr4.dll!PR_WaitCondVar [prucv.c : 515 + 0x16]
+    eip = 0x1002b56f   esp = 0x0c13febc   ebp = 0x0c13fed0
+    Found by: call frame info
+ 5  xul.dll!mozilla::CondVar::Wait(unsigned int) [BlockingResourceBase.cpp : 340 + 0x10]
+    eip = 0x03b424c0   esp = 0x0c13fed8   ebp = 0x0c13fef8
+    Found by: call frame info
+ 6  xul.dll!nsCertVerificationThread::Run() [nsCertVerificationThread.cpp : 131 + 0xc]
+    eip = 0x034195c2   esp = 0x0c13ff00   ebp = 0x0c13ff40
+    Found by: call frame info
+ 7  xul.dll!nsPSMBackgroundThread::nsThreadRunner(void *) [nsPSMBackgroundThread.cpp : 14 + 0xb]
+    eip = 0x03418b5b   esp = 0x0c13ff48   ebp = 0x0c13ff4c
+    Found by: call frame info
+ 8  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0c13ff54   ebp = 0x0c13ff5c
+    Found by: call frame info
+ 9  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0c13ff64   ebp = 0x0c13ff6c
+    Found by: call frame info
+10  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0c13ff74   ebp = 0x0c13ffa8
+    Found by: call frame info
+11  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0c13ffb0   ebp = 0x0c13ffb4
+    Found by: previous frame's frame pointer
+12  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0c13ffbc   ebp = 0x0c13ffec
+    Found by: previous frame's frame pointer
+
+Thread 24
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0c23fd44   ebp = 0x0c23fda8   ebx = 0x0aac9c78
+    esi = 0x00000324   edi = 0x00000000   eax = 0x0c23fe10   ecx = 0x0c23fe10
+    edx = 0x0c23fe10   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x0c23fdb0   ebp = 0x0c23fdbc
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x0c23fdc4   ebp = 0x0c23fddc
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x0c23fde4   ebp = 0x0c23fdf8
+    Found by: call frame info
+ 4  nspr4.dll!PR_Wait [prmon.c : 152 + 0x1c]
+    eip = 0x1002a613   esp = 0x0c23fe00   ebp = 0x0c23fe1c
+    Found by: call frame info
+ 5  xul.dll!mozilla::ReentrantMonitor::Wait(unsigned int) [BlockingResourceBase.cpp : 313 + 0x10]
+    eip = 0x03b423f7   esp = 0x0c23fe24   ebp = 0x0c23fe48
+    Found by: call frame info
+ 6  xul.dll!mozilla::ReentrantMonitorAutoEnter::Wait(unsigned int) [ReentrantMonitor.h : 192 + 0xd]
+    eip = 0x023d0455   esp = 0x0c23fe50   ebp = 0x0c23fe58
+    Found by: call frame info
+ 7  xul.dll!nsEventQueue::GetEvent(bool,nsIRunnable * *) [nsEventQueue.cpp : 58 + 0x9]
+    eip = 0x03ba751a   esp = 0x0c23fe60   ebp = 0x0c23fe74
+    Found by: call frame info
+ 8  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 619 + 0x48]
+    eip = 0x03ba9bce   esp = 0x0c23fe7c   ebp = 0x0c23fef8
+    Found by: call frame info
+ 9  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x0c23ff00   ebp = 0x0c23ff14
+    Found by: call frame info
+10  xul.dll!nsThread::ThreadFunc(void *) [nsThread.cpp : 265 + 0xa]
+    eip = 0x03ba8a54   esp = 0x0c23ff1c   ebp = 0x0c23ff4c
+    Found by: call frame info
+11  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0c23ff54   ebp = 0x0c23ff5c
+    Found by: call frame info
+12  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0c23ff64   ebp = 0x0c23ff6c
+    Found by: call frame info
+13  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0c23ff74   ebp = 0x0c23ffa8
+    Found by: call frame info
+14  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0c23ffb0   ebp = 0x0c23ffb4
+    Found by: previous frame's frame pointer
+15  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0c23ffbc   ebp = 0x0c23ffec
+    Found by: previous frame's frame pointer
+
+Thread 25
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0c33fd44   ebp = 0x0c33fda8   ebx = 0x0a966010
+    esi = 0x00000314   edi = 0x00000000   eax = 0x00000000   ecx = 0x0c33f858
+    edx = 0x00000080   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x0c33fdb0   ebp = 0x0c33fdbc
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x0c33fdc4   ebp = 0x0c33fddc
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x0c33fde4   ebp = 0x0c33fdf8
+    Found by: call frame info
+ 4  nspr4.dll!PR_Wait [prmon.c : 152 + 0x1c]
+    eip = 0x1002a613   esp = 0x0c33fe00   ebp = 0x0c33fe1c
+    Found by: call frame info
+ 5  xul.dll!mozilla::ReentrantMonitor::Wait(unsigned int) [BlockingResourceBase.cpp : 313 + 0x10]
+    eip = 0x03b423f7   esp = 0x0c33fe24   ebp = 0x0c33fe48
+    Found by: call frame info
+ 6  xul.dll!mozilla::ReentrantMonitorAutoEnter::Wait(unsigned int) [ReentrantMonitor.h : 192 + 0xd]
+    eip = 0x023d0455   esp = 0x0c33fe50   ebp = 0x0c33fe58
+    Found by: call frame info
+ 7  xul.dll!nsEventQueue::GetEvent(bool,nsIRunnable * *) [nsEventQueue.cpp : 58 + 0x9]
+    eip = 0x03ba751a   esp = 0x0c33fe60   ebp = 0x0c33fe74
+    Found by: call frame info
+ 8  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 619 + 0x48]
+    eip = 0x03ba9bce   esp = 0x0c33fe7c   ebp = 0x0c33fef8
+    Found by: call frame info
+ 9  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x0c33ff00   ebp = 0x0c33ff14
+    Found by: call frame info
+10  xul.dll!nsThread::ThreadFunc(void *) [nsThread.cpp : 265 + 0xa]
+    eip = 0x03ba8a54   esp = 0x0c33ff1c   ebp = 0x0c33ff4c
+    Found by: call frame info
+11  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0c33ff54   ebp = 0x0c33ff5c
+    Found by: call frame info
+12  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0c33ff64   ebp = 0x0c33ff6c
+    Found by: call frame info
+13  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0c33ff74   ebp = 0x0c33ffa8
+    Found by: call frame info
+14  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0c33ffb0   ebp = 0x0c33ffb4
+    Found by: previous frame's frame pointer
+15  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0c33ffbc   ebp = 0x0c33ffec
+    Found by: previous frame's frame pointer
+
+Thread 26
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0c43fd44   ebp = 0x0c43fda8   ebx = 0x0aaff0e0
+    esi = 0x000002fc   edi = 0x00000000   eax = 0x00000000   ecx = 0x00000033
+    edx = 0x00000002   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x0c43fdb0   ebp = 0x0c43fdbc
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x0c43fdc4   ebp = 0x0c43fddc
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x0c43fde4   ebp = 0x0c43fdf8
+    Found by: call frame info
+ 4  nspr4.dll!PR_Wait [prmon.c : 152 + 0x1c]
+    eip = 0x1002a613   esp = 0x0c43fe00   ebp = 0x0c43fe1c
+    Found by: call frame info
+ 5  xul.dll!mozilla::ReentrantMonitor::Wait(unsigned int) [BlockingResourceBase.cpp : 313 + 0x10]
+    eip = 0x03b423f7   esp = 0x0c43fe24   ebp = 0x0c43fe48
+    Found by: call frame info
+ 6  xul.dll!mozilla::ReentrantMonitorAutoEnter::Wait(unsigned int) [ReentrantMonitor.h : 192 + 0xd]
+    eip = 0x023d0455   esp = 0x0c43fe50   ebp = 0x0c43fe58
+    Found by: call frame info
+ 7  xul.dll!nsEventQueue::GetEvent(bool,nsIRunnable * *) [nsEventQueue.cpp : 58 + 0x9]
+    eip = 0x03ba751a   esp = 0x0c43fe60   ebp = 0x0c43fe74
+    Found by: call frame info
+ 8  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 619 + 0x48]
+    eip = 0x03ba9bce   esp = 0x0c43fe7c   ebp = 0x0c43fef8
+    Found by: call frame info
+ 9  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x0c43ff00   ebp = 0x0c43ff14
+    Found by: call frame info
+10  xul.dll!nsThread::ThreadFunc(void *) [nsThread.cpp : 265 + 0xa]
+    eip = 0x03ba8a54   esp = 0x0c43ff1c   ebp = 0x0c43ff4c
+    Found by: call frame info
+11  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0c43ff54   ebp = 0x0c43ff5c
+    Found by: call frame info
+12  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0c43ff64   ebp = 0x0c43ff6c
+    Found by: call frame info
+13  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0c43ff74   ebp = 0x0c43ffa8
+    Found by: call frame info
+14  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0c43ffb0   ebp = 0x0c43ffb4
+    Found by: previous frame's frame pointer
+15  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0c43ffbc   ebp = 0x0c43ffec
+    Found by: previous frame's frame pointer
+
+Thread 27
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0c53fdb4   ebp = 0x0c53fe18   ebx = 0x0ad0ef50
+    esi = 0x00000270   edi = 0x00000000   eax = 0x0c53ff34   ecx = 0x0c53ff34
+    edx = 0x0c53ff34   efl = 0x00000297
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x0c53fe20   ebp = 0x0c53fe2c
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x0c53fe34   ebp = 0x0c53fe4c
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x0c53fe54   ebp = 0x0c53fe68
+    Found by: call frame info
+ 4  nspr4.dll!PR_WaitCondVar [prucv.c : 515 + 0x16]
+    eip = 0x1002b56f   esp = 0x0c53fe70   ebp = 0x0c53fe84
+    Found by: call frame info
+ 5  xul.dll!mozilla::CondVar::Wait(unsigned int) [BlockingResourceBase.cpp : 340 + 0x10]
+    eip = 0x03b424c0   esp = 0x0c53fe8c   ebp = 0x0c53feac
+    Found by: call frame info
+ 6  xul.dll!nsHostResolver::GetHostToLookup(nsHostRecord * *) [nsHostResolver.cpp : 813 + 0xe]
+    eip = 0x02204ee5   esp = 0x0c53feb4   ebp = 0x0c53fee0
+    Found by: call frame info
+ 7  xul.dll!nsHostResolver::ThreadFunc(void *) [nsHostResolver.cpp : 974 + 0xb]
+    eip = 0x0220545e   esp = 0x0c53fee8   ebp = 0x0c53ff4c
+    Found by: call frame info
+ 8  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0c53ff54   ebp = 0x0c53ff5c
+    Found by: call frame info
+ 9  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0c53ff64   ebp = 0x0c53ff6c
+    Found by: call frame info
+10  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0c53ff74   ebp = 0x0c53ffa8
+    Found by: call frame info
+11  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0c53ffb0   ebp = 0x0c53ffb4
+    Found by: previous frame's frame pointer
+12  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0c53ffbc   ebp = 0x0c53ffec
+    Found by: previous frame's frame pointer
+
+Thread 28
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0c63fdb4   ebp = 0x0c63fe18   ebx = 0x0acd50f0
+    esi = 0x00000250   edi = 0x00000000   eax = 0x0c63ff34   ecx = 0x0c63ff34
+    edx = 0x0c63ff34   efl = 0x00000297
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x0c63fe20   ebp = 0x0c63fe2c
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x0c63fe34   ebp = 0x0c63fe4c
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x0c63fe54   ebp = 0x0c63fe68
+    Found by: call frame info
+ 4  nspr4.dll!PR_WaitCondVar [prucv.c : 515 + 0x16]
+    eip = 0x1002b56f   esp = 0x0c63fe70   ebp = 0x0c63fe84
+    Found by: call frame info
+ 5  xul.dll!mozilla::CondVar::Wait(unsigned int) [BlockingResourceBase.cpp : 340 + 0x10]
+    eip = 0x03b424c0   esp = 0x0c63fe8c   ebp = 0x0c63feac
+    Found by: call frame info
+ 6  xul.dll!nsHostResolver::GetHostToLookup(nsHostRecord * *) [nsHostResolver.cpp : 813 + 0xe]
+    eip = 0x02204ee5   esp = 0x0c63feb4   ebp = 0x0c63fee0
+    Found by: call frame info
+ 7  xul.dll!nsHostResolver::ThreadFunc(void *) [nsHostResolver.cpp : 974 + 0xb]
+    eip = 0x0220545e   esp = 0x0c63fee8   ebp = 0x0c63ff4c
+    Found by: call frame info
+ 8  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0c63ff54   ebp = 0x0c63ff5c
+    Found by: call frame info
+ 9  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0c63ff64   ebp = 0x0c63ff6c
+    Found by: call frame info
+10  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0c63ff74   ebp = 0x0c63ffa8
+    Found by: call frame info
+11  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0c63ffb0   ebp = 0x0c63ffb4
+    Found by: previous frame's frame pointer
+12  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0c63ffbc   ebp = 0x0c63ffec
+    Found by: previous frame's frame pointer
+
+Thread 29
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0bb8fd44   ebp = 0x0bb8fda8   ebx = 0x09046a20
+    esi = 0x0000033c   edi = 0x00000000   eax = 0x0bb8fd54   ecx = 0x0bb8fd54
+    edx = 0x0bb8fd54   efl = 0x00000246
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x0bb8fdb0   ebp = 0x0bb8fdbc
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x0bb8fdc4   ebp = 0x0bb8fddc
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x0bb8fde4   ebp = 0x0bb8fdf8
+    Found by: call frame info
+ 4  nspr4.dll!PR_Wait [prmon.c : 152 + 0x1c]
+    eip = 0x1002a613   esp = 0x0bb8fe00   ebp = 0x0bb8fe1c
+    Found by: call frame info
+ 5  xul.dll!mozilla::ReentrantMonitor::Wait(unsigned int) [BlockingResourceBase.cpp : 313 + 0x10]
+    eip = 0x03b423f7   esp = 0x0bb8fe24   ebp = 0x0bb8fe48
+    Found by: call frame info
+ 6  xul.dll!mozilla::ReentrantMonitorAutoEnter::Wait(unsigned int) [ReentrantMonitor.h : 192 + 0xd]
+    eip = 0x023d0455   esp = 0x0bb8fe50   ebp = 0x0bb8fe58
+    Found by: call frame info
+ 7  xul.dll!nsEventQueue::GetEvent(bool,nsIRunnable * *) [nsEventQueue.cpp : 58 + 0x9]
+    eip = 0x03ba751a   esp = 0x0bb8fe60   ebp = 0x0bb8fe74
+    Found by: call frame info
+ 8  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 619 + 0x48]
+    eip = 0x03ba9bce   esp = 0x0bb8fe7c   ebp = 0x0bb8fef8
+    Found by: call frame info
+ 9  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x0bb8ff00   ebp = 0x0bb8ff14
+    Found by: call frame info
+10  xul.dll!nsThread::ThreadFunc(void *) [nsThread.cpp : 265 + 0xa]
+    eip = 0x03ba8a54   esp = 0x0bb8ff1c   ebp = 0x0bb8ff4c
+    Found by: call frame info
+11  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0bb8ff54   ebp = 0x0bb8ff5c
+    Found by: call frame info
+12  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0bb8ff64   ebp = 0x0bb8ff6c
+    Found by: call frame info
+13  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0bb8ff74   ebp = 0x0bb8ffa8
+    Found by: call frame info
+14  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0bb8ffb0   ebp = 0x0bb8ffb4
+    Found by: previous frame's frame pointer
+15  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0bb8ffbc   ebp = 0x0bb8ffec
+    Found by: previous frame's frame pointer
+
+Thread 30
+ 0  ntdll.dll + 0xe514
+    eip = 0x7c90e514   esp = 0x0bcbfd0c   ebp = 0x0bcbfd70   ebx = 0x082bc340
+    esi = 0x00000220   edi = 0x00000000   eax = 0x00000106   ecx = 0x00000110
+    edx = 0x016053ab   efl = 0x00000297
+    Found by: given as instruction pointer in context
+ 1  kernel32.dll + 0x2541
+    eip = 0x7c802542   esp = 0x0bcbfd78   ebp = 0x0bcbfd84
+    Found by: previous frame's frame pointer
+ 2  nspr4.dll!_PR_MD_WAIT_CV [w95cv.c : 248 + 0x13]
+    eip = 0x1003399f   esp = 0x0bcbfd8c   ebp = 0x0bcbfda4
+    Found by: previous frame's frame pointer
+ 3  nspr4.dll!_PR_WaitCondVar [prucv.c : 172 + 0x16]
+    eip = 0x1002ada1   esp = 0x0bcbfdac   ebp = 0x0bcbfdc0
+    Found by: call frame info
+ 4  nspr4.dll!PR_Wait [prmon.c : 152 + 0x1c]
+    eip = 0x1002a613   esp = 0x0bcbfdc8   ebp = 0x0bcbfde4
+    Found by: call frame info
+ 5  xul.dll!mozilla::ReentrantMonitor::Wait(unsigned int) [BlockingResourceBase.cpp : 313 + 0x10]
+    eip = 0x03b423f7   esp = 0x0bcbfdec   ebp = 0x0bcbfe10
+    Found by: call frame info
+ 6  xul.dll!mozilla::ReentrantMonitorAutoEnter::Wait(unsigned int) [ReentrantMonitor.h : 192 + 0xd]
+    eip = 0x023d0455   esp = 0x0bcbfe18   ebp = 0x0bcbfe20
+    Found by: call frame info
+ 7  xul.dll!nsThreadPool::Run() [nsThreadPool.cpp : 185 + 0xb]
+    eip = 0x03bad2ab   esp = 0x0bcbfe28   ebp = 0x0bcbfe78
+    Found by: call frame info
+ 8  xul.dll!nsThread::ProcessNextEvent(bool,bool *) [nsThread.cpp : 627 + 0x18]
+    eip = 0x03ba9c4b   esp = 0x0bcbfe80   ebp = 0x0bcbfef8
+    Found by: call frame info
+ 9  xul.dll!NS_ProcessNextEvent_P(nsIThread *,bool) [nsThreadUtils.cpp : 237 + 0x16]
+    eip = 0x03b3ee14   esp = 0x0bcbff00   ebp = 0x0bcbff14
+    Found by: call frame info
+10  xul.dll!nsThread::ThreadFunc(void *) [nsThread.cpp : 265 + 0xa]
+    eip = 0x03ba8a54   esp = 0x0bcbff1c   ebp = 0x0bcbff4c
+    Found by: call frame info
+11  nspr4.dll!_PR_NativeRunThread [pruthr.c : 395 + 0xe]
+    eip = 0x1002cd9b   esp = 0x0bcbff54   ebp = 0x0bcbff5c
+    Found by: call frame info
+12  nspr4.dll!pr_root [w95thred.c : 90 + 0xe]
+    eip = 0x10031559   esp = 0x0bcbff64   ebp = 0x0bcbff6c
+    Found by: call frame info
+13  MSVCR100D.dll + 0x4a272
+    eip = 0x1024a273   esp = 0x0bcbff74   ebp = 0x0bcbffa8
+    Found by: call frame info
+14  MSVCR100D.dll + 0x4a203
+    eip = 0x1024a204   esp = 0x0bcbffb0   ebp = 0x0bcbffb4
+    Found by: previous frame's frame pointer
+15  kernel32.dll + 0xb728
+    eip = 0x7c80b729   esp = 0x0bcbffbc   ebp = 0x0bcbffec
+    Found by: previous frame's frame pointer
+
+Loaded modules:
+0x003b0000 - 0x003ebfff  mozglue.dll  20.0.0.4752
+0x003f0000 - 0x003fbfff  plc4.dll  4.9.5.0
+0x00400000 - 0x00518fff  firefox.exe  20.0.0.4752  (main)
+0x00ab0000 - 0x015b3fff  mozjs.dll  ???
+0x015c0000 - 0x015cafff  plds4.dll  4.9.5.0
+0x015d0000 - 0x01605fff  nssutil3.dll  3.14.2.0
+0x01610000 - 0x0178cfff  nss3.dll  3.14.2.0
+0x01790000 - 0x017cafff  smime3.dll  3.14.2.0
+0x017d0000 - 0x0183ffff  ssl3.dll  3.14.2.0
+0x01840000 - 0x019dffff  mozsqlite3.dll  3.7.15.1
+0x019e0000 - 0x019eafff  mozalloc.dll  20.0.0.4752
+0x019f0000 - 0x0212dfff  gkmedias.dll  20.0.0.4752
+0x02140000 - 0x05dc8fff  xul.dll  20.0.0.4752
+0x05de0000 - 0x05decfff  xpcom.dll  20.0.0.4752
+0x07180000 - 0x0724ffff  browsercomps.dll  20.0.0.4752
+0x08820000 - 0x08828fff  normaliz.dll  6.0.5441.0
+0x088b0000 - 0x088fcfff  softokn3.dll  3.14.2.0
+0x08a00000 - 0x08cc4fff  xpsp2res.dll  5.1.2600.5512
+0x09dc0000 - 0x09df6fff  nssdbm3.dll  3.14.2.0
+0x0bf10000 - 0x0bf91fff  freebl3.dll  3.14.2.0
+0x0bfa0000 - 0x0c036fff  nssckbi.dll  1.93.0.0
+0x10000000 - 0x1004efff  nspr4.dll  4.9.5.0
+0x10200000 - 0x10372fff  MSVCR100D.dll  10.0.40219.1
+0x10480000 - 0x10536fff  MSVCP100D.dll  10.0.40219.1
+0x3d930000 - 0x3da15fff  wininet.dll  8.0.6001.19389
+0x3dfd0000 - 0x3e1bafff  iertutil.dll  8.0.6001.19389
+0x59a60000 - 0x59b00fff  dbghelp.dll  5.1.2600.5512
+0x5ad70000 - 0x5ada7fff  uxtheme.dll  6.0.2900.5512
+0x5b860000 - 0x5b8b4fff  netapi32.dll  5.1.2600.6260
+0x5dac0000 - 0x5dac7fff  rdpsnd.dll  5.1.2600.5512
+0x662b0000 - 0x66307fff  hnetcfg.dll  5.1.2600.5512
+0x68000000 - 0x68035fff  rsaenh.dll  5.1.2600.5507
+0x693f0000 - 0x693f8fff  feclient.dll  5.1.2600.5512
+0x71a50000 - 0x71a8efff  mswsock.dll  5.1.2600.5625
+0x71a90000 - 0x71a97fff  wshtcpip.dll  5.1.2600.5512
+0x71aa0000 - 0x71aa7fff  ws2help.dll  5.1.2600.5512
+0x71ab0000 - 0x71ac6fff  ws2_32.dll  5.1.2600.5512
+0x71ad0000 - 0x71ad8fff  wsock32.dll  5.1.2600.5512
+0x71b20000 - 0x71b31fff  mpr.dll  5.1.2600.5512
+0x722b0000 - 0x722b4fff  sensapi.dll  5.1.2600.5512
+0x736b0000 - 0x736b6fff  msdmo.dll  6.5.2600.5512
+0x73ce0000 - 0x73d00fff  t2embed.dll  5.1.2600.6031
+0x73dc0000 - 0x73dc2fff  lz32.dll  5.1.2600.0
+0x74720000 - 0x7476bfff  msctf.dll  5.1.2600.5512
+0x74d90000 - 0x74dfafff  usp10.dll  1.420.2600.5969
+0x755c0000 - 0x755edfff  msctfime.ime  5.1.2600.5512
+0x76360000 - 0x7636ffff  winsta.dll  5.1.2600.5512
+0x76380000 - 0x76384fff  msimg32.dll  5.1.2600.5512
+0x76390000 - 0x763acfff  imm32.dll  5.1.2600.5512
+0x76790000 - 0x7679bfff  cryptdll.dll  5.1.2600.5512
+0x769c0000 - 0x76a73fff  userenv.dll  5.1.2600.5512
+0x76b40000 - 0x76b6cfff  winmm.dll  5.1.2600.6160
+0x76bf0000 - 0x76bfafff  psapi.dll  5.1.2600.5512
+0x76c30000 - 0x76c5dfff  wintrust.dll  5.131.2600.6285
+0x76c90000 - 0x76cb7fff  imagehlp.dll  5.1.2600.6198
+0x76d60000 - 0x76d78fff  iphlpapi.dll  5.1.2600.5512
+0x76e80000 - 0x76e8dfff  rtutils.dll  5.1.2600.5512
+0x76e90000 - 0x76ea1fff  rasman.dll  5.1.2600.5512
+0x76eb0000 - 0x76edefff  tapi32.dll  5.1.2600.5512
+0x76ee0000 - 0x76f1bfff  rasapi32.dll  5.1.2600.5512
+0x76f20000 - 0x76f46fff  dnsapi.dll  5.1.2600.6089
+0x76f60000 - 0x76f8bfff  wldap32.dll  5.1.2600.5512
+0x76fb0000 - 0x76fb7fff  winrnr.dll  5.1.2600.5512
+0x76fc0000 - 0x76fc5fff  rasadhlp.dll  5.1.2600.5512
+0x76fd0000 - 0x7704efff  clbcatq.dll  2001.12.4414.700
+0x77050000 - 0x77114fff  comres.dll  2001.12.4414.700
+0x77120000 - 0x771aafff  oleaut32.dll  5.1.2600.6058
+0x773d0000 - 0x774d2fff  comctl32.dll  6.0.2900.6028
+0x774e0000 - 0x7761dfff  ole32.dll  5.1.2600.6168
+0x77920000 - 0x77a12fff  setupapi.dll  5.1.2600.5512
+0x77a80000 - 0x77b14fff  crypt32.dll  5.131.2600.6239
+0x77b20000 - 0x77b31fff  msasn1.dll  5.1.2600.5875
+0x77c00000 - 0x77c07fff  version.dll  5.1.2600.5512
+0x77c10000 - 0x77c67fff  msvcrt.dll  7.0.2600.5512
+0x77c70000 - 0x77c94fff  msv1_0.dll  5.1.2600.5876
+0x77dd0000 - 0x77e6afff  advapi32.dll  5.1.2600.5755
+0x77e70000 - 0x77f02fff  rpcrt4.dll  5.1.2600.6022
+0x77f10000 - 0x77f58fff  gdi32.dll  5.1.2600.5698
+0x77f60000 - 0x77fd5fff  shlwapi.dll  6.0.2900.5912
+0x77fe0000 - 0x77ff0fff  secur32.dll  5.1.2600.5834
+0x78130000 - 0x78262fff  urlmon.dll  8.0.6001.19389
+0x7c800000 - 0x7c8f5fff  kernel32.dll  5.1.2600.6293
+0x7c900000 - 0x7c9b1fff  ntdll.dll  5.1.2600.6055
+0x7c9c0000 - 0x7d1d6fff  shell32.dll  6.0.2900.6242
+0x7e410000 - 0x7e4a0fff  user32.dll  5.1.2600.5512
+
+ EXIT STATUS: NORMAL (11.359731 seconds)""",]
 
     for crashreport in crashreport_list:
 
