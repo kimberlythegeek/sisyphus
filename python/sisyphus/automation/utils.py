@@ -246,7 +246,8 @@ from poster.streaminghttp import register_openers
 import urllib2
 
 # Register the streaming http handlers with urllib2
-poster.streaminghttp.register_openers()
+opener = poster.streaminghttp.register_openers()
+opener.add_handler(urllib2.ProxyHandler({}))
 
 import gzip
 
