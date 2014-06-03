@@ -15,20 +15,31 @@ var gPageWait  = 1 * 1000;
 
 function userOnStart()
 {
+  dlog('userOnStart()');
   registerDialogCloser();
+
+  var rv      = 'unknown';
+  var rvmatch = navigator.userAgent.match(/rv:([\w.]*)/);
+  if (rvmatch && rvmatch.length >= 2)
+    rv = rvmatch[1];
+
+  cdump('rv:' + rv + ' ' + navigator.buildID)
 }
 
 function userOnStop()
 {
+  dlog('userOnStop()');
   unregisterDialogCloser();
 }
 
 function userOnBeforePage()
 {
+  dlog('userOnBeforePage()');
 }
 
 function userOnAfterPage()
 {
+  dlog('userOnAfterPage()');
   setTimeout(completePage, gPageWait);
 }
 

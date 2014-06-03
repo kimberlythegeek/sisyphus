@@ -12,7 +12,23 @@ var gEmbedTypes = {};
 var gMapClassIdType = {};
 
 var gPageCount = 0;
-var gPageLimit = 1;
+var gPageLimit = 10;
+
+function injectScript(win, code)
+{
+  if (!win.document.body)
+    return;
+  cdump('Spider: <script>');
+  var scriptelm = win.document.createElement('script');
+  var lines = code.split('\n');
+  for (var iline = 0; iline < lines.length; iline++) {
+    cdump(lines[iline]);
+    var textnode  = win.document.createTextNode(lines[iline] + '\n');
+    scriptelm.appendChild(textnode);
+  }
+  cdump('<\/script>');
+  win.document.body.appendChild(scriptelm);
+}
 
 function userOnStart()
 {
@@ -39,9 +55,6 @@ function userOnAfterPage()
 {
   dlog('userOnAfterPage()');
 
-  completePage();
-  return;
-
   try
   {
     var win = gSpider.mDocument.defaultView;
@@ -56,289 +69,26 @@ function userOnAfterPage()
     siteMessage(ex + '');
   }
 
-  var embedlist = win.document.getElementsByTagName('EMBED');
-
-  if (embedlist.wrappedJSObject)
-  {
-    cdump('Spider: getting wrapped embedlist object');
-    embedlist = embedlist.wrappedJSObject;
-  }
-
-  cdump('Spider: got ' + embedlist.length + ' embed elements');
-
-  var objectlist = win.document.getElementsByTagName('OBJECT');
-
-  if (objectlist.wrappedJSObject)
-  {
-    cdump('Spider: getting wrapped objectlist object');
-    objectlist = objectlist.wrappedJSObject;
-  }
-
-  cdump('Spider: got ' + objectlist.length + ' object elements');
-
-  gPluginList = [];
-
-  for (var i = 0; i < embedlist.length; i++)
-    gPluginList.push(embedlist[i]);
-
-  for (i = 0; i < objectlist.length; i++)
-    gPluginList.push(objectlist[i]);
-
-  setTimeout(exerciseFlash, gWaitAfterLoad);
-
-}
-
-var gPluginList;
-var gFlashAttempts = 0;
-var gFlashAttemptsMax = 10;
-
-function exerciseFlash()
-{
-
-  var flashmimetype = navigator.mimeTypes["application/x-shockwave-flash"];
-
-  if (!flashmimetype || !flashmimetype.enabledPlugin)
-  {
-    cdump('Spider: exerciseFlash: Flash not available');
-  }
-  else
-  {
-    for (var i = 0; i < gPluginList.length; i++)
-    {
-      var plugin = gPluginList[i];
-      if (plugin.wrappedJSObject)
-      {
-        cdump('Spider: getting wrapped plugin');
-        plugin = plugin.wrappedJSObject;
-      }
-      if (/flash/i.exec(plugin.type))
-      {
-        try {
-          cdump("Spider: flash PecentLoaded=" + plugin.PercentLoaded());
-        }
-        catch(ex) {
-          if (++gFlashAttempts > gFlashAttemptsMax)
-          {
-            cdump('Spider: *** FLASH ERROR *** exerciseFlash exceeded maximum attempts: ' + ex);
-            //completePage();
-            exerciseContent();
-          }
-          else
-          {
-            setTimeout(exerciseFlash, 1000);
-          }
-          return;
-        }
-
-      }
-    }
-
-    for (var i = 0; i < gPluginList.length; i++)
-    {
-      var plugin = gPluginList[i];
-      if (plugin.wrappedJSObject)
-      {
-        cdump('Spider: getting wrapped plugin');
-        plugin = plugin.wrappedJSObject;
-      }
-      if (/flash/i.exec(plugin.type))
-      {
-        cdump('Spider: flash ' + plugin.nodeName);
-
-        try {
-          cdump("Spider: flash TotalFrames=" + plugin.TotalFrames());
-        }
-        catch(ex) {
-          cdump('Spider: flash TotalFrames=' + ex);
-        }
-
-        try {
-          cdump("Spider: flash PecentLoaded=" + plugin.PercentLoaded());
-        }
-        catch(ex) {
-          cdump("Spider: flash PecentLoaded=" + ex);
-        }
-
-        var isplaying;
-
-        try {
-          isplaying = plugin.IsPlaying();
-          cdump("Spider: flash IsPlaying=" + isplaying);
-        }
-        catch(ex) {
-          cdump("Spider: flash IsPlaying=" + ex);
-        }
-
-        if (isplaying)
-        {
-          try {
-            cdump("Spider: flash StopPlay()");
-            plugin.StopPlay();
-            try {
-              isplaying = plugin.IsPlaying();
-              cdump("Spider: flash IsPlaying=" + isplaying);
-            }
-            catch(ex) {
-              cdump("Spider: flash IsPlaying=" + ex);
-            }
-          }
-          catch(ex)
-          {
-            cdump("Spider: flash StopPlay()" + ex);
-          }
-        }
-
-        if (!isplaying)
-        {
-          try {
-            cdump("Spider: flash Play()");
-            plugin.Play();
-          }
-          catch(ex)
-          {
-            cdump("Spider: flash Play()" + ex);
-          }
-        }
-
-        try {
-          isplaying = plugin.IsPlaying();
-          cdump("Spider: flash IsPlaying=" + isplaying);
-        }
-        catch(ex) {
-          cdump("Spider: flash IsPlaying=" + ex);
-        }
-
-        if (!isplaying)
-        {
-          cdump('Spider: *** FLASH ERROR *** Flash should be playing but is not.');
-        }
-
-        try {
-          cdump("Spider: flash SetVariable");
-          plugin.SetVariable("yoyodyne", "Lord Worphin");
-        }
-        catch(ex)
-        {
-          cdump("Spider: flash SetVariable" + ex);
-        }
-
-        try {
-          cdump("Spider: flash GetVariable " + plugin.GetVariable("yoyodyne"));
-        }
-        catch(ex)
-        {
-          cdump("Spider: flash GetVariable " + ex);
-        }
-
-
-        var flashvariables = {}
-        var flashvarsattr;
-
-        var attributes = plugin.attributes;
-        for (var iattr = 0; iattr < attributes.length; iattr++)
-        {
-          flashvariables[attributes[iattr].name] = attributes[iattr].value;
-        }
-
-        flashvarsattr = plugin.getAttribute('flashvars');
-        if (!flashvarsattr && /object/i.exec(plugin.nodeName))
-        {
-          var paramlist = plugin.getElementsByTagName('param');
-          for (var iparam = 0; iparam < paramlist.length; iparam++)
-          {
-            if (/flashvars/i.exec(paramlist[iparam].name))
-            {
-              flashvarsattr = paramlist[iparam].value;
-              break;
-            }
-          }
-        }
-
-        if (flashvarsattr)
-        {
-          cdump("Spider: flash flashvars=" + flashvarsattr);
-          var namevaluelist = flashvarsattr.split('&');
-          for (var inamevalue = 0; inamevalue < namevaluelist.length; inamevalue++)
-          {
-            var namevaluepair = namevaluelist[inamevalue].split('=');
-            if (namevaluepair.length == 1)
-              flashvariables[namevaluepair[0]] = '';
-            else
-              flashvariables[namevaluepair[0]] = namevaluepair[1];
-          }
-        }
-
-        for (var varname in flashvariables)
-        {
-          cdump('Spider: flash var ' + varname + '=' + flashvariables[varname]);
-
-          try {
-            var varvalue = plugin[varname];
-            if (varvalue)
-              cdump('Spider: flash attribute ' + varname + ' value ' + varvalue);
-            else {
-              varvalue = plugin.GetVariable(varname);
-              if (varvalue)
-                cdump('Spider: flash variable ' + varname + ' value ' + varvalue);
-            }
-          }
-          catch(ex)
-          {
-            cdump(ex);
-          }
-        }
-
-      }
-    }
-  }
-  //completePage();
-  exerciseContent();
-}
-
-function injectScript(win, code)
-{
-  cdump('Spider: action: ' + code);
-  var scriptelm = win.document.createElement('script');
-  var textnode  = win.document.createTextNode(code);
-  scriptelm.appendChild(textnode);
-  if (win.document.body)
-    win.document.body.appendChild(scriptelm);
+  setTimeout(exerciseContent, gWaitAfterLoad);
 }
 
 function exerciseContent()
 {
-
   try
   {
     var win = gSpider.mDocument.defaultView;
     if (win.wrappedJSObject)
     {
-      cdump('Spider: getting wrapped window object');
       win = win.wrappedJSObject;
     }
     var winurl = win.document.location.href;
 
-    var percent;
-    cdump('Spider: resizeTo(0,0)');
-    for (percent = 100; percent > 0; percent -= 5)
-      win.resizeTo(percent*screen.availWidth/100, percent*screen.availHeight/100);
-
-    cdump('Spider: resizeTo(' + screen.availWidth + ',' + screen.availHeight + ')');
-    for (percent = 0; percent <= 100; percent += 5)
-      win.resizeTo(percent*screen.availWidth/100, percent*screen.availHeight/100);
-
-    cdump('Spider: gc()');
-    collectGarbage();
-
-    for (var i = 0; i < 3; i++)
-    {
-      injectScript(win, 'window.scrollByPages(1);');
-    }
-
-    for (i = 0; i < 3; i++)
-    {
-      injectScript(win, 'window.scrollByPages(-1);');
-    }
+    var source = '' +
+      'var percent;\n' +
+      'for (percent = 100; percent  >   0; percent -= 5) window.resizeTo(percent*screen.availWidth/100, percent*screen.availHeight/100);\n' +
+      'for (percent =   0; percent <= 100; percent += 5) window.resizeTo(percent*screen.availWidth/100, percent*screen.availHeight/100);\n' +
+      'for (var i = 0; i < 3; i++) window.scrollByPages(1);\n' +
+      'for (i = 0; i < 3; i++) window.scrollByPages(-1);\n';
 
     for (var prop in win)
     {
@@ -353,11 +103,12 @@ function exerciseContent()
         win.location.href = winurl;
       }
       if (typeof win[prop] == 'function' && ! /resizeTo|scrollByPages|alert|confirm|prompt|dialog|print|home|forward|back|stop|close/i.exec(win[prop].toSource())) {
-        var args = new Array(win[prop].arity);
+        var args = new Array(win[prop].length);
         for (var iargs = 0; iargs < args.length; iargs++)
-          args[iargs] = iargs + 1;
-        var source = prop + '(' + args + ')';
-        injectScript(win, source);
+          args[iargs] = (iargs + 1)+'';
+        // convert args array into (arg1,..)
+        args = args.toSource().replace(/[\[\]]/g, '').replace(/\"/g, '\'');
+        source += 'try { ' + prop + '(' + args + '); } catch(ex) { dump("' + prop + '(' + args + '): " + ex + "\\n"); }\n';
       }
     }
   }
@@ -366,10 +117,94 @@ function exerciseContent()
     siteMessage(ex + '');
   }
 
-  cdump('Spider: gc()');
-  collectGarbage();
+  var flashmimetype = navigator.mimeTypes["application/x-shockwave-flash"];
 
-  completePage();
+  if (flashmimetype && flashmimetype.enabledPlugin)
+  {
+    source +=
+      'var embedlist = window.document.getElementsByTagName("EMBED");\n' +
+      'dump("Spider: found " + embedlist.length + " embed elements\\n");\n' +
+      'var objectlist = window.document.getElementsByTagName("OBJECT");\n' +
+      'dump("Spider: found " + objectlist.length + " object elements\\n");\n' +
+      'plugin_list = [];\n' +
+      'for (var i = 0; i < embedlist.length; i++) plugin_list.push(embedlist[i]);\n' +
+      'for (i = 0; i < objectlist.length; i++) plugin_list.push(objectlist[i]);\n' +
+      'for (var i = 0; i < plugin_list.length; i++) {\n' +
+      '    var plugin = plugin_list[i];\n' +
+      '    if (/flash/i.exec(plugin.type)) {\n' +
+      '        dump("Spider: flash plugin.nodeName = " + plugin.nodeName + "\\n");\n' +
+      '        try { dump("Spider: plugin.TotalFrames()  = " + plugin.TotalFrames() + "\\n"); }   catch(ex) { dump("Spider: plugin.TotalFrames() :" + ex + "\\n"); }\n' +
+      '        try { dump("Spider: plugin.PecentLoaded() = " + plugin.PercentLoaded() + "\\n"); } catch(ex) { dump("Spider: plugin.PecentLoaded():" + ex + "\\n"); }\n' +
+      '        try { dump("Spider: plugin.IsPlaying()    = " + plugin.IsPlaying() + "\\n"); }     catch(ex) { dump("Spider: plugin.IsPlaying()   :" + ex + "\\n"); }\n' +
+      '        try { if (plugin.IsPlaying()) plugin.StopPlay(); } catch(ex) { dump("Spider: plugin.StopPlay(): " + ex + "\\n");  }\n' +
+      '        try { if (!plugin.IsPlaying()) plugin.Play(); } catch(ex) { dump("Spider: plugin.Play(): " + ex + "\\n");  }\n' +
+      '        try { dump("Spider: plugin.IsPlaying() =" + plugin.IsPlaying() + "\\n"); } catch(ex) { dump("Spider: plugin.IsPlaying(): " + ex + "\\n"); }\n' +
+      '        try { plugin.SetVariable("yoyodyne", "Lord Worphin"); } catch(ex) { dump("Spider: plugin.SetVariable(\'yoyodyne\', \'Lord Worphin\'): " + ex + "\\n"); }\n' +
+      '        try { dump("Spider: plugin.GetVariable(\'yoyodyne\') = " + plugin.GetVariable("yoyodyne") + "\\n"); } catch(ex) { dump("Spider: plugin.GetVariable(\'yoyodyne\'): " + ex + "\\n"); }\n';
+/*
+    var flashvariables = {}
+    var flashvarsattr;
+
+    var attributes = plugin.attributes;
+    for (var iattr = 0; iattr < attributes.length; iattr++)
+    {
+      flashvariables[attributes[iattr].name] = attributes[iattr].value;
+    }
+
+    flashvarsattr = plugin.getAttribute("flashvars");
+    if (!flashvarsattr && /object/i.exec(plugin.nodeName))
+    {
+      var paramlist = plugin.getElementsByTagName("param");
+      for (var iparam = 0; iparam < paramlist.length; iparam++)
+      {
+        if (/flashvars/i.exec(paramlist[iparam].name))
+        {
+          flashvarsattr = paramlist[iparam].value;
+          break;
+        }
+      }
+    }
+
+    if (flashvarsattr)
+    {
+      dump("Spider: flash flashvars=" + flashvarsattr);
+      var namevaluelist = flashvarsattr.split("&");
+      for (var inamevalue = 0; inamevalue < namevaluelist.length; inamevalue++)
+      {
+        var namevaluepair = namevaluelist[inamevalue].split("=");
+        if (namevaluepair.length == 1)
+          flashvariables[namevaluepair[0]] = "";
+        else
+          flashvariables[namevaluepair[0]] = namevaluepair[1];
+      }
+    }
+
+    for (var varname in flashvariables)
+    {
+      dump("Spider: flash var " + varname + "=" + flashvariables[varname]);
+
+      try {
+        var varvalue = plugin[varname];
+        if (varvalue)
+          dump("Spider: flash attribute " + varname + " value " + varvalue);
+        else {
+          varvalue = plugin.GetVariable(varname);
+          if (varvalue)
+            dump("Spider: flash variable " + varname + " value " + varvalue);
+        }
+      }
+      catch(ex)
+      {
+        dump(ex);
+      }
+    }
+*/
+    source +=  '    }\n';
+    source +=  '}\n';
+  }
+  injectScript(win, source);
+
+  setTimeout(completePage, gWaitAfterLoad);
 }
 
 function completePage()
