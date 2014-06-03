@@ -235,9 +235,6 @@ fi
 if [[ -n "$extensiondir" ]]; then
 
     install-extensions.sh -p $product -b $branch \
-        -x $executablepath -N $profilename -E $extensiondir
-
-#    check-spider.sh -p $product -b $branch \
-#        -x $executablepath -N $profilename
+        -x $executablepath -D $profiledirectory -N $profilename -E $extensiondir
 
 fi

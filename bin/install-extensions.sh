@@ -7,12 +7,13 @@
 #
 # options processing
 #
-options="p:b:x:N:E:d:"
+options="p:b:x:N:E:d:D:"
 function usage()
 {
     cat <<EOF
 usage:
-$SCRIPT -p product -b branch -x executablepath -N profilename -E extensiondir
+$SCRIPT -p product -b branch -x executablepath -D profiledirectory 
+        -N profilename -E extensiondir
        [-d datafiles]
 
 variable            description
@@ -21,6 +22,7 @@ variable            description
 -b branch           required. supported branch. see library.sh
 -x executablepath   required. directory-tree containing executable named
                     'product'
+-D profiledirectory required. directory where profile is to be created.
 -N profilename      required. profile name
 -E extensiondir       required. path to directory containing xpis to be installed
 -d datafiles        optional. one or more filenames of files containing
@@ -41,6 +43,7 @@ do
         p) product=$OPTARG;;
         b) branch=$OPTARG;;
         x) executablepath=$OPTARG;;
+        D) profiledirectory=$OPTARG;;
         N) profilename=$OPTARG;;
         E) extensiondir=$OPTARG;;
         d) datafiles=$OPTARG;;
@@ -53,7 +56,8 @@ source $TEST_DIR/bin/library.sh
 loaddata $datafiles
 
 if [[ -z "$product" || -z "$branch" || \
-    -z "$executablepath" || -z "$profilename" || -z "$extensiondir" ]]; then
+    -z "$executablepath" || -z "$profiledirectory" || -z "$profilename" || \
+    -z "$extensiondir" ]]; then
     usage
 fi
 
@@ -67,19 +71,17 @@ echo "get executable"
 if ! executable=`get_executable $product $branch $executablepath 2>&1`; then
     error "get_executable: $executable" $LINENO
 fi
+echo "got executable $executable"
 
-echo "get extensiondir"
-if ! executableextensiondir=`dirname $executable 2>&1`/extensions; then
-    error "get extensiondir: $executableextensiondir" $LINENO
-fi
+mkdir -p "$profiledirectory/extensions"
 
-# create directory to contain installed extensions
+# create directory to contain unzipped extensions
 if [[ ! -d /tmp/sisyphus/extensions ]]; then
     create-directory.sh -n -d /tmp/sisyphus/extensions
 fi
 
 for extensionloc in $extensiondir/all/*.xpi $extensiondir/$OSID/*.xpi; do
-    echo "checking $extensiondir"
+    echo "checking $extensionloc"
 
     if [[ $extensionloc == "$extensiondir/all/*.xpi" ]]; then
         continue
@@ -91,33 +93,25 @@ for extensionloc in $extensiondir/all/*.xpi $extensiondir/$OSID/*.xpi; do
     extensionname=`xbasename $extensionloc .xpi`
     extensioninstalldir=/tmp/sisyphus/extensions/$extensionname
 
-    if [[ "$OSID" == "nt" ]]; then
-        extensionosinstalldir=`cygpath -a -w $extensioninstalldir`
-    else
-        extensionosinstalldir=$extensioninstalldir
-    fi
+    echo "extensionname=$extensionname, extensioninstalldir=$extensioninstalldir"
 
-    echo installing $extensionloc
     # unzip the extension if it does not already exist
     # or if it is newer than the already unpacked version.
     if [[ ! -e $extensioninstalldir || $extensionloc -nt $extensioninstalldir ]]; then
+        echo unzipping $extensionloc to $extensioninstalldir
         create-directory.sh -n -d $extensioninstalldir
         unzip -d $extensioninstalldir $extensionloc
     fi
 
     echo "getting extension uuid"
     extensionuuid=`perl $TEST_DIR/bin/get-extension-uuid.pl $extensioninstalldir/install.rdf`
-    if [[ ! -e $executableextensiondir/$extensionuuid ]]; then
-        echo $extensionosinstalldir > $executableextensiondir/$extensionuuid
+    echo "extension uuid = $extensionuuid"
+    if [[ ! -e $profiledirectory/extensions/$extensionuuid ]]; then
+        mkdir -p $profiledirectory/extensions/$extensionuuid
+        cp -rp $extensioninstalldir/* $profiledirectory/extensions/$extensionuuid/
     fi
 
 done
-
-# restart to make extension manager happy
-#if ! $TEST_DIR/bin/timed_run.py ${TEST_STARTUP_TIMEOUT} "install extensions - first restart" \
-#    $executable -P $profilename "http://${TEST_HTTP}/bin/install-extensions-1.html"; then
-#    echo "Ignoring 1st failure to load the install-extensions page"
-#fi
 
 if ! $TEST_DIR/bin/timed_run.py ${TEST_STARTUP_TIMEOUT} "install extensions - first restart" \
     $executable -P $profilename -silent ; then
