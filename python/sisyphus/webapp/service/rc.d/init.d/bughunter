@@ -1,13 +1,11 @@
 #!/bin/sh
 #
 # bughunter service which runs django bughunter web application
-#
-# chkconfig:   2345 95 5
-# description: bughunter is a web application which provides the database \
-#              and ui for crash and unittest sisyphus automation.
-
 ### BEGIN INIT INFO
 # Provides: bughunter
+# Required-Start: mysqld
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
 # Short-Description: The bughunter django web application
 # Description:      The bughunter django web application
 ### END INIT INFO
@@ -19,6 +17,8 @@ exec="/work/mozilla/builds/hg.mozilla.org/sisyphus/python/sisyphus/webapp/servic
 prog=${exec##*/}
 
 #config="<path to major config file>"
+
+umask 0002
 
 if [[ ! -d /var/log/bughunter ]]; then
    mkdir /var/log/bughunter
