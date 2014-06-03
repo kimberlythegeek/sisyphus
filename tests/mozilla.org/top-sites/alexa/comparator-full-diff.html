@@ -1,0 +1,162 @@
+<html>
+<head>
+  <style type="text/css">
+  .ua { overflow: hidden; height: 1em; width:100%; background-color: black; color: white;}
+  .img { border: solid black thin; }
+  </style>
+<script type="text/javascript">
+  ;
+var scriptname;
+var scriptnumber;
+var scriptnumber_prev;
+var scriptnumber_next;
+
+var qs = document.location.search;
+var captures = /\?(.*)-([0-9]+)\.js/.exec(qs);
+
+if (captures) {
+  scriptname = captures[1];
+  scriptnumber = captures[2];
+  document.write('<script src="' +
+                 scriptname + '-' + scriptnumber +
+                 '.js"><\/script>');
+  scriptnumber = parseInt(scriptnumber, 10);
+  scriptnumber_prev = (scriptnumber > 0 ? scriptnumber - 1 : 0) + '';
+  scriptnumber_next = (scriptnumber + 1) + '';
+}
+</script>
+<script type="text/javascript">
+  var comparison;
+
+document.write(
+  '<div>' + 
+    '<a href="' +
+    document.location.pathname + '?' + scriptname + '-' + 0 + '.js">first</a> ' +
+    '<a href="' +
+    document.location.pathname + '?' + scriptname + '-' + scriptnumber_prev + '.js">prev</a> ' +
+    '<a href="' +
+    document.location.pathname + '?' + scriptname + '-' + scriptnumber_next + '.js">next</a> ' +
+    '</div>'
+);
+
+var user_agent;
+var user_agents = [];
+var user_agent_hash = {};
+
+  if (comparisons.length > 0) {
+    for (user_agent in comparisons[0].user_agents) {
+      if (user_agent in user_agent_hash) {
+        continue;
+      }
+      user_agents.push(user_agent);
+      user_agent_hash[user_agent] = 1;
+    }
+  }
+
+
+for (var idata = 0; idata < comparisons.length; idata++) {
+  var data =  comparisons[idata];
+
+  var completed = true;
+  for each (user_agent in user_agents) {
+    if (data.user_agents[user_agent].state != 'loaded') {
+      completed = false;
+    }
+  }
+
+  document.write('<h2><a href=\'' + data.url + '\'>' + data.url + '</a></h2>');
+
+  var iua;
+  var jua;
+
+  document.write('<table border="1">');
+  document.write('<thead>');
+  document.write('<tr>');
+  document.write('<th>User Agent</th><th>Width</th><th>Height</th>');
+  document.write('</tr>');
+  document.write('</thead>');
+  document.write('<body>');
+  for (var iua = 0; iua < user_agents.length; iua++) {
+    var ua1 = user_agents[iua];
+    document.write('<tr>');
+    document.write('<th align="left">' + ua1 + '</th>');
+    document.write('<td valign="top">');
+    document.write(data.user_agents[ua1].width);
+    document.write('</td>');
+    document.write('<td>');
+    document.write(data.user_agents[ua1].height);
+    document.write('</td>');
+    document.write('</tr>');
+  }
+  document.write('</body>');
+  document.write('</table>');
+
+
+  document.write('<table border="1">');
+  document.write('<thead>');
+  document.write('<tr>');
+  document.write('<th>&nbsp;</th>');
+  for (jua = 0; jua < user_agents.length; jua++) {
+    document.write('<th>' + user_agents[jua] + '</th>');
+  }
+  document.write('</tr>');
+  document.write('</thead>');
+  document.write('<body>');
+  for (var iua = 0; iua < user_agents.length; iua++) {
+    var ua1 = user_agents[iua];
+    document.write('<tr>');
+    document.write('<th>' + ua1 + '</th>');
+    for (var jua = 0; jua < user_agents.length; jua++) {
+      var ua2 = user_agents[jua];
+      document.write('<td valign="top">');
+      if (iua == jua) {
+        document.write('<div class="ua">&nbsp;</div>');
+        document.write('<div class="ua">' +  data.user_agents[ua1].width + ',' + data.user_agents[ua1].height +  ' - ' + ua1 + '</div>');
+        document.write('<div class="ua">&nbsp;</div>');
+        document.write('<img src=\'' + data.user_agents[ua1].image_url + '\'>');
+      }
+      else if (jua < iua) {
+        if (data.comparison[ua1][ua2].images_differ) {
+          document.write('<div class="ua">' + data.comparison[ua1][ua2].percent_diff + '% different</div>');
+          document.write('<div class="ua">' + data.user_agents[ua1].width + ',' + data.user_agents[ua1].height + ' - ' + ua1 + '</div>');
+          document.write('<div class="ua">' + data.user_agents[ua2].width + ',' + data.user_agents[ua2].height + ' - ' +  ua2 + '</div>');
+          document.write('<img src=\'' + data.comparison[ua1][ua2].image_diff_url + '\' ' +
+                         '\'>');
+        }
+        else {
+          document.write('<div class="ua">Identical</div>');
+          document.write('<div class="ua">'  + data.user_agents[ua1].width + ',' + data.user_agents[ua1].height + ' - ' +  ua1 + '</div>');
+          document.write('<div class="ua">'  + data.user_agents[ua2].width + ',' + data.user_agents[ua2].height + ' - ' +  ua2 + '</div>');
+        }
+      }
+      else {
+        document.write('--');
+      }
+      document.write('</td>');
+    }
+    document.write('</tr>');
+  }
+  document.write('</body>');
+  document.write('</table>');
+
+  data = comparisons[idata] = null;
+}
+
+document.write(
+  '<div>' + 
+    '<a href="' +
+    document.location.pathname + '?' + scriptname + '-' + 0 + '.js">first</a> ' +
+    '<a href="' +
+    document.location.pathname + '?' + scriptname + '-' + scriptnumber_prev + '.js">prev</a> ' +
+    '<a href="' +
+    document.location.pathname + '?' + scriptname + '-' + scriptnumber_next + '.js">next</a> ' +
+    '</div>'
+);
+
+</script>
+</head>
+<body>
+</body>
+</html>
+
+

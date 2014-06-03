@@ -1,0 +1,28 @@
+<html>
+<head>
+<title>Mobile Video</title>
+<style type="text/css">
+  .ua { padding: .5em; }
+td { overflow-wrap: break-word;}
+</style>
+<!-- load the data -->
+<script type="text/javascript">
+// Load the "analyser script;
+var scriptname;
+
+var qs = document.location.search;
+var captures = /\?(.*\.js),(.*\.js)/.exec(qs);
+
+if (captures) {
+  for each (var i in [1, 2]) {
+    scriptname = captures[i];
+    document.write('<script type="text/javascript" src="' + scriptname + '"><\/script>');
+  }
+}
+</script>
+</head>
+<body>
+</body>
+</html>
+
+

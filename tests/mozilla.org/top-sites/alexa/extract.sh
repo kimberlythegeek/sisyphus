@@ -12,7 +12,7 @@ fi
 inputlog=$1
 outputstem=$2
 
-rm -f $outputstem-*.js
+rm -f $outputstem-[0-9]*.js
 
 let comparison_counter=0
 let comparison_per_page=1

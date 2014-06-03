@@ -1,0 +1,340 @@
+  <html>
+  <head>
+  <style type="text/css">
+  .ua { padding: .5em; }
+</style>
+  <script type="text/javascript">
+  ;
+var scriptname;
+var scriptnumber;
+var scriptnumber_prev;
+var scriptnumber_next;
+
+var qs = document.location.search;
+var captures = /\?(.*)-([0-9]+)\.js/.exec(qs);
+
+if (captures) {
+  scriptname = captures[1];
+  scriptnumber = captures[2];
+  document.write('<script src="' +
+                 scriptname + '-' + scriptnumber +
+                 '.js"><\/script>');
+  scriptnumber = parseInt(scriptnumber, 10);
+  scriptnumber_prev = (scriptnumber > 0 ? scriptnumber - 1 : 0) + '';
+  scriptnumber_next = (scriptnumber + 1) + '';
+}
+</script>
+  <script type="text/javascript">
+
+document.write('<title>' + comparisons[0].url + '</title>');
+
+var comparison;
+
+document.write(
+  '<div>' + 
+    '<a href="' +
+    document.location.pathname + '?' + scriptname + '-' + 0 + '.js">first</a> ' +
+    '<a href="' +
+    document.location.pathname + '?' + scriptname + '-' + scriptnumber_prev + '.js">prev</a> ' +
+    '<a href="' +
+    document.location.pathname + '?' + scriptname + '-' + scriptnumber_next + '.js">next</a> ' +
+    '</div>'
+);
+
+document.write('<ul>' + 
+               '<li><a href="#user_agent_group">Window Images by User Agent Group</a></li>' +
+               '<li><a href="#window_dimensions">Window Dimensions by User Agent</a></li>' +
+               '<li><a href="#window_differences">Window Percent Differences by User Agent</a></li>' +
+               '<li><a href="#window_images">Window Images by User Agent</a></li>' +
+               '</ul>');
+var user_agent;
+var user_agents = [];
+var user_agent_hash = {};
+
+if (comparisons.length > 0) {
+  for (user_agent in comparisons[0].user_agents) {
+    if (user_agent in user_agent_hash) {
+      continue;
+    }
+    user_agents.push(user_agent);
+    user_agent_hash[user_agent] = 1;
+  }
+}
+
+
+for (var idata = 0; idata < comparisons.length; idata++) {
+  var data =  comparisons[idata];
+
+  var completed = true;
+  for each (user_agent in user_agents) {
+    if (data.user_agents[user_agent].state != 'loaded') {
+      completed = false;
+    }
+  }
+
+  document.write('<h2><a href=\'' + data.url + '\'>' + data.url + '</a></h2>');
+
+  document.write('<a name="window_dimensions"></a>');
+  document.write('<table border="1">');
+  document.write('<caption>Window Dimensions by User Agent</caption>');
+  document.write('<thead>');
+  document.write('<tr>');
+  document.write('<th>User Agent</th><th>Width</th><th>Height</th>');
+  document.write('</tr>');
+  document.write('</thead>');
+  document.write('<tbody>');
+  for (var iua = 0; iua < user_agents.length; iua++) {
+    var ua1 = user_agents[iua];
+    document.write('<tr>');
+    document.write('<th align="left">' + ua1 + '</th>');
+    document.write('<td valign="top">');
+    document.write(data.user_agents[ua1].width);
+    document.write('</td>');
+    document.write('<td>');
+    document.write(data.user_agents[ua1].height);
+    document.write('</td>');
+    document.write('</tr>');
+  }
+  document.write('</tbody>');
+  document.write('</table>');
+
+  document.write('<h3>');
+  document.write(
+    'A User Agent is considered ' +
+      'to be related to another User Agent if it\'s color histogram difference is zero and is considered ' +
+      'to be similar if it\'s color histogram difference is less than 5%.' +
+      'User Agents are placed into a group if their images are identical ' +
+      'or are related (have a zero color histogram difference).');
+  document.write('</h3>');
+
+  var iua;
+  var jua;
+
+  // group user agents that produce identical images
+  // start with each user agent in its own group.
+
+  var user_agent_groups = {};
+  for each (user_agent in user_agents) {
+    user_agent_groups[user_agent] = [user_agent];
+  }
+
+  for (iua = 0; iua < user_agents.length; iua++) {
+    ua1 = user_agents[iua];
+    if (!(ua1 in user_agent_groups)) {
+      // this user agent has already been combined with an identical user agent
+      continue;
+    }
+    for (jua = 0; jua < user_agents.length; jua++) {
+      ua2 = user_agents[jua];
+      if (!(ua2 in user_agent_groups)) {
+        // this user agent has already been combined with an identical user agent
+        continue;
+      }
+      var ua1_ua2_comparison;
+      if (jua < iua) {
+        // we are in the lower left comparison triangle
+        ua1_ua2_comparison = data.comparison[ua1][ua2];
+      }
+      else if (iua == jua) {
+        // ignore diagonal
+        continue;
+      }
+      else {
+        // we are in the upper right comparison triangle.
+        // transpose row and col to get the value.
+        ua1_ua2_comparison = data.comparison[ua2][ua1];
+      }
+      ua2 = user_agents[jua];
+      dump('Checking User Agent Group: ua1: ' + ua1 + ', ua2: ' + ua2 + '; images_differ: ' + ua1_ua2_comparison.images_differ + '; histogram_distance: ' + ua1_ua2_comparison.histogram_distance);
+      if (!ua1_ua2_comparison.images_differ||
+          ua1_ua2_comparison.histogram_distance == 0) {
+        user_agent_groups[ua1] = user_agent_groups[ua1].concat(ua2);
+        delete user_agent_groups[ua2];
+        dump('Checking User Agent Group: ua1: ' + ua1 + 'and ' + ua2 + ' are in the same group');
+      }
+    }
+  }
+
+  document.write('<a name="user_agent_group"></a>');
+  document.write('<table border="1">');
+  document.write('<caption>');
+  document.write('<h3>Window Images by User Agent Group</h3>');
+  document.write('</caption>');
+  document.write('<thead>');
+  document.write('<tr>');
+  document.write('<th>User Agent Group</th>');
+  document.write('</tr>');
+  document.write('</thead>');
+  document.write('<tbody>');
+  for (ua1 in user_agent_groups) {
+    document.write('<tr>');
+    document.write('<th align="left">');
+    document.write('<ul>');
+    for each (ua2 in user_agent_groups[ua1]) {
+      document.write('<li class="ua">' +  ua2 + '</li>');
+    }
+    document.write('</ul>');
+    document.write('</th>');
+    //
+    // Output the "Identical" user agents in this group that had identical images
+    //
+    document.write('<td>');
+    document.write('Identical');
+    for each (ua2 in user_agent_groups[ua1]) {
+      document.write('<ul>');
+      if (ua1 == ua2 ||
+          (ua2 in data.comparison[ua1] && !data.comparison[ua1][ua2].images_differ) ||
+          (ua1 in data.comparison[ua2] && !data.comparison[ua2][ua1].images_differ)) {
+        document.write('<li class="ua">' + ua2 + '</li>');
+      }
+      document.write('</ul>');
+    }
+    document.write('</td>');
+    document.write('<td valign="top">');
+    document.write('<img src=\'' + image_cache[data.user_agents[ua1].image_cache_id] + '\'>');
+    document.write('</td>');
+    //
+    // Output the "Related" user agents that had different images but whose histogram_distances were zero.
+    //
+    for each (ua2 in user_agent_groups[ua1]) {
+      if (ua1 == ua2 ||
+          (ua2 in data.comparison[ua1] && !data.comparison[ua1][ua2].images_differ) ||
+          (ua1 in data.comparison[ua2] && !data.comparison[ua2][ua1].images_differ)) {
+        continue;
+      }
+      document.write('<td>');
+      document.write('Related');
+      document.write('<ul>');
+      document.write('<li class="ua">' + ua2 + '</li>');
+      document.write('</ul>');
+      document.write('</td>');
+      document.write('<td valign="top">');
+      document.write('<img src=\'' + image_cache[data.user_agents[ua2].image_cache_id] + '\'>');
+      document.write('</td>');
+    }
+    //
+    // Output the "Similar" user agents that had different images but whos histogram_distances were <= 5%
+    //
+    for (ua2 in user_agent_groups) {
+      if (ua1 == ua2 || (!(ua2 in data.comparison[ua1]) && !(ua1 in data.comparison[ua2]))) {
+        continue
+      }
+      var histogram_distance = -1;
+      var noise_signal = -1;
+      if (ua2 in data.comparison[ua1]) {
+        histogram_distance =  data.comparison[ua1][ua2].histogram_distance;
+        noise_signal =  data.comparison[ua1][ua2].rgba_noise/data.user_agents[ua1].rgba_signal;
+      }
+      else if (ua1 in data.comparison[ua2]) {
+        histogram_distance = data.comparison[ua2][ua1].histogram_distance;
+        noise_signal =  data.comparison[ua2][ua1].rgba_noise/data.user_agents[ua2].rgba_signal;
+      }
+      noise_signal = parseInt(100*noise_signal)/100;
+      if (histogram_distance > -1 && histogram_distance <= 5) {
+        document.write('<td>Similar ' + histogram_distance + '% N/S ' + noise_signal);
+        document.write('<div class="ua">' + ua2 + '</div>');
+        document.write('</td>');
+        document.write('<td valign="top">');
+        document.write('<img src=\'' + image_cache[data.user_agents[ua2].image_cache_id] + '\'>');
+        document.write('</td>');
+      }
+    }
+    document.write('</tr>');
+  }
+  document.write('</tbody>');
+  document.write('</table>');
+
+  document.write('<a name="window_differences"></a>');
+  document.write('<table border="1">');
+  document.write('<caption>Window Percent Differences by User Agent</caption>');
+  document.write('<thead>');
+  document.write('<tr>');
+  document.write('<th>&nbsp;</th>');
+  for (jua = 0; jua < user_agents.length; jua++) {
+    document.write('<th>' + user_agents[jua] + '</th>');
+  }
+  document.write('</tr>');
+  document.write('</thead>');
+  document.write('<body>');
+  for (var iua = 0; iua < user_agents.length; iua++) {
+    var ua1 = user_agents[iua];
+    document.write('<tr>');
+    document.write('<th>' + ua1 + '</th>');
+    for (var jua = 0; jua < user_agents.length; jua++) {
+      var ua2 = user_agents[jua];
+      document.write('<td valign="top">');
+      if (iua == jua) {
+        document.write('<div class="ua">&nbsp;</div>');
+        document.write('<div class="ua">' + data.user_agents[ua1].rgba_signal + '</div>');
+        document.write('<div class="ua">' + data.user_agents[ua1].width + ',' + data.user_agents[ua1].height + '<br/>' + ua1 + '</div>');
+      }
+      else if (jua < iua) {
+        if (data.comparison[ua1][ua2].images_differ) {
+          document.write('<div class="ua">' + data.comparison[ua1][ua2].percent_diff + '% different</div>');
+          document.write('<div class="ua">' + data.comparison[ua1][ua2].histogram_distance + ' % color difference</div>');
+          document.write('<div class="ua">' + data.comparison[ua1][ua2].rgba_noise + '</div>');
+          document.write('<div class="ua">' + (data.comparison[ua1][ua2].rgba_noise / data.user_agents[ua1].rgba_signal) + '</div>');
+          document.write('<div class="ua">' + data.user_agents[ua1].width + ',' + data.user_agents[ua1].height + '<br/>' + ua1 + '</div>');
+          document.write('<div class="ua">' + data.user_agents[ua2].width + ',' + data.user_agents[ua2].height + '<br/>' +  ua2 + '</div>');
+        }
+        else {
+          document.write('<div class="ua">Identical</div>');
+          document.write('<div class="ua">'  + data.user_agents[ua1].width + ',' + data.user_agents[ua1].height + '<br/>' +  ua1 + '</div>');
+          document.write('<div class="ua">'  + data.user_agents[ua2].width + ',' + data.user_agents[ua2].height + '<br/>' +  ua2 + '</div>');
+        }
+      }
+      else {
+        document.write('--');
+      }
+      document.write('</td>');
+    }
+    document.write('</tr>');
+  }
+  document.write('</body>');
+  document.write('</table>');
+
+/*
+  document.write('<a name="window_images"></a>');
+  document.write('<table border="1">');
+  document.write('<caption>Window Images by User Agent</caption>');
+  document.write('<thead>');
+  document.write('<tr>');
+  document.write('<th>User Agent</th>');
+  document.write('<th>Image</th>');
+  document.write('</tr>');
+  document.write('</thead>');
+  document.write('<body>');
+  for (var iua = 0; iua < user_agents.length; iua++) {
+    var ua1 = user_agents[iua];
+    document.write('<tr>');
+    document.write('<th><div class="ua">' +  data.user_agents[ua1].width + ',' + data.user_agents[ua1].height +  '<br/>' + ua1 + '</div></th>');
+    document.write('<td valign="top">');
+    document.write('<img src=\'' + image_cache[data.user_agents[ua1].image_cache_id] + '\'>');
+    document.write('</td>');
+    document.write('</tr>');
+  }
+  document.write('</body>');
+  document.write('</table>');
+*/
+}
+
+
+
+document.write(
+  '<div>' + 
+    '<a href="' +
+    document.location.pathname + '?' + scriptname + '-' + 0 + '.js">first</a> ' +
+    '<a href="' +
+    document.location.pathname + '?' + scriptname + '-' + scriptnumber_prev + '.js">prev</a> ' +
+    '<a href="' +
+    document.location.pathname + '?' + scriptname + '-' + scriptnumber_next + '.js">next</a> ' +
+    '</div>'
+);
+
+</script>
+  </head>
+  <body>
+  </body>
+  </html>
+
+
