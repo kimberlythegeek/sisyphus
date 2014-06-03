@@ -1123,7 +1123,7 @@ class Worker(object):
         return False
 
     def buildProduct(self):
-        buildsteps      = "checkout build"
+        buildsteps      = "clobber checkout build"
         buildchangeset  = None
         buildsuccess    = True
         checkoutlogpath = ''
