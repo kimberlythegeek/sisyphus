@@ -12,13 +12,12 @@ sys.path.append(sisyphus_bin)
 
 import memory
 
-mem = memory.determine_memory()
-
 # limit the test process to 75% of the total system memory
 
 percent       = 0.75
 
 if sys.platform == 'linux2':
+    mem = memory.determine_memory()
     ram_limit     = int(percent * mem['ram'] / mem['unit'])
     virtual_limit = int(percent * mem['max_virtual'] / mem['unit'])
     print 'ulimit -m %s -v %s' % (ram_limit, virtual_limit)

@@ -212,9 +212,9 @@ if [[ -z "$LIBRARYSH" ]]; then
         if [[ -e /proc/meminfo ]]; then
             cat /proc/meminfo | sed 's|^|meminfo:|'
         fi
-        if findprogram system_profiler; then
-            system_profiler | sed 's|^|system_profiler:|'
-        fi
+        #if findprogram system_profiler; then
+        #    system_profiler | sed 's|^|system_profiler:|'
+        #fi
     }
 
     # dumpvars varname1, ...
