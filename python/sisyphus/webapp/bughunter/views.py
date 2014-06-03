@@ -249,7 +249,7 @@ def post_files(request):
                     dest_dir = os.path.join(settings.MEDIA_ROOT, dest_path)
                     if not os.path.exists(dest_dir):
                         try:
-                            os.mkdir(dest_dir)
+                            os.makedirs(dest_dir)
                         except Exception, e:
                             exceptionType, exceptionValue, errorMessage  = utils.formatException()
                             sys.stderr.write("%s Exception: %s creating %s.\n" % (logprefix, errorMessage, dest_dir))

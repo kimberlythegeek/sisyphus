@@ -397,8 +397,8 @@ class CrashTestWorker(worker.Worker):
                 self.testrun_row.fatal_message = re.sub('0x[0-9a-fA-F]+', '0x', self.testrun_row.fatal_message)
 
             baselogfilename = os.path.basename(logfilename)
-            loguploadpath = 'logs/' + baselogfilename[:13] # CCYY-MM-DD-HH
-            dmpuploadpath = 'minidumps/' + baselogfilename[:13] # CCYY-MM-DD-HH
+            loguploadpath = 'logs/' + baselogfilename[:16].replace('-', '/') # CCYY/MM/DD/HH/MM
+            dmpuploadpath = 'minidumps/' + baselogfilename[:16].replace('-', '/') # CCYY/MM/DD/HH/MM
             uploader = utils.FileUploader(post_files_url,
                                           self.model_test_run.__name__, self.testrun_row, self.testrun_row.id,
                                           loguploadpath)
