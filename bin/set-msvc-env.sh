@@ -16,6 +16,7 @@ export MSVC8EXPRESSKEY="$HKLM_SOFTWARE/Microsoft/VCExpress/8.0/Setup/VC"
 export MSVC9KEY="$MSVCROOTKEY/9.0/Setup/VC"
 export MSVC9EXPRESSKEY="$HKLM_SOFTWARE/Microsoft/VCExpress/9.0/Setup/VC"
 export MSVC10KEY="$MSVCROOTKEY/10.0/Setup/VC"
+export MSVC11KEY="$MSVCROOTKEY/11.0/Setup/VC"
 
 if [[ -z "$VC6DIR" ]]; then
     export VC6DIR=`regtool get "$MSVC6KEY/ProductDir" 2> /dev/null`
@@ -45,6 +46,10 @@ if [[ -z "$VC10DIR" ]]; then
     export VC10DIR=`regtool get "$MSVC10KEY/ProductDir" 2> /dev/null`
 fi
 
+if [[ -z "$VC11DIR" ]]; then
+    export VC11DIR=`regtool get "$MSVC11KEY/ProductDir" 2> /dev/null`
+fi
+
 # Determine if user has overridden the default choice of compiler
 USE_MSVC_VER=$(grep USE_MSVC_VER $MOZCONFIG|sed 's|USE_MSVC_VER=\(.*\)|\1|')
 
@@ -53,7 +58,9 @@ if [[ -z "$USE_MSVC_VER" ]]; then
     # The official compiler for Firefox 3.6 to Firefox 13 is VC 8.
     # The official compiler for Firefox 14 and later is VC 10.
 
-    if [[ -n "$VC10DIR" ]]; then
+    if [[ -n "$VC11DIR" ]]; then
+        USE_MSVC_VER=11
+    elif [[ -n "$VC10DIR" ]]; then
         USE_MSVC_VER=10
     elif [[ -n "$VC8DIR" ]]; then
         USE_MSVC_VER=8

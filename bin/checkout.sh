@@ -104,7 +104,7 @@ if [[ -n "$TEST_MOZILLA_HG" ]]; then
 fi
 
 case $product in
-    firefox)
+    firefox|fennec)
         case $branch in
             1.9.0)
                 if [[ ! ( -d mozilla && \

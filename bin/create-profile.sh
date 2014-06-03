@@ -17,7 +17,7 @@ $SCRIPT -p product -b branch -x executablepath -D directory -N profilename
 
 variable            description
 ===============     ============================================================
--p product          required. firefox.
+-p product          required. firefox, fennec.
 -b branch           required. supported branch. see library.sh
 -x executablepath   required. directory-tree containing executable 'product'
 -D directory        required. directory where profile is to be created.

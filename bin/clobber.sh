@@ -12,7 +12,7 @@ if [[ ! -e "$BUILDDIR" ]]; then
 fi
 
 case $product in
-    firefox)
+    firefox|fennec)
 
         if [[ ! -e "$executablepath" ]]; then
             echo "executable path $executablepath doesn't exist, ignoring clobber"

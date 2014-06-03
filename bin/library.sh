@@ -118,10 +118,10 @@ if [[ -z "$LIBRARYSH" ]]; then
         local branch=$2
 
         case $product in
-            js|firefox)
+            js|firefox|fennec)
                 ;;
             *)
-                error "product \"$product\" must be one of js or firefox" $LINENO
+                error "product \"$product\" must be one of js, firefox, fennec" $LINENO
         esac
 
         case $branch in
@@ -260,12 +260,14 @@ if [[ -z "$LIBRARYSH" ]]; then
                     darwin)
                         get_executable_filter="/[a-zA-Z]*\.app/Contents/MacOS/+$get_executable_product"
                         get_executable_name="$get_executable_name-bin"
+                        perm=+111
                         ;;
                     *)
                         get_executable_filter="$get_executable_product"
+                        perm=/111
                         ;;
                 esac
-                if find "$get_executable_directory" -perm +111 -type f \
+                if find "$get_executable_directory" -perm $perm -type f \
                     -name "$get_executable_name" | \
                     grep -E "$get_executable_filter"; then
                     true

@@ -1,6 +1,4 @@
-CPU=`cat /proc/cpuinfo | grep 'processor.*: [0-9]*' | wc -l`
-let J=$CPU+1
-if [[ $J -gt 4 ]]; then let J=4; fi
+. $TEST_DIR/mozconfig/mozconfig-common
 
 mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/firefox-opt
 mk_add_options MOZ_MAKE_FLAGS=-j${J}
@@ -8,24 +6,23 @@ mk_add_options MOZ_CO_PROJECT=browser
 
 ac_add_options --enable-application=browser
 ac_add_options --disable-debug
-ac_add_options --enable-optimize
+ac_add_options --enable-optimize="-g -O"
+ac_add_options --enable-debug-symbols
+ac_add_options --enable-valgrind
 # libxul required for packaging.
 ac_add_options --enable-libxul
 # do not strip symbols in packaged builds
 ac_add_options --disable-install-strip
 
 ac_add_options --enable-tests
-#ac_add_options --enable-logrefcnt
-
+ac_add_options --enable-accessibility
 ac_add_options --enable-official-branding
-
-
 
 # For NSS symbols
 export MOZ_DEBUG_SYMBOLS=1
 
 # Needed to enable breakpad in application.ini
 export MOZILLA_OFFICIAL=1
-CC=/tools/gcc-4.5-0moz3/bin/gcc
-CXX=/tools/gcc-4.5-0moz3/bin/g++
+
 ac_add_options --enable-stdcxx-compat
+export LDFLAGS="-Wl,--no-keep-memory"

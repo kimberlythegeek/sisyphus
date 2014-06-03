@@ -26,7 +26,7 @@ usage()
 
 usage: set-build-env.sh -p product -b branch -T buildtype [-e extra]
 
--p product      one of js firefox.
+-p product      one of js, firefox, fennec.
 -b branch       one of supported branches. see library.sh
 -T buildtype    one of opt debug
 -e extra        extra qualifier to pick mozconfig and tree
@@ -127,7 +127,7 @@ for step in step1; do # dummy loop for handling exits
     else
         echo "Assuming project=browser for product: $product"
         export project=browser
-        export MOZCONFIG=${MOZCONFIG:-"$TEST_DIR/mozconfig/$branch$extra/mozconfig-firefox-$OSID-$TEST_PROCESSORTYPE-$buildtype"}
+        export MOZCONFIG=${MOZCONFIG:-"$TEST_DIR/mozconfig/$branch$extra/mozconfig-${product}-$OSID-$TEST_PROCESSORTYPE-$buildtype"}
     fi
 
     if [[ ! -e "$MOZCONFIG" ]]; then
@@ -176,15 +176,6 @@ for step in step1; do # dummy loop for handling exits
 
         linux)
             export BUILDDIR=${BUILDDIR:-/work/mozilla/builds}
-
-            # if a 64 bit linux system, assume the
-            # compiler is in the standard reference
-            # location /tools/gcc/bin/
-            case "$TEST_PROCESSORTYPE" in
-                *64)
-                    export PATH=/tools/gcc/bin:$PATH
-                    ;;
-            esac
             ;;
 
         darwin)
@@ -216,20 +207,6 @@ for step in step1; do # dummy loop for handling exits
             export XCFLAGS="-DWAY_TOO_MUCH_GC=1"
             export CFLAGS="-DWAY_TOO_MUCH_GC=1"
             export CXXFLAGS="-DWAY_TOO_MUCH_GC=1"
-            ;;
-        -gcov)
-
-            if [[ "$OSID" == "nt" ]]; then
-                echo "NT does not support gcov"
-                myexit $ERR_ARGS
-            fi
-            export CFLAGS="--coverage"
-            export CXXFLAGS="--coverage"
-            export XCFLAGS="--coverage"
-            export OS_CFLAGS="--coverage"
-            export LDFLAGS="--coverage"
-            export XLDFLAGS="--coverage"
-            export XLDOPTS="--coverage"
             ;;
         -jprof)
             ;;
@@ -266,7 +243,7 @@ for step in step1; do # dummy loop for handling exits
     # set default "data" variables to reduce need for data files.
 
     case $product in
-        firefox)
+        firefox|fennec)
             export profilename=${profilename:-$product-$branch$extra-profile}
             export profiledirectory=${profiledirectory:-/tmp/$product-$branch$extra-profile}
             export userpreferences=${userpreferences:-$TEST_DIR/prefs/test-user.js}

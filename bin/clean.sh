@@ -7,7 +7,7 @@
 source $TEST_DIR/bin/set-build-env.sh $@
 
 case $product in
-    firefox)
+    firefox|fennec)
 
         if ! $TEST_DIR/bin/set-build-env.sh $@ -c "${PYMAKE} -f client.mk clean" 2>&1; then
             error "during client.mk clean" $LINENO

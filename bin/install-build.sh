@@ -16,7 +16,7 @@ $SCRIPT -p product -b branch  -x executablepath -f filename [-d datafiles]
 
 variable            description
 ===============     ============================================================
--p product          required. firefox.
+-p product          required. firefox, fennec.
 -b branch           required. supported branch. see library.sh
 -x executablepath   required. directory where to install build
 -f filename         required. path to filename where installer is stored
@@ -65,15 +65,15 @@ if [[ $OSID == "nt" ]]; then
         chmod u+x "$filename"
         $filename /S /D=`cygpath -a -w "$executablepath"`
     elif echo  $filetype | grep -iq 'zip archive'; then
-        tmpdir=`mktemp  -d /tmp/firefoxzip.XXXX` || error "mktemp failed" $LINENO
+        tmpdir=`mktemp  -d /tmp/${product}zip.XXXX` || error "mktemp failed" $LINENO
         # paranoia
         if [[ -z "$tmpdir" ]]; then
             error "empty temp directory" $LINENO
         fi
         mkdir -p "$executablepath"
         unzip -o -d "$tmpdir" "$filename"
-        mv $tmpdir/firefox/* "$executablepath/"
-        rm -fR "$tmpdir/firefox"
+        mv $tmpdir/${product}/* "$executablepath/"
+        rm -fR "$tmpdir/${product}"
         rmdir "$tmpdir"
 
         find $executablepath -name '*.exe' | xargs chmod u+x

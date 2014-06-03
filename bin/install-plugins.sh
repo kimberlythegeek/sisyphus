@@ -16,7 +16,7 @@ $SCRIPT -p product -b branch -x executablepath -D directory [-d datafiles]
 
 variable            description
 ===============     ============================================================
--p product          required. firefox.
+-p product          required. firefox, fennec.
 -b branch           required. one of supported branches. see library.sh
 -x executablepath   required. path to browser executable
 -D directory        required. path to location of plugins/components

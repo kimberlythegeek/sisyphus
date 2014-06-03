@@ -63,6 +63,18 @@ case $product in
             fi
         fi
         ;;
+
+    fennec)
+        cd $BUILDTREE/mozilla
+
+        if ! $TEST_DIR/bin/set-build-env.sh $@ -c "${PYMAKE} -f client.mk build" 2>&1; then
+            error "error during build" $LINENO
+        fi
+
+        if ! $TEST_DIR/bin/set-build-env.sh $@ -c "${PYMAKE} -C $product-$buildtype package" 2>&1; then
+            error "error during build" $LINENO
+        fi
+        ;;
     js)
 
         if [[ -e "$BUILDTREE/mozilla/js/src/configure.in" ]]; then

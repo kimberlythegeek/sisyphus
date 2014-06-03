@@ -23,7 +23,7 @@ $SCRIPT -p product -b branch
 
 variable            description
 ===============     ===========================================================
--p product          required. one of js firefox.
+-p product          required. one of js, firefox, fennec.
 -b branch           required. supported branch. see library.sh
 -u downloadurl      optional. url where to download build
 -f filepath         optional. location to save downloaded build or to find
@@ -187,6 +187,8 @@ if [[ -n "$buildcommands" ]]; then
         mac)
             if [[ "$product" == "firefox" ]]; then
                 App=Firefox
+            elif [[ "$product" == "fennec" ]]; then
+                App=Fennec
             fi
             if [[ "$buildtype" == "debug" ]]; then
                 AppType=Debug
