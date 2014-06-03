@@ -62,7 +62,7 @@ filetype=`file $filename`
 if [[ $OSID == "nt" ]]; then
 
     if echo $filetype | grep -q " executable "; then
-        chmod u+x "$filename"
+        chmod ugo+x "$filename"
         $filename /S /D=`cygpath -a -w "$executablepath"`
     elif echo  $filetype | grep -iq 'zip archive'; then
         tmpdir=`mktemp  -d /tmp/${product}zip.XXXX` || error "mktemp failed" $LINENO
@@ -76,8 +76,8 @@ if [[ $OSID == "nt" ]]; then
         rm -fR "$tmpdir/${product}"
         rmdir "$tmpdir"
 
-        find $executablepath -name '*.exe' | xargs chmod u+x
-        find $executablepath -name '*.dll' | xargs chmod u+x
+        find $executablepath -name '*.exe' | xargs chmod ugo+x
+        find $executablepath -name '*.dll' | xargs chmod ugo+x
     else
         error "$unknown file type $filetype" $LINENO
     fi
