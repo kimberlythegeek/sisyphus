@@ -1,7 +1,7 @@
 product=${product:-firefox}
 branch=${branch:-aurora}
 buildtype=nightly
-downloadurl=http://stage.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-aurora/firefox-17.0a2.en-US.linux-i686.tar.bz2
+downloadurl=http://stage.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-aurora/firefox-31.0a2.en-US.linux-i686.tar.bz2
 profilename=${profilename:-firefox-aurora-profile}
 profiledirectory=${profiledirectory:-/tmp/firefox-aurora-profile}
 executablepath=$HOME/bin/aurora
