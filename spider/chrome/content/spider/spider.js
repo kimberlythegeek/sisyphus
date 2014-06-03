@@ -709,6 +709,11 @@ function CPageLoader(content_element, onload_callback, ontimeout_callback, timeo
          ', target.location ' + target.location);
 
     var response_observer = CHTTPResponseObserver.instance;
+    if (!response_observer) {
+      dlog('CPageLoader.handleLoad: Someone called CHTTPResponseObserver.instance.unregister()');
+      return;
+    }
+
     var page_loader = response_observer.page_loader;
 
     clearTimeout(page_loader.timer_handleLoad);
@@ -806,6 +811,10 @@ function CPageLoader(content_element, onload_callback, ontimeout_callback, timeo
 
 
     var response_observer = CHTTPResponseObserver.instance;
+    if (!response_observer) {
+      dlog('CPageLoader.onDOMContentLoaded: Someone called CHTTPResponseObserver.instance.unregister()');
+      return;
+    }
     var page_loader = response_observer.page_loader;
 
     dlog('CPageLoader.onDOMContentLoaded: loadPending ' + page_loader.loadPending);
@@ -862,7 +871,7 @@ CPageLoader.prototype.load = function CPageLoader_loadPage(url, referer) {
 
   var nodeName = this.content.nodeName.toLowerCase();
 
-  this.content.addEventListener('load', this.onload, false);
+  this.content.addEventListener('load', this.onload, true);
   this.content.addEventListener('DOMContentLoaded', this.onDOMContentLoaded, true);
 
   if (nodeName === 'xul:browser')
@@ -942,7 +951,7 @@ CPageLoader.prototype.getWindow =
 
 function CHTTPResponseObserver(onresponse_callback) {
 
-  //dlog('CHTTPResponseObserver()');
+  dlog('CHTTPResponseObserver()');
 
   // Add |instance| to the constructor to allow the observe method to
   // retrieve the active CHTTPResponseObserver. This is necessary
@@ -962,6 +971,10 @@ function CHTTPResponseObserver(onresponse_callback) {
     //window.dlog('CHTTPResponseObserver.observe() CHTTPResponseObserver.instance ' + CHTTPResponseObserver.instance);
 
     var response_observer = CHTTPResponseObserver.instance;
+    if (!response_observer) {
+      dlog('CPageLoader.observe: Someone called CHTTPResponseObserver.instance.unregister()');
+      return;
+    }
     var page_loader = response_observer.page_loader;
 
     var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +

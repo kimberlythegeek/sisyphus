@@ -36,99 +36,77 @@
  * ***** END LICENSE BLOCK ***** */
 
 /**
- * loadScript
+ * loadScript(aScriptUrl)
  *
- * Synchronously loads a script specified by the url aScriptUrl
+ * Asynchronously loads a script specified by the url aScriptUrl
  * and evaluates it in the scope of the window object.
- *
- * loadScript will be aborted if the script has not loaded in
- * loadScript.timeout milliseconds. Note that the script is loaded
- * synchronously and will block the browser until it completes or
- * times out.
- *
- * The script url, source and XMLHttpRequest object for the last
- * invocation are available in :
- * loadScript.scripturl
- * loadScript.source
- * loadScript.xmlhttp
  */
 
 function loadScript(aScriptUrl)
 {
     dlog('loadScript: aScriptUrl:  ' + aScriptUrl);
 
-    loadScriptXHR(aScriptUrl);
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.overrideMimeType('text/plain');
+    xmlhttp.scripturl = aScriptUrl;
+    xmlhttp.onload = onLoadScript;
+    xmlhttp.open('GET', aScriptUrl, false);
+    xmlhttp.send(null);
 }
 
-function loadScriptXHR(aScriptUrl)
+function onLoadScript(e)
 {
-    dlog('loadScriptXHR: aScriptUrl:  ' + aScriptUrl);
+    dlog('onLoadScript: this: ' + this + ', scripturl: ' + this.scripturl);
 
-    loadScriptXHR.scripturl = aScriptUrl;
-    loadScriptXHR.source    = '';
-
-    loadScriptXHR.xmlhttp = new XMLHttpRequest();
-    loadScriptXHR.xmlhttp.overrideMimeType('text/plain');
-    loadScriptXHR.xmlhttp.open('GET', aScriptUrl, false);
-    loadScriptXHR.watcherid = setTimeout(watchLoadScriptXHR, loadScriptXHR.timeout);
-    loadScriptXHR.xmlhttp.send(null);
-
-    if (/^OK/i.test(loadScriptXHR.xmlhttp.statusText))
+    if (/^OK/i.test(this.statusText)) // deal with non-standard OK responses...
     {
-        // deal with non-standard OK responses...
-        clearTimeout(loadScriptXHR.watcherid);
-        loadScriptXHR.watcherid = null;
-        loadScriptXHR.source = loadScriptXHR.xmlhttp.responseText;
+        var source = this.responseText;
+        var msg;
 
         try
         {
-            dlog('loadScriptXHR: eval(...): aScope undefined. this: ' + this + ', window: ' + window);
-            window.eval(loadScriptXHR.source);
+            dlog('loadScript: eval(' + source + ')');
+            window.eval(source);
             return;
         }
         catch(ex)
         {
-            dlog('loadScriptXHR(' + loadScriptXHR.scripturl + ') failed to eval script ' +
+            msg = 'onLoadScript: eval error: ' +
                   ex + ' ' +
-                  loadScriptXHR.xmlhttp.statusText);
+                  this.statusText;
+            cdump(msg);
+            throw msg;
         }
 
         if ('location' in window && 'href' in window.location)
         {
+            dlog('loadScript: using javascript:...');
             // if the scope object is a window or document with a location
             // object, evaluate the script in the context of the scope
             // by injecting a javascript: url to overcome cross domain
             // eval alias issues.
             try
             {
-                dlog('loadScriptXHR: using javascript:');
-                window.location.href = 'javascript:' + encodeURIComponent(loadScriptXHR.source) + ';void(0);';
+                window.location.href = 'javascript:' + encodeURIComponent(source) + ';void(0);';
                 return;
             }
             catch(ex)
             {
-                cdump('loadScriptXHR(' + loadScriptXHR.scripturl + ') failed to inject script ' +
+                msg = 'loadScript: javascript: error: ' +
                       ex + ' ' +
-                      loadScriptXHR.xmlhttp.statusText);
+                      this.statusText;
+                cdump(msg);
+                throw msg;
             }
         }
     }
-}
-
-function watchLoadScriptXHR()
-{
-    try
-    {
-        loadScriptXHR.xmlhttp.abort();
-        cdump('loadScriptXHR(' + loadScriptXHR.scripturl +
-              '): Timed out (' +
-              (loadScriptXHR.timeout/1000) +
-              ' seconds)');
-    }
-    catch(ex)
-    {
-        cdump('watchLoadScriptXHR: ' + ex);
+    else {
+        msg = 'loadScript: failure: ' +
+            'statusText: ' + this.statusText +
+            'responseText: ' + this.responseText +
+            'response: ' + this.response;
+        cdump(msg);
+        throw msg;
     }
 }
 
-loadScriptXHR.timeout = 120000;
