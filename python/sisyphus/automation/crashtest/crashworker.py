@@ -877,8 +877,8 @@ def main():
 
     parser.add_option('--symbols-paths', action='store', type='string',
                        dest='symbols_paths',
-                       help='Space delimited list of paths to third party symbols. Defaults to /work/mozilla/flash-symbols',
-                       default='/work/mozilla/flash-symbols')
+                       help='Space delimited list of paths to third party symbols. Defaults to /mozilla/flash-symbols',
+                       default='/mozilla/flash-symbols')
 
     parser.add_option('--do-not-reproduce-bogus-signatures', action='store_true',
                        dest='do_not_reproduce_bogus_signatures',

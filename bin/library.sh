@@ -515,10 +515,10 @@ if [[ -z "$LIBRARYSH" ]]; then
     if [[ -z "$BUILDDIR" ]]; then
         case `uname -s` in
             MINGW*)
-                export BUILDDIR=/c/work/mozilla/builds
+                export BUILDDIR=/c/mozilla/builds
                 ;;
             *)
-                export BUILDDIR=/work/mozilla/builds
+                export BUILDDIR=/mozilla/builds
                 ;;
         esac
     fi

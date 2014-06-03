@@ -1,7 +1,7 @@
 #!/bin/bash
-cd /work/mozilla/builds/hg.mozilla.org/sisyphus/python/sisyphus/webapp/
+cd /mozilla/builds/hg.mozilla.org/sisyphus/python/sisyphus/webapp/
 python ./manage.py runfcgi \
-    --pythonpath=/work/mozilla/builds/hg.mozilla.org/sisyphus/python \
+    --pythonpath=/mozilla/builds/hg.mozilla.org/sisyphus/python \
     daemonize=true \
     method=prefork \
     host=127.0.0.1 \

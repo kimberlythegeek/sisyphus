@@ -1,6 +1,6 @@
 product=${product:-js}
 branch=${branch:-nightly}
 buildtype=${buildtype:-debug}
-jsshellsourcepath=${jsshellsourcepath:-/work/mozilla/builds/nightly/mozilla/js/src}
+jsshellsourcepath=${jsshellsourcepath:-/mozilla/builds/nightly/mozilla/js/src}
 TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/mozilla-central}
 TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}

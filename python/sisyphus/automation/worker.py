@@ -414,7 +414,7 @@ class Worker(object):
             # consolidated in the database. Otherwise the branch name
             # will result in different Assertion objects for different
             # branches even for the same assertion.
-            assertionfile = re.sub('/work/mozilla/builds/[^/]+/mozilla/', '', assertionfile)
+            assertionfile = re.sub('(/work)?/mozilla/builds/[^/]+/mozilla/', '', assertionfile)
 
             assertion_rows = models.Assertion.objects.filter(
                 os_name         = self.os_name,
@@ -970,7 +970,7 @@ class Worker(object):
             return False
 
         # XXX: Do we need to generalize this?
-        objdir = '/work/mozilla/builds/%s/mozilla/%s-%s' % (self.branch, self.product, self.buildtype)
+        objdir = '/mozilla/builds/%s/mozilla/%s-%s' % (self.branch, self.product, self.buildtype)
 
         productfilename = os.path.basename(self.build_row.product_package)
         symbolsfilename = os.path.basename(self.build_row.symbols_file)
@@ -1271,7 +1271,7 @@ class Worker(object):
         buildsteps  = "clobber"
         clobbersuccess = True
         clobberlogpath = ''
-        objdir         = "/work/mozilla/builds/%s/mozilla/%s-%s" % (self.branch, self.product, self.buildtype)
+        objdir         = "/mozilla/builds/%s/mozilla/%s-%s" % (self.branch, self.product, self.buildtype)
 
         if not os.path.exists(objdir):
             return True
@@ -1498,12 +1498,12 @@ class Worker(object):
         process_dict = {}
 
         if self.os_name != "Windows NT":
-            pattern = r' *([0-9]+)\s+.*(/work/mozilla/builds/[^/]+/mozilla/' + self.product + '-' + self.buildtype + '|totem-plugin-viewer|gst-install-plugins-helper)'
+            pattern = r' *([0-9]+)\s+.*((/work)?/mozilla/builds/[^/]+/mozilla/' + self.product + '-' + self.buildtype + '|totem-plugin-viewer|gst-install-plugins-helper)'
             ps_args = ['ps', '-e', '-x']
         else:
             # use the Windows process id which is more reliable in killing
             # stuck processes.
-            pattern = r' *[0-9]+\s+[0-9]+\s+[0-9]+\s+([0-9]+)\s+.*(/work/mozilla/builds/[^/]+/mozilla/' + self.product + '-' + self.buildtype + '|mozilla-build|java|wmplayer|mplayer2|wmpnetwk|Windows Media Player)'
+            pattern = r' *[0-9]+\s+[0-9]+\s+[0-9]+\s+([0-9]+)\s+.*((/work)?/mozilla/builds/[^/]+/mozilla/' + self.product + '-' + self.buildtype + '|mozilla-build|java|wmplayer|mplayer2|wmpnetwk|Windows Media Player)'
             ps_args = ['ps', '-W']
 
         ps_proc = subprocess.Popen(ps_args,

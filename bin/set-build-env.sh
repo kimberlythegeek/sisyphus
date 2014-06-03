@@ -149,7 +149,7 @@ for step in step1; do # dummy loop for handling exits
             # To make life simpler, change the mount point of the C: drive in cygwin from
             # /cygdrive/c to /c via mount -c /
             # which will make paths to non cygwin and non msys locations identical between cygwin
-            # and msys, e.g. /c/work will work in both to point to c:\work
+            # and msys, e.g. /c/mozilla will work in both to point to c:\mozilla
             #
             # It is also necessary to set the /tmp path in cygwin and msys to point to the
             # same physical directory.
@@ -161,7 +161,7 @@ for step in step1; do # dummy loop for handling exits
             # directory to the home directory prior to executing the command.
 
             export mozillabuild=${mozillabuild:-/c/mozilla-build}
-            export BUILDDIR=${BUILDDIR:-/c/work/mozilla/builds}
+            export BUILDDIR=${BUILDDIR:-/c/mozilla/builds}
 
             source $TEST_DIR/bin/set-msvc-env.sh
 
@@ -178,11 +178,11 @@ for step in step1; do # dummy loop for handling exits
             ;;
 
         linux)
-            export BUILDDIR=${BUILDDIR:-/work/mozilla/builds}
+            export BUILDDIR=${BUILDDIR:-/mozilla/builds}
             ;;
 
         darwin)
-            export BUILDDIR=${BUILDDIR:-/work/mozilla/builds}
+            export BUILDDIR=${BUILDDIR:-/mozilla/builds}
             ;;
         *)
             ;;

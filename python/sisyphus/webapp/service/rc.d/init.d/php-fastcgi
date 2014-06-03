@@ -13,7 +13,7 @@
 # Source function library.
 . /etc/rc.d/init.d/functions
 
-exec="/work/mozilla/builds/hg.mozilla.org/sisyphus/python/sisyphus/webapp/service/bin/php-fastcgi"
+exec="/mozilla/builds/hg.mozilla.org/sisyphus/python/sisyphus/webapp/service/bin/php-fastcgi"
 prog=${exec##*/}
 
 #config="<path to major config file>"
