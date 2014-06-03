@@ -2,12 +2,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
+import json
 import re
-try:
-    import json
-except:
-    import simplejson as json
-
 
 # http://code.google.com/p/socorro/wiki/SignatureGeneration
 # http://code.google.com/p/socorro/source/browse/trunk/socorro/processor/processor.py#356

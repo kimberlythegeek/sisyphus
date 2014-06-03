@@ -1,30 +1,32 @@
-import os
-import math
-import sys
-import re
 import datetime
+import json
+import math
+import os
+import re
+import sys
 import time
-import simplejson
 import urllib
+
+import parsedatetime
 
 from base64 import b64encode
 from collections import defaultdict
 
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
+from django.core import serializers
 from django.db import connection, transaction
 from django.db.models import Model
-from django.core import serializers
-from django.http import HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, HttpResponseServerError, HttpResponseBadRequest, HttpResponseForbidden
-from django.shortcuts import render_to_response
-from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse, HttpResponseNotAllowed, HttpResponseNotFound, HttpResponseRedirect, HttpResponseServerError, HttpResponseBadRequest, HttpResponseForbidden
 from django.middleware.csrf import get_token
-from django.conf import settings
+from django.shortcuts import render_to_response
 from django.utils.encoding import iri_to_uri, smart_str, smart_unicode, force_unicode
 from django.utils.http import urlquote
+from django.views.decorators.csrf import csrf_exempt
 
-from sisyphus.webapp.bughunter import models
 from sisyphus.automation import utils
 from sisyphus.automation.crashtest import crashurlloader
+from sisyphus.webapp.bughunter import models
 
 ###
 # Returns a random string with specified number of characters.  Adapted from
@@ -55,7 +57,7 @@ def doParseDate(datestring):
 
     else:
         # fall back to parsedatetime
-        date, x = cal.parse(datestring)
+        date, x = parsedatetime.parse(datestring)
 
     return time.mktime(date)
 
@@ -77,7 +79,7 @@ def login_required(func):
 def log_in(request):
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
-    post = simplejson.loads(request.raw_post_data)
+    post = json.loads(request.raw_post_data)
     username = post['username']
     password = post['password']
     user = authenticate(username=username, password=password)
@@ -86,8 +88,8 @@ def log_in(request):
     else:
         login(request, user)
         response = {'username': user.username}
-    json = simplejson.dumps(response)
-    return HttpResponse(json, mimetype=APP_JS)
+    response_json = json.dumps(response)
+    return HttpResponse(response_json, mimetype=APP_JS)
 
 def log_out(request):
     logout(request)
@@ -159,12 +161,12 @@ def worker_summary(request):
                                  })
 
     worker_data_list.sort(cmp=lambda x, y: cmp(x['id'], y['id']))
-    json = simplejson.dumps(worker_data_list)
-    return HttpResponse(json, mimetype=APP_JS)
+    worker_data_list_json = json.dumps(worker_data_list)
+    return HttpResponse(worker_data_list_json, mimetype=APP_JS)
 
 def worker_api(request, worker_id):
-    json = serializers.serialize('json', [models.Worker.objects.get(pk=worker_id)])
-    response = HttpResponse(json, mimetype=APP_JS)
+    serialized_workers = serializers.serialize('json', [models.Worker.objects.get(pk=worker_id)])
+    response = HttpResponse(serialized_workers, mimetype=APP_JS)
     # Guh, shoot me.
     # Since the datetimes in the db are stored in local time, we need
     # to provide the server's local time to the client so it can provide
@@ -181,27 +183,42 @@ def worker_log_api(request, worker_id, start, end):
     if end != '-':
         logs = logs.filter(datetime__lte=end)
     logs = logs.order_by('datetime').all()
-    response = '[]'
+    serialized_logs = '[]'
     if request.method == 'GET':
-        response = serializers.serialize("json", logs)
+        serialized_logs = serializers.serialize("json", logs)
     elif request.method == 'DELETE':
         logs.delete()
-    return HttpResponse(response, mimetype=APP_JS)
+    return HttpResponse(serialized_logs, mimetype=APP_JS)
 
 @login_required
 def all_workers_log_api(request, start, end):
-    logs = models.Log.objects
-    if start != '-':
-        logs = logs.filter(datetime__gte=start)
-    if end != '-':
-        logs = logs.filter(datetime__lte=end)
-    logs = logs.order_by('datetime').select_related('worker')
-    if request.method == 'GET':
-        json = serializers.serialize("json", logs, relations={'worker': {'fields': ('hostname',)}})
-        return HttpResponse(json, mimetype=APP_JS)
-    if request.method == 'DELETE':
-        # Clear Logs should clear entire log, not just displayed entries.
-        models.Log.objects.all().delete()
+    try:
+        logs = models.Log.objects
+        if start != '-':
+            logs = logs.filter(datetime__gte=start)
+        if end != '-':
+            logs = logs.filter(datetime__lte=end)
+        logs = logs.order_by('datetime').select_related('worker')
+        if request.method == 'GET':
+            serialized_logs = serializers.serialize("json", logs)
+            json_logs = json.loads(serialized_logs)
+            for log in json_logs:
+                for field in log['fields'].keys():
+                    if field == 'worker':
+                        worker_id = log['fields']['worker']
+                        serialized_workers = serializers.serialize('json',
+                                                                  [models.Worker.objects.get(pk=worker_id)])
+                        json_workers = json.loads(serialized_workers)
+                        log['fields']['worker'] = json_workers[0]
+            serialized_logs = json.dumps(json_logs)
+            return HttpResponse(serialized_logs, mimetype=APP_JS)
+        if request.method == 'DELETE':
+            # Clear Logs should clear entire log, not just displayed entries.
+            models.Log.objects.all().delete()
+    except Exception, e:
+        exceptionType, exceptionValue, errorMessage  = utils.formatException()
+        sys.stderr.write("all_workers_log_api: Exception: %s.\n" % errorMessage)
+
     return HttpResponse('[]', mimetype=APP_JS)
 
 @csrf_exempt
@@ -263,7 +280,7 @@ def post_files(request):
         try:
             row = model.objects.get(pk = pk)
         except model.DoesNotExist:
-            return httpResponseNotFound('%s %s not found' % (model_name, pk))
+            return HttpResponseNotFound('%s %s not found' % (model_name, pk))
 
         #http://docs.djangoproject.com/en/1.2/ref/request-response/#django.http.HttpRequest.FILES
 
@@ -308,8 +325,8 @@ def post_files(request):
 
 @login_required
 def workers_api(request):
-    json = serializers.serialize('json', models.Worker.objects.order_by('hostname').exclude(state='disabled'))
-    return HttpResponse(json, mimetype=APP_JS)
+    serialized_workers = serializers.serialize('json', models.Worker.objects.order_by('hostname').exclude(state='disabled'))
+    return HttpResponse(serialized_workers, mimetype=APP_JS)
 
 def crashes_by_date(request, start, end, other_parms):
     other_parms_list = filter(lambda x: x, other_parms.split('/'))
@@ -356,7 +373,7 @@ ORDER BY `SiteTestRun`.`fatal_message` DESC , Crash.signature ASC"""
                       'branches': branches }
             response_data.append(crash)
 
-    return HttpResponse(simplejson.dumps(response_data), mimetype=APP_JS)
+    return HttpResponse(json.dumps(response_data), mimetype=APP_JS)
         
 ####
 #BUGHUNTER VIEW SERVICE METHODS
@@ -490,11 +507,11 @@ def get_date_range(request, **kwargs):
 
    start_date, end_date = _get_date_range()
    current_date = datetime.date.today()
-   json = simplejson.dumps( { 'start_date':str(start_date), 
+   dates_json = json.dumps( { 'start_date':str(start_date), 
                               'end_date':str(end_date),
                               'current_date':str(current_date) } )
 
-   return HttpResponse(json, mimetype=APP_JS)
+   return HttpResponse(dates_json, mimetype=APP_JS)
 
 @login_required
 def resubmit_urls(request):
@@ -502,7 +519,7 @@ def resubmit_urls(request):
    get_token(request)
    request.META["CSRF_COOKIE_USED"] = True
 
-   raw_data = simplejson.loads(request.raw_post_data)
+   raw_data = json.loads(request.raw_post_data)
 
    urls = []
    comments = ""
@@ -522,9 +539,9 @@ def resubmit_urls(request):
             'skipurlsfile':""}
 
    response = crashurlloader.load_urls(data, True)
-   json = simplejson.dumps( { 'message':response } )
+   message_json = json.dumps( { 'message':response } )
 
-   return HttpResponse(json, mimetype=APP_JS)
+   return HttpResponse(message_json, mimetype=APP_JS)
 
 @bhview_setup
 @login_required
@@ -570,7 +587,7 @@ def get_bhview(request, **kwargs):
       print "Client IP:%s" % (request.META['REMOTE_ADDR'])
       print "Request Datetime:%s" % (str(datetime.datetime.now()))
 
-   json = ""
+   response_json = ""
    if proc_name in VIEW_ADAPTERS:
       ####
       #Found a data adapter for the proc, call it
@@ -579,17 +596,17 @@ def get_bhview(request, **kwargs):
          #####
          #Use cache query for developing/debugging purposes
          #####
-         json = simplejson.dumps( settings.CACHE_QUERIES[proc_name] )
+         response_json = json.dumps( settings.CACHE_QUERIES[proc_name] )
       else:
-         json = VIEW_ADAPTERS[proc_name](proc_path, 
-                                         proc_name, 
-                                         full_proc_path, 
-                                         nfields,
-                                         request.user.id)
+         response_json = VIEW_ADAPTERS[proc_name](proc_path, 
+                                                  proc_name, 
+                                                  full_proc_path, 
+                                                  nfields,
+                                                  request.user.id)
    else:
-      json = '{ "error":"Data view name %s not recognized" }' % proc_name
+      response_json = '{ "error":"Data view name %s not recognized" }' % proc_name
 
-   return HttpResponse(json, mimetype=APP_JS)
+   return HttpResponse(response_json, mimetype=APP_JS)
 
 ####
 #USER DATA: URL Resubmissions
@@ -616,10 +633,10 @@ def _get_resubmission_urls(proc_path, proc_name, full_proc_path, nfields, user_i
                'status',
                'Total Count']
 
-   return simplejson.dumps( { 'columns':columns, 
-                              'data':response_data,
-                              'start_date':nfields['start_date'], 
-                              'end_date':nfields['end_date'] } )
+   return json.dumps( { 'columns':columns, 
+                        'data':response_data,
+                        'start_date':nfields['start_date'], 
+                        'end_date':nfields['end_date'] } )
 
 def _get_all_resubmission_urls(proc_path, proc_name, full_proc_path, nfields, user_id):
 
@@ -644,10 +661,10 @@ def _get_all_resubmission_urls(proc_path, proc_name, full_proc_path, nfields, us
                'status',
                'Total Count']
 
-   return simplejson.dumps( { 'columns':columns, 
-                              'data':response_data,
-                              'start_date':nfields['start_date'], 
-                              'end_date':nfields['end_date'] } )
+   return json.dumps( { 'columns':columns, 
+                        'data':response_data,
+                        'start_date':nfields['start_date'], 
+                        'end_date':nfields['end_date'] } )
 
 #####
 #SITE TESTING DATA ADAPTERS: Crashes
@@ -681,10 +698,10 @@ def _get_crashes_st(proc_path, proc_name, full_proc_path, nfields, user_id):
                'Total Count', 
                'Platform' ]
 
-   return simplejson.dumps( { 'columns':columns, 
-                              'data':response_data,
-                              'start_date':nfields['start_date'], 
-                              'end_date':nfields['end_date'] } )
+   return json.dumps( { 'columns':columns, 
+                        'data':response_data,
+                        'start_date':nfields['start_date'], 
+                        'end_date':nfields['end_date'] } )
 
 def _get_crash_urls_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
@@ -709,10 +726,10 @@ def _get_crash_urls_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
    columns = ['url', 'Total Count', 'Platform']
 
-   return simplejson.dumps( { 'columns':columns, 
-                              'data':response_data,
-                              'start_date':nfields['start_date'], 
-                              'end_date':nfields['end_date'] } )
+   return json.dumps( { 'columns':columns, 
+                        'data':response_data,
+                        'start_date':nfields['start_date'], 
+                        'end_date':nfields['end_date'] } )
 
 def _get_crash_detail_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
@@ -746,10 +763,10 @@ def _get_crash_detail_st(proc_path, proc_name, full_proc_path, nfields, user_id)
                          debug_show=settings.DEBUG,
                          replace=[ temp_table_name ])
 
-   return simplejson.dumps( {'columns':data['columns'], 
-                             'data':data['data'], 
-                             'start_date':nfields['start_date'], 
-                             'end_date':nfields['end_date']} )
+   return json.dumps( {'columns':data['columns'], 
+                       'data':data['data'], 
+                       'start_date':nfields['start_date'], 
+                       'end_date':nfields['end_date']} )
 #####
 #SITE TESTING DATA ADAPTERS: Assertions
 #####
@@ -779,10 +796,10 @@ def _get_assertions_st(proc_path, proc_name, full_proc_path, nfields, user_id):
                'Total Count', 
                'Platform' ]
 
-   return simplejson.dumps( { 'columns':columns, 
-                              'data':response_data,
-                              'start_date':nfields['start_date'], 
-                              'end_date':nfields['end_date'] } )
+   return json.dumps( { 'columns':columns, 
+                        'data':response_data,
+                        'start_date':nfields['start_date'], 
+                        'end_date':nfields['end_date'] } )
 
 def _get_assertion_urls_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
@@ -802,10 +819,10 @@ def _get_assertion_urls_st(proc_path, proc_name, full_proc_path, nfields, user_i
 
    columns = ['url', 'Occurrence Count', 'Total Count', 'Platform']
 
-   return simplejson.dumps( { 'columns':columns, 
-                              'data':response_data,
-                              'start_date':nfields['start_date'], 
-                              'end_date':nfields['end_date'] } )
+   return json.dumps( { 'columns':columns, 
+                        'data':response_data,
+                        'start_date':nfields['start_date'], 
+                        'end_date':nfields['end_date'] } )
 
 def _get_assertion_detail_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
@@ -835,10 +852,10 @@ def _get_assertion_detail_st(proc_path, proc_name, full_proc_path, nfields, user
                          debug_show=settings.DEBUG,
                          replace=[ temp_table_name ])
 
-   return simplejson.dumps( {'columns':data['columns'], 
-                             'data':data['data'], 
-                             'start_date':nfields['start_date'], 
-                             'end_date':nfields['end_date']} )
+   return json.dumps( {'columns':data['columns'], 
+                       'data':data['data'], 
+                       'start_date':nfields['start_date'], 
+                       'end_date':nfields['end_date']} )
 
 #####
 #UNIT TESTING ADAPTERS
@@ -872,10 +889,10 @@ def _get_crashes_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
                'Total Count', 
                'Platform' ]
 
-   return simplejson.dumps( { 'columns':columns, 
-                              'data':response_data,
-                              'start_date':nfields['start_date'], 
-                              'end_date':nfields['end_date'] } )
+   return json.dumps( { 'columns':columns, 
+                        'data':response_data,
+                        'start_date':nfields['start_date'], 
+                        'end_date':nfields['end_date'] } )
 
 def _get_assertions_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
@@ -902,10 +919,10 @@ def _get_assertions_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
                'Total Count', 
                'Platform' ]
 
-   return simplejson.dumps( { 'columns':columns, 
-                              'data':response_data,
-                              'start_date':nfields['start_date'], 
-                              'end_date':nfields['end_date'] } )
+   return json.dumps( { 'columns':columns, 
+                        'data':response_data,
+                        'start_date':nfields['start_date'], 
+                        'end_date':nfields['end_date'] } )
 
 def _get_assertion_detail_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
@@ -935,10 +952,10 @@ def _get_assertion_detail_ut(proc_path, proc_name, full_proc_path, nfields, user
                          debug_show=settings.DEBUG,
                          replace=[ temp_table_name ])
 
-   return simplejson.dumps( {'columns':data['columns'], 
-                             'data':data['data'], 
-                             'start_date':nfields['start_date'], 
-                             'end_date':nfields['end_date']} )
+   return json.dumps( {'columns':data['columns'], 
+                       'data':data['data'], 
+                       'start_date':nfields['start_date'], 
+                       'end_date':nfields['end_date']} )
 
 def _get_assertion_urls_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
@@ -958,10 +975,10 @@ def _get_assertion_urls_ut(proc_path, proc_name, full_proc_path, nfields, user_i
 
    columns = ['url', 'Occurrence Count', 'Total Count', 'Platform']
 
-   return simplejson.dumps( { 'columns':columns, 
-                              'data':response_data,
-                              'start_date':nfields['start_date'], 
-                              'end_date':nfields['end_date'] } )
+   return json.dumps( { 'columns':columns, 
+                        'data':response_data,
+                        'start_date':nfields['start_date'], 
+                        'end_date':nfields['end_date'] } )
 
 #####
 #UNIT TESTING VALGRIND ADAPTERS
@@ -990,10 +1007,10 @@ def _get_valgrinds_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
                'Total Count', 
                'Platform' ]
 
-   return simplejson.dumps( { 'columns':columns, 
-                              'data':response_data,
-                              'start_date':nfields['start_date'], 
-                              'end_date':nfields['end_date'] } )
+   return json.dumps( { 'columns':columns, 
+                        'data':response_data,
+                        'start_date':nfields['start_date'], 
+                        'end_date':nfields['end_date'] } )
 
 def _get_valgrind_urls_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
@@ -1014,10 +1031,10 @@ def _get_valgrind_urls_ut(proc_path, proc_name, full_proc_path, nfields, user_id
 
    columns = ['url', 'Total Count', 'Platform']
 
-   return simplejson.dumps( { 'columns':columns, 
-                              'data':response_data,
-                              'start_date':nfields['start_date'], 
-                              'end_date':nfields['end_date'] } )
+   return json.dumps( { 'columns':columns, 
+                        'data':response_data,
+                        'start_date':nfields['start_date'], 
+                        'end_date':nfields['end_date'] } )
 
 def _get_valgrind_detail_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
@@ -1047,10 +1064,10 @@ def _get_valgrind_detail_ut(proc_path, proc_name, full_proc_path, nfields, user_
                          debug_show=settings.DEBUG,
                          replace=[ temp_table_name ])
 
-   return simplejson.dumps( {'columns':data['columns'], 
-                             'data':data['data'], 
-                             'start_date':nfields['start_date'], 
-                             'end_date':nfields['end_date']} )
+   return json.dumps( {'columns':data['columns'], 
+                       'data':data['data'], 
+                       'start_date':nfields['start_date'], 
+                       'end_date':nfields['end_date']} )
 
 #####
 #CRASH TABLE ADAPTERS
@@ -1088,10 +1105,10 @@ def _get_socorro_record(proc_path, proc_name, full_proc_path, nfields, user_id):
                                 replace=replace_list,
                                 return_type='table')
 
-   return simplejson.dumps( {'columns':data['columns'], 
-                             'data':data['data'], 
-                             'start_date':nfields['start_date'], 
-                             'end_date':nfields['end_date']} )
+   return json.dumps( {'columns':data['columns'], 
+                       'data':data['data'], 
+                       'start_date':nfields['start_date'], 
+                       'end_date':nfields['end_date']} )
 
 #####
 #PLATFORM AGGREGATION METHODS
@@ -1487,10 +1504,10 @@ def _get_json(nfields, col_prefixes, path):
                                 replace=[ nfields['start_date'], nfields['end_date'], rep ],
                                 return_type='table')
 
-   return simplejson.dumps( {'columns':data['columns'], 
-                             'data':data['data'], 
-                             'start_date':nfields['start_date'], 
-                             'end_date':nfields['end_date']} )
+   return json.dumps( {'columns':data['columns'], 
+                       'data':data['data'], 
+                       'start_date':nfields['start_date'], 
+                       'end_date':nfields['end_date']} )
 
 ####
 #VIEW_ADAPTERS maps view names to function

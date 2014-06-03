@@ -1,7 +1,7 @@
 # Django settings for sisyphus.webapp project.
 
 import os
-import simplejson
+import json
 from datasource.bases.BaseHub import BaseHub
 from datasource.hubs.MySQL import MySQL
 
@@ -26,6 +26,7 @@ try:
 except KeyError:
     DEBUG = False
 
+
 ####################
 # When the environment variable SISYPHUS_CACHE_QUERIES is
 # set to true a set of cached queries is used instead of 
@@ -39,7 +40,7 @@ try:
       filepath = "%s%s" % (ROOT, "/procs/cached_queries.data")
       file_obj = open(filepath) 
       try:
-         CACHE_QUERIES = simplejson.loads(file_obj.read())
+         CACHE_QUERIES = json.loads(file_obj.read())
       finally:
          file_obj.close()
 except KeyError:
@@ -148,7 +149,6 @@ INSTALLED_APPS = (
 )
 
 SERIALIZATION_MODULES = {
-    'json': 'wadofstuff.django.serializers.json'
 }
 
 AUTHENTICATION_BACKENDS = [

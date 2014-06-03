@@ -2,17 +2,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import sys
 from optparse import OptionParser
+import json
 import os
 import re
+import sys
 import urllib
-
-# http://simplejson.googlecode.com/svn/tags/simplejson-2.0.9/docs/index.html
-try:
-    import json
-except:
-    import simplejson as json
 
 sisyphus_dir     = os.environ["TEST_DIR"]
 tempdir          = os.path.join(sisyphus_dir, 'python')

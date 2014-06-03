@@ -1,10 +1,6 @@
+import json
 import os
 import pprint
-
-try:
-   import simplejson as json
-except ImportError:
-   import json
 
 from django.conf import settings
 from django.template import Template, Context

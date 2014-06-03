@@ -5,18 +5,13 @@
 # http://code.google.com/p/httplib2/
 import httplib2
 
-# http://simplejson.googlecode.com/svn/tags/simplejson-2.0.9/docs/index.html
-try:
-    import json
-except:
-    import simplejson as json
-
+import datetime
+import json
+import re
 import signal
 import sys
-import re
 import time
 import urllib
-import datetime
 
 bzapiurl = 'https://api-dev.bugzilla.mozilla.org/latest/'
 

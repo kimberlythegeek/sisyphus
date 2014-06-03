@@ -3,19 +3,15 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
 from optparse import OptionParser
-import os
-import sys
-import re
-import gzip
-import urllib
 import datetime
+import gzip
+import json
+import os
+import re
+import sys
 import time
+import urllib
 
-# http://simplejson.googlecode.com/svn/tags/simplejson-2.0.9/docs/index.html
-try:
-    import json
-except:
-    import simplejson as json
 
 import urlparse
 
