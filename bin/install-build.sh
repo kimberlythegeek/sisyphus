@@ -64,7 +64,7 @@ if [[ $OSID == "nt" ]]; then
     if echo $filetype | grep -q " executable "; then
         chmod ugo+x "$filename"
         $filename /S /D=`cygpath -a -w "$executablepath"`
-    elif echo  $filetype | grep -iq 'zip archive'; then
+    elif echo  $filetype | grep -Eiq '(zip archive|Microsoft OOXML)'; then
         tmpdir=`mktemp  -d /tmp/${product}zip.XXXX` || error "mktemp failed" $LINENO
         # paranoia
         if [[ -z "$tmpdir" ]]; then
