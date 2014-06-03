@@ -195,6 +195,10 @@ for step in step1; do # dummy loop for handling exits
     case $OSID in
         nt)
             export PYMAKE=${BUILDTREE}/mozilla/build/pymake/make.py
+            # work around exe files not marked as executable.
+            if ! chmod +x $BUILDTREE/mozilla/toolkit/crashreporter/tools/win32/*.exe > /dev/null 2>&1; then
+                true # ignore when tree not yet checked out
+            fi
             ;;
     esac
 
