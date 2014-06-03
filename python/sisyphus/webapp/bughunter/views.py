@@ -403,10 +403,10 @@ def bhview_setup(func):
                   # DHUB.escapeString escapes strings for mysql which will prevent 
                   # SQL injection
                   ###
-                  nfields[f] = settings.DHUB.escapeString( urllib.unquote(match.group(1)) )
+                  nfields[f] = settings.DHUB.escape_string( urllib.unquote(match.group(1)) )
             else:
                if request.POST[f]:
-                  nfields[f] = settings.DHUB.escapeString( urllib.unquote(request.POST[f]) )
+                  nfields[f] = settings.DHUB.escape_string( urllib.unquote(request.POST[f]) )
 
       kwargs = dict( proc_name=proc_name,
                      proc_path=proc_path,
@@ -506,7 +506,7 @@ def resubmit_urls(request):
 
    urls = []
    comments = ""
-   escape_func = settings.DHUB.escapeString;
+   escape_func = settings.DHUB.escape_string;
 
    if 'urls' in raw_data:
       for url in raw_data['urls']:

@@ -206,5 +206,5 @@ dataSource = { SISYPHUS_DATABASE : { "hub":"MySQL",
                                      "procs": ["%s%s" % (ROOT, "/procs/bughunter.json")]
               }
 }
-BaseHub.addDataSource(dataSource)
+BaseHub.add_data_source(dataSource)
 DHUB = MySQL(SISYPHUS_DATABASE)
