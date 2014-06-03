@@ -1,4 +1,5 @@
-from django.conf.urls.defaults import *
+from django.conf.urls import patterns, url, include
+
 from sisyphus.webapp.bughunter import views
 
 # FIXME: We should have a generic parameter handler, e.g. for start/end dates
