@@ -1498,10 +1498,12 @@ class Worker(object):
         process_dict = {}
 
         if self.os_name != "Windows NT":
-            pattern = r' *([0-9]+) .*(/work/mozilla/builds/[^/]+/mozilla/' + self.product + '-' + self.buildtype + '|totem-plugin-viewer|gst-install-plugins-helper)'
+            pattern = r' *([0-9]+)\s+.*(/work/mozilla/builds/[^/]+/mozilla/' + self.product + '-' + self.buildtype + '|totem-plugin-viewer|gst-install-plugins-helper)'
             ps_args = ['ps', '-e', '-x']
         else:
-            pattern = r' *([0-9]+) .*(/work/mozilla/builds/[^/]+/mozilla/' + self.product + '-' + self.buildtype + '|mozilla-build|java|wmplayer|mplayer2|wmpnetwk|Windows Media Player)'
+            # use the Windows process id which is more reliable in killing
+            # stuck processes.
+            pattern = r' *[0-9]+\s+[0-9]+\s+[0-9]+\s+([0-9]+)\s+.*(/work/mozilla/builds/[^/]+/mozilla/' + self.product + '-' + self.buildtype + '|mozilla-build|java|wmplayer|mplayer2|wmpnetwk|Windows Media Player)'
             ps_args = ['ps', '-W']
 
         ps_proc = subprocess.Popen(ps_args,
