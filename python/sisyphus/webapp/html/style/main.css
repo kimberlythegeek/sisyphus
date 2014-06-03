@@ -183,11 +183,14 @@ div.datecontrolssubmit {
 td.logdate {
   padding-right: 10px;
   font-size: smaller;
+  width: 18em;
 }
 
 td.logmachine {
   padding-right: 10px;
   font-family: monospace;
+  max-width: 64em;
+  overflow-x: scroll;
 }
 
 td.logmessage {
