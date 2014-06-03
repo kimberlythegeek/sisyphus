@@ -79,7 +79,7 @@ def login_required(func):
 def log_in(request):
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
-    post = json.loads(request.raw_post_data)
+    post = json.loads(request.body)
     username = post['username']
     password = post['password']
     user = authenticate(username=username, password=password)
@@ -408,12 +408,12 @@ def bhview_setup(func):
                      and will fail to match the single encoded url's stored in the database.
                        Switching the web service to use HTTP POST instead of GET ressolves 
                      the browser XMLRequestObject encoding problem and accessing the raw untreated
-                     POST data through django's request.raw_post_data allows us to bypass having 
+                     POST data through django's request.body allows us to bypass having 
                      to use the corrupted url data in request.GET and request.POST.
                        This enables access to the url byte string which can be used to match the 
                      url stored in the database.  Pain and suffering... Jeads  
                """
-               match = re.search('%s=(http.*?$)' % (f), request.raw_post_data)
+               match = re.search('%s=(http.*?$)' % (f), request.body)
                if match:
                   ###
                   # urllib.unquote_plus unquotes javascript's encodeURIComponent()
@@ -519,7 +519,7 @@ def resubmit_urls(request):
    get_token(request)
    request.META["CSRF_COOKIE_USED"] = True
 
-   raw_data = json.loads(request.raw_post_data)
+   raw_data = json.loads(request.body)
 
    urls = []
    comments = ""
