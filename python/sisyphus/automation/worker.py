@@ -1351,7 +1351,7 @@ class Worker(object):
                 "-p", self.product,
                 "-b", self.branch,
                 "-T", self.buildtype,
-                "-c", "$PYMAKE -C firefox-%s package buildsymbols SYM_STORE_SOURCE_DIRS=" % (self.buildtype)
+                "-c", "$MAKE -C firefox-%s package buildsymbols SYM_STORE_SOURCE_DIRS=" % (self.buildtype)
                 ],
             preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
             stdout=subprocess.PIPE,

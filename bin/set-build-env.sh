@@ -190,11 +190,17 @@ for step in step1; do # dummy loop for handling exits
 
     export BUILDTREE="${BUILDTREE:-$BUILDDIR/$branch$extra}"
 
-    export PYMAKE=make
+    export MAKE=make
 
     case $OSID in
         nt)
-            export PYMAKE=${BUILDTREE}/mozilla/build/pymake/make.py
+            # Set MAKE to mozmake if it is available, otherwise
+            # set it to pymake.
+            if [[ -e /c/mozilla-build/mozmake/mozmake.exe ]]; then
+                export MAKE=mozmake
+            else
+                export MAKE=${BUILDTREE}/mozilla/build/pymake/make.py
+            fi
             # work around exe files not marked as executable.
             if ! chmod +x $BUILDTREE/mozilla/toolkit/crashreporter/tools/win32/*.exe > /dev/null 2>&1; then
                 true # ignore when tree not yet checked out

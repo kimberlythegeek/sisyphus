@@ -8,12 +8,25 @@ source $TEST_DIR/bin/set-build-env.sh $@
 
 dumpenvironment
 
+version=$(cat $BUILDTREE/mozilla/browser/config/version.txt)
+
 case $product in
     firefox)
         cd $BUILDTREE/mozilla
 
-        if ! $TEST_DIR/bin/set-build-env.sh $@ -c "${PYMAKE} -f client.mk build" 2>&1; then
-            error "error during build" $LINENO
+        if [[ $version < 32 ]]; then
+            # use make for Firefox 31 and earlier
+            # mach may or may not be available and if it is, it uses a hardcoded
+            # /usr/bin/python which may invoke the wrong version of python especially
+            # on RHEL6 where the system python is 2.6.
+            if ! $TEST_DIR/bin/set-build-env.sh $@ -c "${MAKE} -f client.mk build" 2>&1; then
+                error "error during build" $LINENO
+            fi
+        else
+            # Use mach for Firefox 32 and later
+            if ! $TEST_DIR/bin/set-build-env.sh $@ -c "./mach build" 2>&1; then
+                error "error during build" $LINENO
+            fi
         fi
 
         case "$OSID" in
@@ -67,11 +80,22 @@ case $product in
     fennec)
         cd $BUILDTREE/mozilla
 
-        if ! $TEST_DIR/bin/set-build-env.sh $@ -c "${PYMAKE} -f client.mk build" 2>&1; then
-            error "error during build" $LINENO
+        if [[ $version < 32 ]]; then
+            # use make for Firefox 31 and earlier
+            # mach may or may not be available and if it is, it uses a hardcoded
+            # /usr/bin/python which may invoke the wrong version of python especially
+            # on RHEL6 where the system python is 2.6.
+            if ! $TEST_DIR/bin/set-build-env.sh $@ -c "${MAKE} -f client.mk build" 2>&1; then
+                error "error during build" $LINENO
+            fi
+        else
+            # Use mach for Firefox 32 and later
+            if ! $TEST_DIR/bin/set-build-env.sh $@ -c "./mach build" 2>&1; then
+                error "error during build" $LINENO
+            fi
         fi
 
-        if ! $TEST_DIR/bin/set-build-env.sh $@ -c "${PYMAKE} -C $product-$buildtype package" 2>&1; then
+        if ! $TEST_DIR/bin/set-build-env.sh $@ -c "${MAKE} -C $product-$buildtype package" 2>&1; then
             error "error during build" $LINENO
         fi
         ;;

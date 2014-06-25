@@ -115,7 +115,7 @@ case $product in
                         error "during checkout of $project mozconfig" $LINENO
                     fi
                 fi
-                if ! $TEST_DIR/bin/set-build-env.sh $@ -c "${PYMAKE} -f client.mk checkout" 2>&1; then
+                if ! $TEST_DIR/bin/set-build-env.sh $@ -c "${MAKE} -f client.mk checkout" 2>&1; then
                     error "during checkout of $project tree" $LINENO
                 fi
                 ;;
