@@ -1,12 +1,25 @@
+# Only used in Linux and OSX mozconfigs.
+
 # convert a.b.c to 100*a + 10*b + c for numeric comparisons.
 tonumber() (IFS='. ';let v=0; m=100;digits="$1";for d in $digits; do let v=v+d*m; let m=m/10; done; echo $v)
 # compare two numbers
 lessthan() (if [[ `tonumber $1` -lt `tonumber $2` ]]; then return 0; else return 1; fi )
 
-if [[ -n "$NUMBER_OF_PROCESSORS" ]]; then
-   CPU=$NUMBER_OF_PROCESSORS
+SYSCTL=$(which sysctl 2> /dev/null)
+
+if [[ -n "$SYSCTL" ]]; then
+    if $SYSCTL -a hw 2>&1 | grep kernel.sched_domain.cpu > /dev/null; then
+        # Linux
+        CPU=$($SYSCTL -a hw 2>&1 | grep kernel.sched_domain.cpu | sed 's|kernel.sched_domain.cpu\([0-9]*\).*|\1|' | sort -nr | head -1)
+        # CPU counter is zero based.
+        let CPU=CPU+1
+    elif $SYSCTL -a hw 2>&1 | grep hw.availcpu > /dev/null; then
+        # Darwin
+        CPU=$($SYSCTL -a hw 2>&1 | grep 'hw.availcpu' | sed 's|hw.availcpu = *||')
+    fi
 else
-        CPU=`sysctl -a hw 2>&1 | grep 'hw.availcpu' | sed 's|hw.availcpu = *||'`
+    CPU=0
 fi
 let J=$CPU+1
-if [[ $J -gt 4 ]]; then let J=4; fi
+
+mk_add_options AUTOCLOBBER=1

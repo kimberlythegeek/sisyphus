@@ -5,11 +5,11 @@ lessthan() (if [[ `tonumber $1` -lt `tonumber $2` ]]; then return 0; else return
 
 if [[ -n "$NUMBER_OF_PROCESSORS" ]]; then
    CPU=$NUMBER_OF_PROCESSORS
-else
-        CPU=`sysctl -a hw 2>&1 | grep 'hw.availcpu' | sed 's|hw.availcpu = *||'`
 fi
 let J=$CPU+1
 if [[ $J -gt 4 ]]; then let J=4; fi
+
+mk_add_options AUTOCLOBBER=1
 
 mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/firefox-debug
 mk_add_options MOZ_MAKE_FLAGS=-j${J}
