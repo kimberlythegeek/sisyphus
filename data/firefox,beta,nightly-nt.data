@@ -1,7 +1,7 @@
 product=${product:-firefox}
 branch=${branch:-beta}
 buildtype=nightly
-downloadurl="http://stage.mozilla.org/pub/mozilla.org/firefox/nightly/30.0b5-candidates/build1/win32/en-US/Firefox%20Setup%2030.0b5.exe"
+downloadurl="http://stage.mozilla.org/pub/mozilla.org/firefox/nightly/32.0b9-candidates/build1/win32/en-US/Firefox%20Setup%2032.0b9.exe"
 profilename=${profilename:-firefox-beta-profile}
 profiledirectory=${profiledirectory:-/tmp/firefox-beta-profile}
 executablepath=$HOME/bin/beta

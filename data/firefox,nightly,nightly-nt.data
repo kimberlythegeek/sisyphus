@@ -1,7 +1,7 @@
 product=${product:-firefox}
 branch=${branch:-nightly}
 buildtype=nightly
-downloadurl=http://stage.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/firefox-32.0a1.en-US.win32.zip
+downloadurl=http://stage.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-central/firefox-34.0a1.en-US.win32.zip
 profilename=${profilename:-firefox-nightly-profile}
 profiledirectory=${profiledirectory:-/tmp/firefox-nightly-profile}
 executablepath=$HOME/bin/nightly
