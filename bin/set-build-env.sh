@@ -294,6 +294,12 @@ for step in step1; do # dummy loop for handling exits
     if [[ -n "$commands" ]]; then
         case $OSID in
             nt)
+                # msys+mozilla's configure barf on some of the functions exported
+                # from the library.sh script in the subconfigure. Remove them from
+                # the environment prior to calling the msys command.
+                for f in $(set | grep -F ' ()' | sed 's| ()||'); do
+                    unset -f $f
+                done
                 if  ! cmd /c `cygpath -w $cmdbat` "cd $BUILDTREE/mozilla; $commands" 2>&1; then
                     error "executing commands: $commands"
                 fi
