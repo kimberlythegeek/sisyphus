@@ -30,3 +30,5 @@ user_pref("extensions.checkUpdateSecurity", false);
 user_pref("browser.EULA.override", true);
 user_pref("extensions.autoDisableScopes", 10);
 user_pref("toolkit.startup.max_resumed_crashes", -1);
+user_pref("browser.newtabpage.enabled", false);
+user_pref("browser.newtabpage.directory.source", "about:blank");
