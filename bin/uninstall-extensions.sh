@@ -100,7 +100,7 @@ for extensionloc in $extensiondir/all/*.xpi $extensiondir/$OSID/*.xpi; do
         unzip -d $extensioninstalldir $extensionloc
     fi
 
-    extensionuuid=`perl $TEST_DIR/bin/get-extension-uuid.pl $extensioninstalldir/install.rdf`
+    extensionuuid=`$TEST_DIR/bin/get-extension-uuid.py $extensioninstalldir/install.rdf`
     # force permission to remove
     chmod -R u+rwx $extensioninstalldir
     rm -fR $extensioninstalldir

@@ -104,7 +104,7 @@ for extensionloc in $extensiondir/all/*.xpi $extensiondir/$OSID/*.xpi; do
     fi
 
     echo "getting extension uuid"
-    extensionuuid=`perl $TEST_DIR/bin/get-extension-uuid.pl $extensioninstalldir/install.rdf`
+    extensionuuid=`$TEST_DIR/bin/get-extension-uuid.py $extensioninstalldir/install.rdf`
     echo "extension uuid = $extensionuuid"
     if [[ ! -e $profiledirectory/extensions/$extensionuuid ]]; then
         mkdir -p $profiledirectory/extensions/$extensionuuid
