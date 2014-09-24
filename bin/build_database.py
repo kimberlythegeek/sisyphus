@@ -195,6 +195,22 @@ def build_database(options):
                                         'buildid' : buildtxt_lines[0],
                                         'changeset' : buildtxt_lines[1]
                                         }
+                                    # Not all txt files have
+                                    # changesets. If the native txt file
+                                    # does not have a changeset, assume
+                                    # the win32 txt file will have a
+                                    # changeset however.
+                                    if not database['builds'][buildurl]['changeset']:
+                                        buildtxturl = re.sub(platform_data.platform +
+                                                             platform_data.cpu_name,
+                                                             'win32', buildtxturl)
+                                        buildtxturl_resp, buildtxturl_content = httplib.request(buildtxturl, 'GET')
+                                        if buildtxturl_resp.status == 200:
+                                            buildtxt_lines = buildtxturl_content.split('\n')
+                                            database['builds'][buildurl] = {
+                                                'buildid' : buildtxt_lines[0],
+                                                'changeset' : buildtxt_lines[1]
+                                                }
 
         year = last_update.year
         month = last_update.month
