@@ -1504,7 +1504,7 @@ class Worker(object):
             # use the Windows process id which is more reliable in killing
             # stuck processes.
             pattern = r' *[0-9]+\s+[0-9]+\s+[0-9]+\s+([0-9]+)\s+.*((/work)?/mozilla/builds/[^/]+/mozilla/' + self.product + '-' + self.buildtype + '|mozilla-build|java|wmplayer|mplayer2|wmpnetwk|Windows Media Player)'
-            ps_args = ['ps', '-W']
+            ps_args = ['ps', 'aux']
 
         ps_proc = subprocess.Popen(ps_args,
                                    preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
