@@ -11,7 +11,7 @@
 
 var gPageCount = 0;
 var gPageLimit = 1;
-var gPageWait  = 1 * 1000;
+var gPageWait  = 5 * 1000;
 
 function userOnStart()
 {
@@ -35,6 +35,8 @@ function userOnStop()
 function userOnBeforePage()
 {
   dlog('userOnBeforePage()');
+  window.moveTo(0, 0);
+  window.resizeTo(screen.availWidth, screen.availHeight);
 }
 
 function userOnAfterPage()
