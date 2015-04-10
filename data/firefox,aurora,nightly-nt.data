@@ -1,7 +1,7 @@
 product=${product:-firefox}
 branch=${branch:-aurora}
 buildtype=nightly
-downloadurl=http://stage.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-aurora/firefox-33.0a2.en-US.win32.zip
+downloadurl=http://stage.mozilla.org/pub/mozilla.org/firefox/nightly/latest-mozilla-aurora/firefox-39.0a2.en-US.win32.zip
 profilename=${profilename:-firefox-aurora-profile}
 profiledirectory=${profiledirectory:-/tmp/firefox-aurora-profile}
 executablepath=$HOME/bin/aurora
