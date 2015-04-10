@@ -18,7 +18,7 @@ $SCRIPT -p product -b branch -x executablepath -N profilename -E extensiondir
 variable            description
 ===============     ============================================================
 -p product          required. firefox, fennec.
--b branch           required. one of release beta aurora nightly.
+-b branch           required. one of release beta aurora nightly inbound fx-team.
 -x executablepath   required. directory-tree containing executable named
                     'product'
 -N profilename      required. profile name

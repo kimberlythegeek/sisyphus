@@ -112,6 +112,9 @@ for step in step1; do # dummy loop for handling exits
     elif [[ $branch == "inbound" ]]; then
         TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/integration/mozilla-inbound}
         export BRANCH_CO_FLAGS="";
+    elif [[ $branch == "fx-team" ]]; then
+        TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-http://hg.mozilla.org/integration/fx-team}
+        export BRANCH_CO_FLAGS="";
     else
         echo "Unknown branch: $branch"
         myexit $ERR_ARGS
