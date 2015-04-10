@@ -239,21 +239,21 @@ class CrashTestWorker(worker.Worker):
 
         except KeyboardInterrupt, SystemExit:
             raise
-        except:
+        except Exception, e:
 
             exceptionType, exceptionValue, errorMessage = utils.formatException()
             self.logMessage('runTest: %s, exception: %s, %s' % (url, exceptionValue, errorMessage))
 
             if exceptionType == OSError:
-                if (oserror.errno == 12 or
-                    oserror.errno == 23 or
-                    oserror.errno == 24):
+                if (e.errno == 12 or
+                    e.errno == 23 or
+                    e.errno == 24):
                     # Either out of memory or too many open files. We
                     # can not reliably recover so just reload the
                     # program and start over.
                     try:
                         self.logMessage('runTest: %s, OSError.errno=%d. Restarting.' %
-                                        (url, oserror.errno))
+                                        (url, e.errno))
                     except:
                         # Just ignore the error if we can't log the problem.
                         pass
@@ -786,7 +786,7 @@ class CrashTestWorker(worker.Worker):
                 self.save()
             except KeyboardInterrupt, SystemExit:
                 raise
-            except:
+            except Exception, e:
                 exceptionType, exceptionValue, errorMessage = utils.formatException()
                 if str(exceptionValue) == 'CrashWorker.runTest.FatalError':
                     raise
@@ -794,15 +794,15 @@ class CrashTestWorker(worker.Worker):
                                 (exceptionValue, self.testrun_row.socorro.signature, self.testrun_row.socorro.url, errorMessage))
 
                 if exceptionType == OSError:
-                    if (oserror.errno == 12 or
-                        oserror.errno == 23 or
-                        oserror.errno == 24):
+                    if (e.errno == 12 or
+                        e.errno == 23 or
+                        e.errno == 24):
                         # Either out of memory or too many open files. We
                         # can not reliably recover so just reload the
                         # program and start over.
                         try:
                             self.logMessage('runTest: %s, OSError.errno=%d. Restarting.' %
-                                            (url, oserror.errno))
+                                            (url, e.errno))
                         except:
                             # Just ignore the error if we can't log the problem.
                             pass
