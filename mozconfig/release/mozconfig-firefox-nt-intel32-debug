@@ -31,5 +31,3 @@ export MOZ_DEBUG_SYMBOLS=1
 
 # Needed to enable breakpad in application.ini
 export MOZILLA_OFFICIAL=1
-# Disable gamepad on vs2010 until Windows 8 SDK working
-ac_add_options --disable-gamepad
