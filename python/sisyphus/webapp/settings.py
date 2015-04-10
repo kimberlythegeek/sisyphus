@@ -26,6 +26,13 @@ try:
 except KeyError:
     DEBUG = False
 
+try:
+    FILE_UPLOAD_TEMP_DIR = os.environ["SISYPHUS_FILE_UPLOAD_TEMP_DIR"]
+except KeyError:
+    FILE_UPLOAD_TEMP_DIR = '/tmp'
+
+if not os.path.exists(FILE_UPLOAD_TEMP_DIR):
+    os.mkdir(FILE_UPLOAD_TEMP_DIR)
 
 ####################
 # When the environment variable SISYPHUS_CACHE_QUERIES is

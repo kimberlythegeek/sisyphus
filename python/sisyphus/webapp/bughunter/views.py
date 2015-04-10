@@ -312,6 +312,8 @@ def post_files(request):
                 output.write(chunk)
 
             output.close()
+            # close the temporary file to force deletion immediately.
+            uploadedfile.close()
 
         row.save()
         response = HttpResponseRedirect('/bughunter/media/')
