@@ -34,3 +34,4 @@ user_pref("browser.EULA.override", true);
 user_pref("extensions.autoDisableScopes", 10);
 user_pref("toolkit.startup.max_resumed_crashes", -1);
 user_pref("network.proxy.type", 5);
+user_pref("xpinstall.signatures.required", false);
