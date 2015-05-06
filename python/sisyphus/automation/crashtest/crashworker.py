@@ -157,6 +157,7 @@ class CrashTestWorker(worker.Worker):
         reExecutablePath   = re.compile(r'^environment: TEST_EXECUTABLEPATH=(.*)')
         reProfileName      = re.compile(r'^environment: TEST_PROFILENAME=(.*)')
         reAssertionFail    = re.compile(r'(Assertion failure: .*), at .*')
+        reMOZ_CRASH        = re.compile(r'(Hit MOZ_CRASH[(][^)]*[)]) at .*')
         reABORT            = re.compile(r'###\!\!\! (ABORT: .*)')
         reABORT2           = re.compile(r'###\!\!\! (ABORT: .*), file (.*), line [0-9]+.*')
         reABORT3           = re.compile(r'###\!\!\! (ABORT: .*) file (.*), line [0-9]+.*')
@@ -342,6 +343,11 @@ class CrashTestWorker(worker.Worker):
 
                 # Collect the first occurrence of a fatal message
                 match = reAssertionFail.search(line)
+                if match and not self.testrun_row.fatal_message:
+                    self.testrun_row.fatal_message = match.group(1)
+                    continue
+
+                match = reMOZ_CRASH.search(line)
                 if match and not self.testrun_row.fatal_message:
                     self.testrun_row.fatal_message = match.group(1)
                     continue
