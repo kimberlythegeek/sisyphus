@@ -156,11 +156,11 @@ class CrashTestWorker(worker.Worker):
         reFatalError       = re.compile(r'FATAL ERROR')
         reExecutablePath   = re.compile(r'^environment: TEST_EXECUTABLEPATH=(.*)')
         reProfileName      = re.compile(r'^environment: TEST_PROFILENAME=(.*)')
-        reAssertionFail    = re.compile(r'^(Assertion failure: .*), at .*')
-        reABORT            = re.compile(r'^.?###\!\!\! (ABORT: .*)')
-        reABORT2           = re.compile(r'^.?###\!\!\! (ABORT: .*), file (.*), line [0-9]+.*')
-        reABORT3           = re.compile(r'^.?###\!\!\! (ABORT: .*) file (.*), line [0-9]+.*')
-        reASSERTION        = re.compile(r'^.?###\!\!\! ASSERTION: (.*), file (.*), line [0-9]+.*')
+        reAssertionFail    = re.compile(r'(Assertion failure: .*), at .*')
+        reABORT            = re.compile(r'###\!\!\! (ABORT: .*)')
+        reABORT2           = re.compile(r'###\!\!\! (ABORT: .*), file (.*), line [0-9]+.*')
+        reABORT3           = re.compile(r'###\!\!\! (ABORT: .*) file (.*), line [0-9]+.*')
+        reASSERTION        = re.compile(r'###\!\!\! ASSERTION: (.*), file (.*), line [0-9]+.*')
         reValgrindLeader   = re.compile(r'^==[0-9]+==')
         reSpiderBegin      = re.compile(r'^Spider: Begin loading (.*)')
         reSpider           = re.compile(r'^Spider:')
@@ -341,23 +341,23 @@ class CrashTestWorker(worker.Worker):
                     continue
 
                 # Collect the first occurrence of a fatal message
-                match = reAssertionFail.match(line)
+                match = reAssertionFail.search(line)
                 if match and not self.testrun_row.fatal_message:
                     self.testrun_row.fatal_message = match.group(1)
                     continue
 
-                match = reABORT.match(line)
+                match = reABORT.search(line)
                 if match and not self.testrun_row.fatal_message:
                     self.testrun_row.fatal_message = match.group(1).rstrip()
-                    match = reABORT2.match(line)
+                    match = reABORT2.search(line)
                     if match:
                         self.testrun_row.fatal_message = match.group(1)
-                    match = reABORT3.match(line)
+                    match = reABORT3.search(line)
                     if match:
                         self.testrun_row.fatal_message = match.group(1)
                     continue
 
-                match = reASSERTION.match(line)
+                match = reASSERTION.search(line)
                 if match:
                     # record the assertion for later output when we know the test
                     assertionmessage = match.group(1)
