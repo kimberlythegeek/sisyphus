@@ -62,6 +62,8 @@ function userOnAfterPage() {
   setTimeout(completePage, 0);
 }
 
+userOnPageTimeout = userOnAfterPage;
+
 function completePage() {
   dlog('completePage()');
 
