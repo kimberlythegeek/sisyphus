@@ -239,6 +239,19 @@ def releaseLock(name):
     return lockDuration
 
 
+from django.contrib.auth.models import User
+
+def get_django_user_id(username, email):
+    """Lookup the id associated with the username
+    """
+    user_objects = User.objects.all()
+    user_id = 0
+    for u in user_objects:
+      if username == u.username or username == u.email:
+         user_id = u.id
+         break
+    return user_id
+
 # http://atlee.ca/software/poster/index.html
 import poster
 from poster.encode import multipart_encode
