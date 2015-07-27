@@ -18,7 +18,7 @@ export MOZ_DEBUG_SYMBOLS=1
 # Add the correct paths here:
 ac_add_options --disable-crashreporter
 ac_add_options --with-android-ndk="$HOME/opt/android-ndk"
-ac_add_options --with-android-sdk="$HOME/opt/android-sdk-macosx/platforms/android-21"
+ac_add_options --with-android-sdk="$HOME/opt/android-sdk-macosx/platforms/android-22"
 ,
 # android options
 ac_add_options --enable-application=mobile/android
