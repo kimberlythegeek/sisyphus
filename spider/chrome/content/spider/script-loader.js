@@ -50,6 +50,8 @@ function loadScript(aScriptUrl)
     xmlhttp.overrideMimeType('text/plain');
     xmlhttp.scripturl = aScriptUrl;
     xmlhttp.onload = onLoadScript;
+    loadScript.compile_success = true;
+    loadScript.compile_message = '';
     xmlhttp.open('GET', aScriptUrl, false);
     xmlhttp.send(null);
 }
@@ -75,7 +77,8 @@ function onLoadScript(e)
                   ex + ' ' +
                   this.statusText;
             cdump(msg);
-            throw msg;
+            loadScript.compile_success = false;
+            loadScript.compile_message = msg;
         }
 
         if ('location' in window && 'href' in window.location)
@@ -96,17 +99,19 @@ function onLoadScript(e)
                       ex + ' ' +
                       this.statusText;
                 cdump(msg);
-                throw msg;
+                loadScript.compile_success = false;
+                loadScript.compile_message = msg;
             }
         }
     }
     else {
         msg = 'loadScript: failure: ' +
-            'statusText: ' + this.statusText +
-            'responseText: ' + this.responseText +
-            'response: ' + this.response;
+            ' statusText: ' + this.statusText +
+            ' responseText: ' + this.responseText +
+            ' response: ' + this.response;
         cdump(msg);
-        throw msg;
+        loadScript.compile_success = false;
+        loadScript.compile_message = this.responseText;
     }
 }
 

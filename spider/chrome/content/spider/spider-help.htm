@@ -70,33 +70,38 @@
 
     <p>
 
-    Spider is a web application which can recursively visit the pages
-    of a web site. It is customizable to perform arbitrary processing
-    on the web content it visits and is especially useful in performing
-    quality assurance tasks on web content. Spider is supported only
-    by Gecko-based browsers.
-    To learn more about Spider, visit its <a
-    href="http://bclary.com/2004/07/10/mozilla-spiders" target="_blank">home 
-    page</a>
-    or subscribe to <a
-    href="http://bclary.com/home.rss" target="_blank">http://bclary.com/home.rss</a>
-    where announcements regarding new versions are made.
+    Spider is a Firefox extension which can recursively visit the
+    pages of a web site. It is customizable to perform arbitrary
+    processing on the web content it visits and is especially useful
+    in performing quality assurance tasks on web content. Spider is
+    supported only by Gecko-based browsers.
+
+    </p>
+
+    <p>
+
+    To learn more about Spider, visit
+    its <a href="http://bclary.com/2004/07/10/mozilla-spiders"
+    target="_blank">home page</a> or subscribe
+    to <a href="http://bclary.com/home.rss"
+    target="_blank">http://bclary.com/home.rss</a> where announcements
+    regarding new versions are made.
+
     </p>
 
     <p>
 
     This software is a modified version of the CSpider application
-      hosted at <a
-      href="http://devedge-temp.mozilla.org/toolbox/examples/2003/CSpider/index_en.html" target="_blank">http://devedge-temp.mozilla.org/toolbox/examples/2003/CSpider/</a>.
+    hosted
+    at <a href="http://devedge-temp.mozilla.org/toolbox/examples/2003/CSpider/index_en.html"
+    target="_blank">http://devedge-temp.mozilla.org/toolbox/examples/2003/CSpider/</a>.
 
     </p>
 
     <p>
-
     Developers can learn more about the internal operation of the CSpider
     JavaScript Class which provides the basic framework for this application 
     from <a href="CSpider.xhtml" target="_blank">CSpider JavaScript Class manpage</a>
-
     </p>
 
     <h2><a name="considerations">Special Considerations</a></h2>
@@ -106,37 +111,8 @@
     <p>
 
     Spider is capable of capturing error messages and spidering sites
-    from other domains through the use of extended security privileges.
-
-    </p>
-
-    <p>
-
-    If you are running Spider as a XUL application from Firefox Chrome, the
-    application automatically has the necessary security privileges. However if
-    you are running Spider as an HTML application or a remote XUL application, 
-    you will need to grant the application the necessary privileges.
-
-    </p>
-
-    <p>
-
-    In order to configure Firefox to enable the use of these security 
-    privileges, you must set the preference <code>signed.applets.codebase_principal_support</code>
-    to <code>true</code>. You can do this either by 
-    using <code>about:config</code> to add the boolean preference, or modifying
-    the <code>user.js</code> preferences file in your Firefox profile directory 
-    to contain the line 
-    
-    </p>
-    
-    <pre>user_pref("signed.applets.codebase_principal_support", true);</pre>
-
-    <p>
-
-    For more information, please see <a
-    href="http://devedge-temp.mozilla.org/viewsource/2002/bypassing-security-restrictions/index_en.html" target="_blank">Bypassing
-    Security Restrictions and Signing Code</a> by Arun Ranganathan.
+    from other domains through the use of extended security
+    privileges.
 
     </p>
 
@@ -144,31 +120,13 @@
     <h3><a name="prefs">Preferences</a></h3>
 
 
-    <h3>Required Preferences</h3>
-
-    <p>
-
-    <code>signed.applets.codebase_principal_support</code> is required 
-    in order to allow Spider access to internal Firefox APIs as well
-    as cross-domain access. <code>browser.dom.window.dump.enabled</code>
-    is required in order to allow Spider to send messages to STDOUT. 
-    Without <code>dump</code>, Spider can only report messages to the
-    JavaScript Console.
-
-    </p>
-
-    <pre>
-user_pref("signed.applets.codebase_principal_support", true);
-user_pref("browser.dom.window.dump.enabled", true);
-    </pre>
-
     <h3>Useful Preferences</h3>
 
     <p>
 
-    <code>javascript.options.strict</code> enables Firefox to 
-    report on JavaScript strict warnings which are very useful
-    in determining potential problem areas in scripts. 
+    <code>javascript.options.strict</code> enables Firefox to report
+    on JavaScript strict warnings which are very useful in determining
+    potential problem areas in scripts.
     <code>javascript.options.showInConsole</code> can be used
     to report internal browser errors to the JavaScript console
     and is useful for Firefox developers.
@@ -179,74 +137,6 @@ user_pref("browser.dom.window.dump.enabled", true);
 user_pref("javascript.options.strict", true);
 user_pref("javascript.options.showInConsole", true);
 </pre>
-
-    <p>
-
-    Spider can be halted through alerts which either Firefox sends
-    or which are created by the web pages being visited. If you 
-    wish to run Spider unattended, you have several choices.
-
-    </p>
-
-    <p>
-    <strong>New in Spider 0.0.1.21</strong> You can register a WindowWatcher
-    observer in your userhook functions to automatically close dialogs 
-    after 10 seconds. Simply call <code>registerDialogCloser()</code> in 
-    <code>userOnBeforePage()</code> and <code>unregisterDialogCloser()</code>
-    in <code>userOnAfterPage()</code>.
-
-    </p>
-
-    <p>
-
-    You can also disable as many 
-    alert messages as possible through the user of preferences. 
-    In addition, by using 
-    <code>browser.xul.error_pages.enabled</code> to replace
-    network error alerts with error pages, Spider can easily
-    detect and report on network errors.
-
-    </p>
-
-    <pre>
-user_pref("browser.xul.error_pages.enabled", true);
-user_pref("dom.disable_open_during_load", true);
-user_pref("dom.disable_window_flip", true);
-user_pref("dom.disable_move_resize", true);
-user_pref("dom.disable_window_open_feature.status", true);
-user_pref("security.warn_entering_secure", false);
-user_pref("security.warn_entering_weak", false);
-user_pref("security.warn_submit_insecure", false);
-user_pref("security.warn_leaving_secure", false);
-user_pref("security.warn_viewing_mixed", false);
-user_pref("capability.policy.default.Window.alert", "noAccess");
-user_pref("capability.policy.default.Window.confirm", "noAccess");
-user_pref("capability.policy.default.Window.prompt", "noAccess");
-</pre>
-
-   <p>
-
-   If you wish to enable alerts on specific sites, you can enable
-   them on a per site basis using a policy and a site list for
-   which you will allow alerts.
-
-   </p>
-
-<pre>
-user_pref("capability.policy.policynames", "trusted");
-user_pref("capability.policy.trusted.sites", "...");
-user_pref("capability.policy.trusted.Window.alert", "sameOrigin");
-user_pref("capability.policy.trusted.Window.confirm", "sameOrigin");
-user_pref("capability.policy.trusted.Window.prompt", "sameOrigin");
-</pre>
-
-    <p>
-
-    You can download <a href="http://bclary.com/2004/07/10/spider/user.js" 
-    target="_blank">user.js</a> which contains
-    these preferences and save it to your Firefox profile directory.
-
-    </p>
 
     <p>
     If you need to Spider sites which require authentication, the following
@@ -289,87 +179,26 @@ crackers.</strong>
     <h2><a name="starting">Starting Spider</a></h2>
 
     <p>
-    Spider can be run as either an HTML web application, a remote XUL
-    web application or as a chrome XUL application. When run as an
-    HTML application, it uses an IFRAME to load pages which sends a
-    null HTTP referer. When run as a XUL application, Spider uses a
-    <code>xul:browser</code> element along with the method
-    <code>loadURI</code> to send the url of the page containing a link
-    as its referer.
-    </p>
-
-    <p>
-
-    Spider sends logging output to both the JavaScript console and to STDOUT if
-    the dump function is enabled.  Since the JavaScript console is limited in
-    the number of messages it may contain, it is important to also send the
-    logging messages to STDOUT. This allows the results of a Spider run to be
-    collected in a text file for later review and processing. In order to see
-    this output you should start Firefox from the command line and redirect
-    STDOUT to a text file.
+    Spider is run as a standalone instance of Firefox.  Spider sends
+    logging output to both the JavaScript console and to STDOUT if the
+    dump function is enabled.  Since the JavaScript console is limited
+    in the number of messages it may contain, it is important to also
+    send the logging messages to STDOUT. This allows the results of a
+    Spider run to be collected in a text file for later review and
+    processing. In order to see this output you should start Firefox
+    from the command line and redirect STDOUT to a text file.
     
     </p>
-    
-    <p>
-    
     The following command will start Firefox, automatically select the profile
     test, load Spider and direct all output to the file test.log.
 
     </p>
 
-    <dl>
-      <dt>HTML</dt>
-      <dd>
-      <p>
-      firefox -P test http://bclary.com/2004/07/10/spider/chrome/content/spider/spider.html &gt; test.log 2&gt;&amp;1
-      </p>
-      </dd>
-      <dt>Remote XUL</dt>
-      <dd>
-      <p>
-      firefox -P test http://bclary.com/2004/07/10/spider/chrome/content/spider/spider.xul &gt; test.log 2&gt;&amp;1
-      </p>
-      </dd>
-      <dt>Chrome XUL Application</dt>
-      <dd>
-      <p><strong>via command line with chrome url</strong></p>
-      <p>
-      Spider can be run directly as in:
-      </p>
-      <p>
-      firefox -P test -chrome chrome://spider/content &gt; test.log 2&gt;&amp;1
-      </p>
-      <p>
-      However, this can have an undesired side-effect of creating a
-      window which can not be resized in recent Firefox trunk (Deer Park
-      alpha) builds based on Gecko 1.8.  
-      </p>
-      <p>
-      To create a resizable window, invoke <code>open.xul</code>
-      as in:
-      </p>
-      <p>
-      firefox -P test -chrome chrome://spider/content/open.xul  &gt; test.log 2&gt;&amp;1</p>
-      <p>
-      <code>open.xul</code> will create a resizable window using
-      javascript, then load <code>spider.xul</code> while passing any
-      querystring along to <code>spider.xul</code>.
-      </p>
-
-      <p>
-      Using this approach you can also specify the initial values of 
-      Spider's parameters however you must properly encode the url in order
-      to start Spider this way. To create the proper query string, you can
-      start Spider, fill in the parameters, then click the button 
-      <code>Generate Spider URL</code>. For example, the following
-      will start spider, set the URL to http://bclary.com/ and automatically
-      spider the site to a depth of 2.
-    </p>
-<pre>firefox -P test -chrome "chrome://spider/content/spider.xul?url%3Dhttp%253A%252F%252Fbclary.com%252F%26domain%3Dbclary.com%26depth%3D2%26timeout%3D120%26waittime%3D5%26autostart%3Don%26restrict%3Don"</pre>
-    <p>
-
-    <p><strong><a name="starting-cmdline-args">via command line with command line arguments - 
-new in 0.0.2.0</a></strong></p>
+      <pre>
+      firefox -P test -spider &gt; test.log 2&gt;&amp;1
+      </pre>
+    
+    <p><strong><a name="starting-cmdline-args">via command line with command line arguments</a></strong></p>
 
 <pre>
 -spider              Start Spider (required)
@@ -391,7 +220,7 @@ new in 0.0.2.0</a></strong></p>
 -chromeerrors        Display chrome errors
 -xblerrors           Display XBL errors
 -csserrors           Display CSS errors
--httpresponses       Display HTTP responses
+-httprequests        Display HTTP requests
 -invisible           Hide loaded page
 </pre>
 
@@ -399,14 +228,6 @@ new in 0.0.2.0</a></strong></p>
 The previous example can be rewritten as
 </p>
 <pre>firefox -P test -spider -url http://bclary.com/ -domain bclary.com -depth 2 -start</pre>
-    <p>
-    Note that when run as a Chrome application, Spider can prevent
-    frame-busting code from replacing the top level browser window however when
-    run as either an HTML or Remote XUL application, Spider can be stopped by
-    frame-busting code.
-
-    </p>
-
       </dd> 
 
 </dl>
@@ -480,27 +301,15 @@ The previous example can be rewritten as
     <dt>Autostart</dt>
     <dd>
     <p>
-    If Spider is invoked with a query string containing autostart=on, Spider
-    will automatically begin executing with the data values specified
-    in the query string.
-    </p>
-    <p>
-    To generate a link containing the desired parameters, first 
-    set the data inputs, check the <code>Autostart</code> check box,
-    then click <code>Generate Spider URL</code>.
+      Autostart will cause Spider to automatically begin loading pages
+      when it first loads.
     </p>
     </dd>
     <dt>Autoquit</dt>
     <dd>
     <p>
-    If Spider is invoked with a query string containing autoquit=on, Spider
-    will automatically exit when it has completed its run, i.e. reached 
+    Autoquit will cause Spider to automatically exit when it has completed its run, i.e. reached 
     the <em>Stopped</em> state.
-    </p>
-    <p>
-    To generate a link containing the desired parameters, first 
-    set the data inputs, check the <code>Autoquit</code> check box,
-    then click <code>Generate Spider URL</code>.
     </p>
     </dd>
     <dt>Restrict URLs</dt>

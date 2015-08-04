@@ -131,7 +131,9 @@ SpiderHandler.prototype = {
     oArguments.chromeerrors = getFlag('chromeerrors');
     oArguments.xblerrors    = getFlag('xblerrors');
     oArguments.csserrors    = getFlag('csserrors');
-    oArguments.httpresponses = getFlag('httpresponses');
+    // Get older command argument httpresponses first and use it if it
+    // is set, otherwise use the newer httpresponses command argument.
+    oArguments.httprequests = getFlag('httpresponses') || getFlag('httprequests');
     oArguments.invisible     = getFlag('invisible');
 
     if (errors)

@@ -36,11 +36,21 @@
   -
   - ***** END LICENSE BLOCK ***** */
 
+// https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIWebProgressListener
+// https://developer.mozilla.org/en-US/docs/Mozilla/JavaScript_code_modules/XPCOMUtils.jsm
+
+var Cc = Components.classes;
+var Ci = Components.interfaces;
+var Cu = Components.utils;
+
+Cu.import('resource://gre/modules/XPCOMUtils.jsm');
+
 function loadHandler(evt)
 {
+  this.removeEventListener('load', loadHandler, false);
   try
   {
-    dlog('loadHandler: timeStamp=' + evt.timeStamp +
+    window.dlog('loadHandler: timeStamp=' + evt.timeStamp +
          ', bubbles=' + evt.bubbles +
          ', currentTarget=' + evt.currentTarget +
          ', eventPhase=' + evt.eventPhase +
@@ -50,8 +60,12 @@ function loadHandler(evt)
   }
   catch(ex)
   {
-    dlog('loadHandler: ' + ex + '');
+    window.dlog('loadHandler: exception: ' + ex + ', ' + ex.stack);
   }
+  //https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XUL/browser#m-addProgressListener
+  contentSpider = document.getElementById('contentSpider');
+  contentSpider.addProgressListener(gProgressListener);
+
 }
 
 this.addEventListener('load', loadHandler, false);
@@ -69,9 +83,9 @@ var xhtmlns = 'http://www.w3.org/1999/xhtml';
 // for page transition logic
 var gPageCompleted = false;
 
-function init(evt, querystring)
+function init(evt)
 {
-  dlog('init: timeStamp=' + evt.timeStamp +
+  window.dlog('init: timeStamp=' + evt.timeStamp +
        ', bubbles=' + evt.bubbles +
        ', currentTarget=' + evt.currentTarget +
        ', eventPhase=' + evt.eventPhase +
@@ -100,7 +114,7 @@ function init(evt, querystring)
     {
       window.opener.close();
     }
-    catch(e)
+    catch(ex)
     {
     }
   }
@@ -133,24 +147,15 @@ function init(evt, querystring)
     gForm.chromeerrors.checked  = (oArguments.chromeerrors == true);
     gForm.xblerrors.checked  = (oArguments.xblerrors == true);
     gForm.csserrors.checked  = (oArguments.csserrors == true);
-    gForm.httpresponses.checked  = (oArguments.httpresponses == true);
+    gForm.httprequests.checked = (oArguments.httprequests == true);
     gForm.invisible          = (oArguments.invisible == true);
     gForm.scripturl.value = oArguments.hook;
-  }
-  else if (querystring)
-  {
-    FormInit(gForm, querystring);
-    // the url needs to be double encoded to be run from the command
-    // line. decode a second time.
-    gForm.url.value = decodeURIComponent(gForm.url.value);
   }
 
   gDebug = gForm.debug.checked;
 
   if (gForm.invisible)
     document.getElementById('contentSpider').style.visibility = 'hidden';
-
-  dlog('init: querystring ' + querystring);
 
   registerConsoleListener();
 
@@ -190,7 +195,7 @@ function main(form)
   gConsoleListener.javascriptErrors   = gForm.javascripterrors.checked;
   gConsoleListener.javascriptWarnings = gForm.javascriptwarnings.checked;
   gConsoleListener.cssErrors          = gForm.csserrors.checked;
-  gConsoleListener.httpResponses      = gForm.httpresponses.checked;
+  gConsoleListener.httprequests       = gForm.httprequests.checked;
   gConsoleListener.chromeErrors       = gForm.chromeerrors.checked;
   gConsoleListener.xblErrors          = gForm.xblerrors.checked;
 
@@ -199,32 +204,22 @@ function main(form)
     var scripturl = gForm.scripturl.value.replace(/[ \t]/g, '');
     var excp;
     var excpmsg;
-    try
-    {
-      loadScript(scripturl);
+    loadScript(scripturl);
+    if (loadScript.compile_success)
       updateScriptUrlStatus('Compile Successful');
-    }
-    catch(excp)
-    {
-      excpmsg = 'Compile Failed ' + ' ' + excp + ' ' + excp.stack;
-      dlog(excpmsg);
-      updateScriptUrlStatus(excpmsg);
-      throw(excp);
+    else {
+      updateScriptUrlStatus('Compile Failed');
+      var contentWindow = document.getElementById('contentSpider').contentWindow.wrappedJSObject;
+      contentWindow.document.body.innerHTML = loadScript.compile_message;
+      throw(loadScript.compile_message);
     }
   }
-
-  // invoke with extra privileges even though chrome xul doesn't require
-  // them. this should allow remote xul to work cross domain.
 
   gPageLoader = new CPageLoader(
     document.getElementById('contentSpider'),
     (function () { gSpider.onLoadPage(); }),
     (function () { gSpider.onLoadPageTimeout(); }),
-    timeout,
-    new CHTTPResponseObserver((function (response) {
-      if (window.gSpider.mCurrentUrl)
-        gSpider.mCurrentUrl.mResponses.push(response);
-    }))
+    timeout
   );
 
   gSpider = new CSpider(url, domain, restrict, depth, gPageLoader, timeout,
@@ -236,8 +231,8 @@ function main(form)
 
   gSpider.mOnStart = function CSpider_mOnStart()
   {
-    dlog('CSpider.mOnStart()');
-    msg('starting...');
+    window.dlog('CSpider.mOnStart ' + this.mState);
+    update_status('Starting...');
 
     cdump('Spider: Start: ' +
           (gForm.url.value                  ? '-url "'    + gForm.url.value       + '" '  : '') +
@@ -256,12 +251,11 @@ function main(form)
           (gForm.chromeerrors.checked       ? '-chromeerrors '                            : '') +
           (gForm.xblerrors.checked          ? '-xblerrors '                               : '') +
           (gForm.csserrors.checked          ? '-csserrors '                               : '') +
-          (gForm.httpresponses.checked      ? '-httpresponses '                           : '') +
+          (gForm.httprequests.checked       ? '-httprequests '                           : '') +
           (gForm.invisible                  ? '-invisible '                               : '')
          );
 
     gForm.run.disabled = true;
-    gForm.save.disabled = true;
     gForm.reset.disabled = true;
     gForm.pause.disabled = false;
     gForm.restart.disabled = true;
@@ -273,9 +267,9 @@ function main(form)
       {
         userOnStart();
       }
-      catch(e)
+      catch(ex)
       {
-        var errmsg = 'Error: userOnStart User Hook ' + e;
+        var errmsg = 'Error: userOnStart User Hook ' + ex + ', ' + ex.stack;
         updateScriptUrlStatus(errmsg);
         cdump('Spider: ' + errmsg);
       }
@@ -286,14 +280,11 @@ function main(form)
 
   gSpider.mOnBeforePage = function CSpider_mOnBeforePage()
   {
-    dlog('CSpider.mOnBeforePage()');
+    window.dlog('CSpider.mOnBeforePage ' + this.mState);
 
     gPageCompleted = false;
 
-    msg('Loading      : ' +  this.mCurrentUrl.mUrl +  '\n' +
-        'Depth        : ' + this.mCurrentUrl.mDepth + '\n' +
-        'Remaining    : ' + this.mPagesPending.length + '\n' +
-        'Total loaded : ' + this.mPagesVisited.length);
+    update_status('Loading');
 
     cdump('Spider: Begin loading ' + this.mCurrentUrl.mUrl);
 
@@ -303,9 +294,9 @@ function main(form)
       {
         userOnBeforePage();
       }
-      catch(e)
+      catch(ex)
       {
-        var errmsg = 'Error: userOnBeforePage User Hook ' + e;
+        var errmsg = 'Error: userOnBeforePage User Hook ' + ex + ', ' + ex.stack;
         updateScriptUrlStatus(errmsg);
         cdump('Spider: ' + errmsg);
       }
@@ -316,32 +307,20 @@ function main(form)
 
   gSpider.mOnAfterPage = function CSpider_mOnAfterPage()
   {
-    dlog('CSpider.mOnAfterPage()');
+    window.dlog('CSpider.mOnAfterPage ' + this.mState);
 
-    msg('Page loaded: ' + this.mCurrentUrl.mUrl + '\n' +
-        'Depth        : ' + this.mCurrentUrl.mDepth + '\n' +
-        'Remaining    : ' + this.mPagesPending.length + '\n' +
-        'Total loaded : ' + this.mPagesVisited.length);
+    update_status('Page loaded');
 
     cdump('Spider: Finish loading ' + this.mCurrentUrl.mUrl);
 
     cdump('Spider: Current Url: ' + this.mCurrentUrl.mUrl +
           ', Referer: ' + this.mCurrentUrl.mReferer +
           ', Depth: ' + this.mCurrentUrl.mDepth);
-    if (gConsoleListener.httpResponses)
+    if (gConsoleListener.httprequests)
     {
-      var responses = this.mCurrentUrl.mResponses;
-      for (var iResponse = 0; iResponse < responses.length; iResponse++)
+      for (var request_uri in gPageLoader.requests)
       {
-        var response = responses[iResponse];
-        cdump('Spider: HTTP Response:' +
-              ' originalURI: ' + response.originalURI +
-              ' URI: ' + response.URI +
-                ('referrer' in response  ? ' referer: ' + response.referrer : '') +
-              ' status: ' + response.responseStatus +
-              ' status text: ' + response.responseStatusText +
-              ' content-type: ' + response.contentType +
-              ' succeeded: ' + response.requestSucceeded);
+        cdump('Spider: HTTP Request:' + request_uri);
       }
     }
 
@@ -371,7 +350,7 @@ function main(form)
             var dummy = this.mDocument.body.offsetHeight;
           }
         }
-        catch(e)
+        catch(ex)
         {
         }
 
@@ -381,9 +360,9 @@ function main(form)
           {
             userOnAfterPage();
           }
-          catch(e)
+          catch(ex)
           {
-            var errmsg = 'Error userOnAfterPage User Hook ' + e;
+            var errmsg = 'Error userOnAfterPage User Hook exception: ' + ex + ', ' + ex.stack;
             updateScriptUrlStatus(errmsg);
             cdump('Spider: ' + errmsg);
           }
@@ -392,21 +371,19 @@ function main(form)
     }
     catch(ex)
     {
-      msg('mOnAfterPage: ' + ex);
+      update_status('Page loaded', 'mOnAfterPage: exception: ' + ex + ', ' + ex.stack);
     }
-    //return true;
     gRestartThread = setTimeout('observeHookSignal()', 1000);
     return false;
   };
 
   gSpider.mOnStop = function CSpider_mOnStop()
   {
-    dlog('CSpider.mOnStop()');
+    window.dlog('CSpider.mOnStop ' + this.mState);
 
-    msg('Stopping... ');
+    update_status('Stopping...');
 
     gForm.run.disabled = false;
-    gForm.save.disabled = false;
     gForm.reset.disabled = false;
     gForm.pause.disabled = true;
     gForm.restart.disabled = true;
@@ -418,15 +395,15 @@ function main(form)
       {
         userOnStop();
       }
-      catch(e)
+      catch(ex)
       {
-        var errmsg = 'Error: userOnStop User Hook ' + e;
+        var errmsg = 'Error: userOnStop User Hook exception: ' + ex + ', ' + ex.stack;
         updateScriptUrlStatus(errmsg);
         cdump('Spider: ' + errmsg);
       }
     }
 
-    msg('Stopped... loaded ' + this.mPagesVisited.length + ' pages');
+    update_status('Stopped');
     cdump('Spider: stopped... loaded ' + this.mPagesVisited.length + ' pages');
 
     if (gForm.autoquit.checked)
@@ -440,10 +417,9 @@ function main(form)
 
   gSpider.mOnPause = function CSpider_mOnPause()
   {
-    dlog('CSpider.mOnPause() ' + gSpider.mState);
+    window.dlog('CSpider.mOnPause ' + gSpider.mState);
 
     gForm.run.disabled = true;
-    gForm.save.disabled = true;
     gForm.reset.disabled = true;
     gForm.pause.disabled = (gPauseState == 'user');
     gForm.restart.disabled = (gPauseState != 'user');
@@ -455,9 +431,9 @@ function main(form)
       {
         userOnPause();
       }
-      catch(e)
+      catch(ex)
       {
-        var errmsg = 'Error: userOnPause User Hook ' + e;
+        var errmsg = 'Error: userOnPause User Hook exception: ' + ex + ', ' + ex.stack;
         updateScriptUrlStatus(errmsg);
         cdump('Spider: ' + errmsg);
       }
@@ -475,27 +451,16 @@ function main(form)
       statemsg = 'Waiting';
     }
 
-    if (gSpider.mState != 'stopped')
-    {
-      msg(statemsg  + '      : ' +
-          (this.mCurrentUrl ? this.mCurrentUrl.mUrl : '')  +
-          '\n' +
-          'Depth        : ' +
-          (this.mCurrentUrl ?  this.mCurrentUrl.mDepth : '') +
-          '\n' +
-          'Remaining    : ' +
-          this.mPagesPending.length +
-          '\n' +
-          'Total loaded : ' +
-          this.mPagesVisited.length);
+    if (gSpider.mState != 'stopped') {
+      update_status(statemsg);
     }
     return true;
   };
 
   gSpider.mOnRestart = function mOnRestart()
   {
-    dlog('CSpider.mOnRestart()');
-    msg('Restarting...');
+    window.dlog('CSpider.mOnRestart ' + this.mState);
+    update_status('Restarting...');
 
     if (gRestartThread)
     {
@@ -509,12 +474,11 @@ function main(form)
     gConsoleListener.javascriptErrors   = gForm.javascripterrors.checked;
     gConsoleListener.javascriptWarnings = gForm.javascriptwarnings.checked;
     gConsoleListener.cssErrors          = gForm.csserrors.checked;
-    gConsoleListener.httpResponses      = gForm.httpresponses.checked;
+    gConsoleListener.httprequests       = gForm.httprequests.checked;
     gConsoleListener.chromeErrors       = gForm.chromeerrors.checked;
     gConsoleListener.xblErrors          = gForm.xblerrors.checked;
 
     gForm.run.disabled = true;
-    gForm.save.disabled = true;
     gForm.reset.disabled = true;
     gForm.pause.disabled = false;
     gForm.restart.disabled = true;
@@ -526,9 +490,9 @@ function main(form)
       {
         userOnRestart();
       }
-      catch(e)
+      catch(ex)
       {
-        var errmsg = 'Error: userOnRestart User Hook ' + e;
+        var errmsg = 'Error: userOnRestart User Hook exception: ' + ex + ', ' + ex.stack;
         updateScriptUrlStatus(errmsg);
         cdump('Spider: ' + errmsg);
       }
@@ -538,13 +502,11 @@ function main(form)
 
   gSpider.mOnPageTimeout = function CSpider_mOnPageTimeout()
   {
-    dlog('CSpider.mOnPageTimeout()');
+    window.dlog('CSpider.mOnPageTimeout ' + this.mState);
 
-    var s = 'Timed out loading page: ' + this.mCurrentUrl.mUrl + '.' +
-      ' Skipping to next page.\n';
-
-    msg(s);
-    cdump('Spider: ' + s);
+    update_status('Timed out loading page', 'Skipping to next page');
+    cdump('Spider: Timed out loading page: ' + this.mCurrentUrl.mUrl + '.' +
+      ' Skipping to next page.\n');
 
     if (typeof(userOnPageTimeout) == 'function')
     {
@@ -552,17 +514,13 @@ function main(form)
       {
         userOnPageTimeout();
       }
-      catch(e)
+      catch(ex)
       {
-        var errmsg = 'Error: userOnPageTimeout User Hook ' + e;
+        var errmsg = 'Error: userOnPageTimeout User Hook exception: ' + ex + ', ' + ex.stack;
         updateScriptUrlStatus(errmsg);
         cdump('Spider: ' + errmsg);
       }
     }
-
-    // drop the page that timed out so it isn't tried again
-    // XXX I think this ends up skipping the next page...
-    // gSpider.mPagesPending.pop();
 
     // false - keep loading pages.
     return false;
@@ -573,7 +531,7 @@ function main(form)
 
 function observeHookSignal()
 {
-  dlog('observeHookSignal() gPageCompleted ' + gPageCompleted + ' ' +
+  window.dlog('observeHookSignal() gPageCompleted ' + gPageCompleted + ' ' +
        'gSpider.mState ' + gSpider.mState + ' ' +
        'gForm.hooksignal.checked ' + gForm.hooksignal.checked);
 
@@ -584,25 +542,25 @@ function observeHookSignal()
 
   if (!gForm.hooksignal.checked)
   {
-    dlog('observeHookSignal() gSpider.restart() in  gWaitTime');
+    window.dlog('observeHookSignal() gSpider.restart() in  gWaitTime');
     gPageCompleted = true;
     gRestartThread = setTimeout('gSpider.restart()', gWaitTime);
   }
   else if (!gPageCompleted)
   {
-    dlog('observeHookSignal() observeHookSignal() in  1000');
+    window.dlog('observeHookSignal() observeHookSignal() in  1000');
     gRestartThread = setTimeout('observeHookSignal()', 1000);
   }
   else
   {
-    dlog('observeHookSignal() gSpider.restart() in 100');
+    window.dlog('observeHookSignal() gSpider.restart() in 100');
     gRestartThread = setTimeout('gSpider.restart()', 100);
   }
 }
 
 function userpause()
 {
-  dlog('userPause()');
+  window.dlog('userPause()');
   if (gRestartThread)
   {
     clearTimeout(gRestartThread);
@@ -637,62 +595,136 @@ function unload()
   }
 }
 
-function saveParms()
-{
-  var path = document.location.href;
-  if (path.indexOf('?') != -1)
-  {
-    path = path.substring(0, path.indexOf('?'));
+function update_status(state, status) {
+  function pad(prefix, length) {
+    for (var i = 0; i < length; i++)
+      prefix += ' ';
+    return prefix.substring(0, length) + ': '
   }
-  // the saved form of the url which encodes the parameters
-  // to start Spider must encode the url twice. Once for when
-  // it is loaded into Spider, and once after FormPersist has
-  // decoded it.
-  var saveValue = gForm.url.value;
-  gForm.url.value = encodeURIComponent(gForm.url.value);
-  path += FormDump(gForm);
-  gForm.url.value = saveValue;
-
-  //  var link = '<p><a href="' + path + '">' +  path + '<\/a><\/p>';
-
-  var win = window.open('');
-  var doc = win.document;
-  var p = doc.createElement('p');
-  var a = p.appendChild(doc.createElement('a'));
-  a.setAttribute('href', path);
-  a.appendChild(doc.createTextNode(path));
-  doc.documentElement.appendChild(p);
+  var padding = 10;
+  var s = '';
+  var depth = 0;
+  status = status || 'Done';
+  if (gSpider.mCurrentUrl) {
+    s = pad(state, padding) + gSpider.mCurrentUrl.mUrl + '\n';
+    depth = gSpider.mCurrentUrl.mDepth;
+  }
+  else {
+    s = pad('Idle', padding)
+  }
+  if (status) {
+    s += pad('Status', padding) + status + '\n';
+  }
+  s += pad('Counts', padding) + 'Depth ' + depth + ', ' +
+    ' Pending ' + gSpider.mPagesPending.length + ', ' +
+    'Visited ' + gSpider.mPagesVisited.length;
+  msg(s);
 }
 
-/*
-* CPageLoader and CHTTPResponseObserver work together as a pair to
-* load new pages and to detect when a page has completed
-* loading. Normally, there is only one instance of each class however
-* it is possible to have multiple instances though only one pair may be
-* active at a time. Since each will have methods (onload, observe)
-* which are called by the browser without proper values for |this|, we
-* must make sure to keep track of the active instances and use them
-* appropriately in the appropriate methods.
-* We do this using a class variable CHTTPResponseObserver.instance which keeps
-* track of the currently registered instance of CHTTPResponseObserver. Each 
-* instance of CHTTPResponseObserver has a page_loader property which tracks the
-* associated CPageLoader. In this way, our method which are called without
-* |this| can retrieve the appropriate value.
-*/
+var gProgressListener = {
+  QueryInterface: XPCOMUtils.generateQI([Ci.nsIWebProgressListener,
+                                         Ci.nsISupportsWeakReference]),
 
-function CPageLoader(content_element, onload_callback, ontimeout_callback, timeout_interval, http_response_observer)
+  request_to_str: function(aRequest) {
+    var s = 'Request: ';
+
+    if (!aRequest)
+      s += aRequest;
+    else {
+      s += aRequest.name;
+      try { s+= ' 0x' + aRequest.status.toString(16); } catch(ex) {}
+    }
+    return s;
+  },
+
+  onProgressChange: function (aWebProgress, aRequest,
+                              aCurSelfProgress, aMaxSelfProgress,
+                              aCurTotalProgress, aMaxTotalProgress) {},
+
+  onStateChange: function (aWebProgress, aRequest, aStateFlags, aStatus) {
+    /*
+      aStateFlags Flags indicating the new state. This value is a
+      combination of one of the State Transition Flags and one or more
+      of the State Type Flags defined above. Any undefined bits are
+      reserved for future use.
+    */
+    if (gDebug) {
+      var state_message = 'State: ';
+      var state_name;
+      for (state_name in Ci.nsIWebProgressListener) {
+        if (state_name.indexOf('STATE_') == 0) {
+          if (aStateFlags & Ci.nsIWebProgressListener[state_name])
+            state_message += state_name + ' ';
+        }
+      }
+      state_message = state_message.trimRight();
+      dlog('onStateChange: ' + this.request_to_str(aRequest) + ' ' + state_message + ' 0x' + aStatus.toString(16));
+    }
+    if ((aStateFlags & Ci.nsIWebProgressListener.STATE_STOP) &&
+        (aStateFlags & Ci.nsIWebProgressListener.STATE_IS_WINDOW) &&
+        aStatus == 0) {
+      dlog('onStateChange: handleLoad');
+      gPageLoader.handleLoad();
+    }
+  },
+
+  onLocationChange: function (aWebProgress, aRequest, aLocationURI, aFlags) {
+    /*
+      aLocation The URI of the location that is being loaded.
+
+      aFlags This is a value which explains the situation or the
+      reason why the location has changed. Optional from Gecko 11
+
+      If the location is changed to an error page, we must stop the
+      load instead of waiting for a timeout.
+
+    */
+    if (gDebug) {
+      var state_message = '';
+      var state_name;
+      for (state_name in Ci.nsIWebProgressListener) {
+        if (state_name.indexOf('LOCATION_') == 0) {
+          if (aFlags & Ci.nsIWebProgressListener[state_name])
+            state_message += state_name + ' ';
+        }
+      }
+      state_message = state_message.trimRight();
+      dlog('onLocationChange: ' + this.request_to_str(aRequest) + ' ' + aLocationURI.spec + ' ' + state_message);
+    }
+
+    if (aFlags && (aFlags & Ci.nsIWebProgressListener.LOCATION_CHANGE_ERROR_PAGE)) {
+      dlog('onLocationChange: force timeout due to ERROR_PAGE current uri ' +
+           gSpider.mCurrentUrl.mUrl);
+      gPageLoader.ontimeout();
+    }
+    else {
+        dlog('onLocationChange: original ' + gSpider.mCurrentUrl.mUrl + ' final ' + aLocationURI.spec);
+    }
+  },
+
+  onStatusChange: function (aWebProgress, aRequest, aStatus, aMessage) {
+    if (aRequest) {
+      dlog('onStatusChange: ' + this.request_to_str(aRequest) + ' ' + aStatus + ' ' + aMessage);
+      if (aRequest.name)
+        gPageLoader.requests[aRequest.name] = 1;
+    }
+    if (aMessage) {
+      update_status('Loading', aMessage);
+    }
+  },
+
+  onSecurityChange: function (aWebProgress, aRequest, aState) {},
+}
+
+function CPageLoader(content_element, onload_callback, ontimeout_callback, timeout_interval)
 {
-  dlog('CPageLoader()');
+  window.dlog('CPageLoader()');
 
-  // attach the CHTTPResponseObserver to this instance of CPageLoader
-  this.http_response_observer = http_response_observer;
-  // attach this instance of CPageLoader to its associated CHTTPResponseObserver
-  this.http_response_observer.page_loader = this;
-
+  this.requests = {};
   this.onload_callback = onload_callback;
   this.ontimeout_callback = ontimeout_callback;
   this.ontimeout = (function () {
-    dlog('CPageLoader.ontimeout()');
+    window.dlog('CPageLoader.ontimeout()');
     this.ontimeout_ccallwrapper = null;
     this.cancel();
     this.ontimeout_callback();
@@ -702,165 +734,32 @@ function CPageLoader(content_element, onload_callback, ontimeout_callback, timeo
   this.loadPending = false;
   this.content = content_element;
   this.timer_handleLoad = null;
-
-  this.handleLoad = function (target) {
-    dlog('CPageLoader.handleLoad ' +
-         'CHTTPResponseObserver.instance ' + CHTTPResponseObserver.instance +
-         ', target.location ' + target.location);
-
-    var response_observer = CHTTPResponseObserver.instance;
-    if (!response_observer) {
-      dlog('CPageLoader.handleLoad: Someone called CHTTPResponseObserver.instance.unregister()');
-      return;
-    }
-
-    var page_loader = response_observer.page_loader;
-
-    clearTimeout(page_loader.timer_handleLoad);
-    if (page_loader.ontimeout_ccallwrapper) {
-      page_loader.ontimeout_ccallwrapper.cancel();
-      page_loader.ontimeout_ccallwrapper = null;
-    }
-
-    page_loader.loadPending = false;
-
-    if (target.wrappedJSObject) {
-      target = target.wrappedJSObject;
-    }
-
-    try {
-      /*
-       * remove onbeforeunload to prevent scam artists from locking us to a page.
-       */
-      dlog('CPageLoader.handleLoad: target=' + target);
-      try {
-        dlog('CPageLoader.handleLoad: target.onbeforeunload=' + target.defaultView.onbeforeunload.toSource());
-      }
-      catch(ex) {
-      }
-      target.defaultView.onbeforeunload = (function () {});
-    }
-    catch(ex) {
-      dlog('CPageLoader.handleLoad: deleting onbeforeunload: ' + ex);
-    }
-
-    page_loader.content.removeEventListener('load', page_loader.onload, true);
-    target.removeEventListener('load', page_loader.onload, true);
-
-    response_observer.unregister();
-
-    page_loader.onload_callback();
-  };
-
-  this.onload = function(evt) {
-    dlog('CPageLoader.onload: ' +
-         'CHTTPResponseObserver.instance ' + CHTTPResponseObserver.instance +
-         ', phase ' + evt.eventPhase +
-         ', target ' + evt.target +
-         ', currentTarget ' + evt.currentTarget +
-         ', originalTarget ' + evt.originalTarget +
-         ', explicitOriginalTarget ' + evt.explicitOriginalTarget);
-
-    var response_observer = CHTTPResponseObserver.instance;
-    if (!response_observer) {
-      dlog('CPageLoader.onload: Someone called CHTTPResponseObserver.instance.unregister()');
-      return;
-    }
-    var page_loader = response_observer.page_loader;
-
-    dlog('CPageLoader.onload: loadPending ' + page_loader.loadPending);
-
-    if ( 'location' in evt.target) {
-      dlog('CPageLoader.onload: evt.target.location=' + evt.target.location);
-    }
-
-    if ( 'location' in evt.originalTarget) {
-      dlog('CPageLoader.onload: evt.originalTarget.location=' + evt.originalTarget.location);
-    }
-
-    if ( 'location' in evt.explicitOriginalTarget) {
-      dlog('CPageLoader.onload: evt.explicitOriginalTarget.location=' + evt.explicitOriginalTarget.location);
-    }
-
-    if ( 'location' in evt.currentTarget) {
-      dlog('CPageLoader.onload: evt.currentTarget.location=' + evt.currentTarget.location);
-    }
-
-    if (!page_loader.loadPending) {
-      dlog('CPageLoader.onload: load not pending');
-      return;
-    }
-
-    if ( !('location' in evt.target) || !RegExp('^' + page_loader.url.replace(/([\^\$\\\.\*\+\?\(\)\[\]\{\}|])/g, '\\$1') + '[\?#]?').test(evt.target.location)) {
-      dlog('CPageLoader.onload: expected load event on ' + page_loader.url + ', ignoring load event on evt.target.location=' + evt.target.location);
-    }
-    else {
-      dlog('CPageLoader.onload: found load event on ' + page_loader.url + ', on evt.target.location=' + evt.target.location);
-      page_loader.handleLoad(evt.target);
-    }
-  };
-
-  this.onDOMContentLoaded = function(evt) {
-    dlog('CPageLoader.onDOMContentLoaded: ' +
-         'CHTTPResponseObserver.instance ' + CHTTPResponseObserver.instance +
-         ', phase ' + evt.eventPhase +
-         ', target ' + evt.target +
-         ', currentTarget ' + evt.currentTarget +
-         ', originalTarget ' + evt.originalTarget +
-         ', explicitOriginalTarget ' + evt.explicitOriginalTarget);
-
-
-    var response_observer = CHTTPResponseObserver.instance;
-    if (!response_observer) {
-      dlog('CPageLoader.onDOMContentLoaded: Someone called CHTTPResponseObserver.instance.unregister()');
-      return;
-    }
-    var page_loader = response_observer.page_loader;
-
-    dlog('CPageLoader.onDOMContentLoaded: loadPending ' + page_loader.loadPending);
-
-    if ( 'location' in evt.target) {
-      dlog('CPageLoader.onDOMContentLoaded: evt.target.location=' + evt.target.location);
-    }
-    if ( 'location' in evt.originalTarget) {
-      dlog('CPageLoader.onDOMContentLoaded: evt.originalTarget.location=' + evt.originalTarget.location);
-    }
-    if ( 'location' in evt.explicitOriginalTarget) {
-      dlog('CPageLoader.onDOMContentLoaded: evt.explicitOriginalTarget.location=' + evt.explicitOriginalTarget.location);
-    }
-    if ( 'location' in evt.currentTarget) {
-      dlog('CPageLoader.onDOMContentLoaded: evt.currentTarget.location=' + evt.currentTarget.location);
-    }
-
-    if ( !('location' in evt.target) || !RegExp('^' + page_loader.url.replace(/([\^\$\\\.\*\+\?\(\)\[\]\{\}|])/g, '\\$1') + '[\?#]?').test(evt.target.location)) {
-      dlog('CPageLoader.onDOMContentLoaded: expected load event on ' + page_loader.url + ', ignoring load event on evt.target.location=' + evt.target.location);
-    }
-    else if ('location' in evt.target) {
-      dlog('CPageLoader.onDOMContentLoaded: found load event on ' + page_loader.url + ', on evt.target.location=' + evt.target.location);
-      /*
-       * We have the actual content window now and can attach our load handler
-       * there in case the redirection processing logic in CPageLoader.onload
-       * doesn't catch the load event.
-       */
-      evt.target.defaultView.addEventListener('load', page_loader.onload, false);
-      /*
-       * wait 60 seconds after onDOMContentLoaded and handle the load regardless if the load event fires
-       * on the right document or not.
-       * XXX: This may interfere with valgrinding however.
-       */
-      page_loader.timer_handleLoad = setTimeout(page_loader.handleLoad, 60000, evt.target);
-
-      page_loader.content.
-        removeEventListener('DOMContentLoaded', page_loader.onDOMContentLoaded, true);
-    }
-  };
 }
 
-CPageLoader.prototype.load = function CPageLoader_loadPage(url, referer) {
-  dlog('CPageLoader.loadPage: ' + 
-       'CHTTPResponseObserver.instance ' + CHTTPResponseObserver.instance +
-       ', url: ' + url + ', referer: ' + referer);
+CPageLoader.prototype.handleLoad = function () {
 
+  try {
+    clearTimeout(gPageLoader.timer_handleLoad);
+    if (gPageLoader.ontimeout_ccallwrapper) {
+      gPageLoader.ontimeout_ccallwrapper.cancel();
+      gPageLoader.ontimeout_ccallwrapper = null;
+    }
+
+    gPageLoader.loadPending = false;
+  }
+  catch(ex) {
+    window.dlog('CPageLoader.handleLoad: exception: ' + ex + ', ' + ex.stack);
+    return;
+  }
+
+  gPageLoader.onload_callback();
+};
+
+CPageLoader.prototype.load = function CPageLoader_loadPage(url, referer) {
+  window.dlog('CPageLoader.loadPage: ' +
+       'url: ' + url + ', referer: ' + referer);
+
+  this.requests = {};
   this.loadPending = true;
   this.url = url;
 
@@ -871,46 +770,41 @@ CPageLoader.prototype.load = function CPageLoader_loadPage(url, referer) {
 
   var nodeName = this.content.nodeName.toLowerCase();
 
-  this.content.addEventListener('load', this.onload, true);
-  this.content.addEventListener('DOMContentLoaded', this.onDOMContentLoaded, true);
-
   if (nodeName === 'xul:browser')
   {
-    dlog('CPageLoader_loadPage: using browser loader');
+    window.dlog('CPageLoader_loadPage: using browser loader');
     // funky interface takes a string for uri, but requires an nsIURI
     // for referer...
     var uri = null;
     try
     {
-      uri = Components.classes["@mozilla.org/network/io-service;1"].
+      uri = Components.classes['@mozilla.org/network/io-service;1'].
         getService(Components.interfaces.nsIIOService).
         newURI(referer, null, null);
     }
-    catch(e)
+    catch(ex)
     {
-      dlog('CPageLoader_loadPage: failed to create uri, using null : ' + e);
+      window.dlog('CPageLoader_loadPage: failed to create uri, using null exception: : ' + ex + ', ' + ex.stack);
     }
 
     this.content.stop();
     this.content.loadURI('about:blank', null);
-    this.http_response_observer.register();
     this.ontimeout_ccallwrapper = new CCallWrapper(this, this.timeout_interval, 'ontimeout');
     CCallWrapper.asyncExecute(this.ontimeout_ccallwrapper);
     this.content.loadURI(url, uri);
   }
   else if (nodeName === 'iframe' || nodeName === 'xul:iframe')
   {
-    dlog('CPageLoader_loadPage: using iframe loader');
+    window.dlog('CPageLoader_loadPage: using iframe loader');
     this.content.stop();
     this.content.setAttribute('src', 'about:blank');
     this.ontimeout_ccallwrapper = new CCallWrapper(this, this.timeout_interval, 'ontimeout');
     CCallWrapper.asyncExecute(this.ontimeout_ccallwrapper);
-    this.http_response_observer.register();
     this.content.setAttribute('src', url);
   }
   else
   {
-    dlog('CPageLoader_loadPage: invalid content ' + nodeName);
+    window.dlog('CPageLoader_loadPage: invalid content ' + nodeName);
     throw 'CPageLoader_loadPage: invalid content ' + nodeName;
   }
 };
@@ -918,19 +812,15 @@ CPageLoader.prototype.load = function CPageLoader_loadPage(url, referer) {
 CPageLoader.prototype.cancel =
   function CPageLoader_cancel()
 {
-  dlog('CPageLoader.cancel() ' +
-       'CHTTPResponseObserver.instance ' + CHTTPResponseObserver.instance);
+  window.dlog('CPageLoader.cancel()');
   this.loadPending = false;
-  this.content.removeEventListener('load', this.onload, true);
-  this.content.removeEventListener('DOMContentLoaded', this.onDOMContentLoaded, true);
   this.content.stop();
-  this.http_response_observer.unregister();
 };
 
 CPageLoader.prototype.getDocument =
   function CPageLoader_getDocument()
 {
-  dlog('CPageLoader.getDocument()');
+  window.dlog('CPageLoader.getDocument()');
   var contentDocument = this.content.contentDocument;
   return contentDocument;
 };
@@ -938,256 +828,10 @@ CPageLoader.prototype.getDocument =
 CPageLoader.prototype.getWindow =
   function CPageLoader_getWindow()
 {
-  dlog('CPageLoader.getWindow()');
+  window.dlog('CPageLoader.getWindow()');
   var contentWindow = this.content.contentWindow;
   return contentWindow;
 };
-
-/*
- * Redirections can involve relative paths. To handle these,
- * rely on the subsequent response for the URI to tell us
- * what the effective urls will be.
- */
-
-function CHTTPResponseObserver(onresponse_callback) {
-
-  dlog('CHTTPResponseObserver()');
-
-  // Add |instance| to the constructor to allow the observe method to
-  // retrieve the active CHTTPResponseObserver. This is necessary
-  // since when |observe| is called, it is called without a valid
-  // |this| value.  This will work since there will be only one active
-  // instance of CHTTPResponseObserver at a time, governed by which
-  // instance has called |register| or |unregister|.
-
-  CHTTPResponseObserver.instance = null;
-
-  this.http_response_redirect_pending = false;
-  this.responses = [];
-  this.onresponse_callback = onresponse_callback;
-
-  this.observe = function(subject, topic, data)
-  {
-    //window.dlog('CHTTPResponseObserver.observe() CHTTPResponseObserver.instance ' + CHTTPResponseObserver.instance);
-
-    var response_observer = CHTTPResponseObserver.instance;
-    if (!response_observer) {
-      dlog('CPageLoader.observe: Someone called CHTTPResponseObserver.instance.unregister()');
-      return;
-    }
-    var page_loader = response_observer.page_loader;
-
-    var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
-      'UniversalXPConnect';
-
-    var response = {};
-
-    try
-    {
-      //window.dlog('CHTTPResponseObserver.observe subject: ' + subject + ', topic: ' + 'data: ' + data);
-
-      var httpChannel = subject.
-        QueryInterface(Components.interfaces.nsIHttpChannel);
-
-      if (!httpChannel)
-      {
-        return;
-      }
-
-      try
-      {
-        response.originalURI = httpChannel.originalURI.spec;
-      }
-      catch(ex)
-      {
-        //window.dlog('CHTTPResponseObserver.observe: httpChannel.originalURI: ' + ex);
-      }
-
-      try
-      {
-        response.URI = httpChannel.URI.spec;
-      }
-      catch(ex)
-      {
-        //window.dlog('CHTTPResponseObserver.observe: httpChannel.URI: ' + ex);
-      }
-
-      try
-      {
-        response.referrer = httpChannel.referrer.spec;
-      }
-      catch(ex)
-      {
-        //window.dlog('CHTTPResponseObserver.observe: httpChannel.referrer: ' + ex);
-      }
-
-      try
-      {
-        response.responseStatus = httpChannel.responseStatus;
-      }
-      catch(ex)
-      {
-        //window.dlog('CHTTPResponseObserver.observe: httpChannel.responseStatus: ' + ex);
-      }
-
-      try
-      {
-        response.responseStatusText = httpChannel.responseStatusText.
-          toLowerCase();
-      }
-      catch(ex)
-      {
-        //window.dlog('CHTTPResponseObserver.observe: httpChannel.responseStatusText: ' + ex);
-      }
-
-      try
-      {
-        response.requestSucceeded = httpChannel.requestSucceeded;
-      }
-      catch(ex)
-      {
-        //window.dlog('CHTTPResponseObserver.observe: httpChannel.requestSucceeded: ' + ex);
-      }
-
-      try
-      {
-        response.contentType = httpChannel.getResponseHeader('content-type');
-      }
-      catch(ex)
-      {
-        //window.dlog('CHTTPResponseObserver.observe: getResponseHeader("content-type"): ' + ex);
-      }
-
-      try
-      {
-        response.name = httpChannel.name;
-      }
-      catch(ex)
-      {
-        //window.dlog('CHTTPResponseObserver.observe: httpChannel.name: ' + ex);
-      }
-
-      response.location = '';
-      try {
-        response.location = httpChannel.getResponseHeader('location');
-      }
-      catch(ex) {
-        //window.dlog('CHTTPResponseObserver.observe: httpChannel.getResponseHeader("location"): ' + ex);
-      }
-
-      //window.dlog('CHTTPResponseObserver.observe response: ' + response.toSource());
-
-      if (response_observer.http_response_redirect_pending &&
-          RegExp('^' + page_loader.url.replace(/([\^\$\\\.\*\+\?\(\)\[\]\{\}|])/g, '\\$1') + '[\/]?$').test(response.originalURI) &&
-          (response.requestSucceeded || response.responseStatus == "404")) {
-        response_observer.http_response_redirect_pending = false;
-        page_loader.url = response.URI;
-        //window.dlog('CHTTPResponseObserver.observe complete redirection: CHTTPResponseObserver.url=' + page_loader.url);
-      }
-      else {
-        // detect when the url passed to CPageLoader has been redirected
-        // and update CPageLoader.url to match.
-        if (/301|302|303|307/.test(response.responseStatus) &&
-            RegExp('^' + page_loader.url.replace(/([\^\$\\\.\*\+\?\(\)\[\]\{\}|])/g, '\\$1') + '[\/]?$').test(response.URI)) {
-
-          response_observer.http_response_redirect_pending = true;
-          // use the response.originalURI to indicate which response is the
-          // result of the redirection.
-          page_loader.url = response.originalURI;
-          //window.dlog('CHTTPResponseObserver.observe start redirection: CHTTPResponseObserver.url=' + page_loader.url);
-        }
-      }
-    }
-    catch(e)
-    {
-      //window.dlog(' ' + e);
-    }
-
-    response_observer.responses.push(response);
-    response_observer.onresponse_callback(response);
-
-  };
-
-  this.__defineGetter__('observerService', function () {
-
-    //dlog('CHTTPResponseObserver.observerService CHTTPResponseObserver.instance ' + CHTTPResponseObserver.instance);
-
-
-    var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
-      'UniversalXPConnect';
-
-    try
-    {
-      return Components.classes["@mozilla.org/observer-service;1"]
-        .getService(Components.interfaces.nsIObserverService);
-    }
-    catch(e)
-    {
-      //dlog(' ' + e);
-      return null;
-    }
-  });
-
-  this.register = function()
-  {
-    //dlog('CHTTPResponseObserver.register() CHTTPResponseObserver.instance ' + CHTTPResponseObserver.instance);
-
-    CHTTPResponseObserver.instance = this;
-    //dlog('CHTTPResponseObserver.register: CHTTPResponseObserver.instance ' + CHTTPResponseObserver.instance);
-
-    this.responses = [];
-
-    var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
-      'UniversalXPConnect';
-
-    try
-    {
-      this.observerService.addObserver(this, "http-on-examine-response", false);
-      this.observerService.addObserver(this, "http-on-examine-cached-response", false);
-    }
-    catch(e)
-    {
-      //dlog(' ' + e);
-    }
-  };
-
-  this.unregister = function()
-  {
-    //dlog('CHTTPResponseObserver.unregister() CHTTPResponseObserver.instance ' + CHTTPResponseObserver.instance);
-
-    var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
-      'UniversalXPConnect';
-
-    try
-    {
-      this.observerService.removeObserver(this, "http-on-examine-response");
-      this.observerService.removeObserver(this, "http-on-examine-cached-response");
-      CHTTPResponseObserver.instance = null;
-
-      if(gDebug)
-      {
-        cdump('CHTTPResponseObserver.unregister: url:' + this.page_loader.url);
-        for (var iResponse = 0; iResponse < this.responses.length; iResponse++)
-        {
-          var response = this.responses[iResponse];
-          cdump('CHTTPResponseObserver.unregister: Response:' +
-                ' originalURI: ' + response.originalURI +
-                ' URI: ' + response.URI +
-                ('referrer' in response  ? ' referer: ' + response.referrer : '') +
-                ' status: ' + response.responseStatus +
-                ' status text: ' + response.responseStatusText +
-                ' content-type: ' + response.contentType +
-                ' succeeded: ' + response.requestSucceeded);
-
-        }
-      }
-    }
-    catch(e)
-    {
-      //dlog(' ' + e);
-    }
-  };
-}
 
 /*
   From mozilla/toolkit/content
@@ -1196,38 +840,38 @@ function CHTTPResponseObserver(onresponse_callback) {
 
 function canQuitApplication()
 {
-  var os = Components.classes["@mozilla.org/observer-service;1"]
+  var os = Components.classes['@mozilla.org/observer-service;1']
     .getService(Components.interfaces.nsIObserverService);
   if (!os)
   {
-    dlog('canQuitApplication: unable to get observer service');
+    window.dlog('canQuitApplication: unable to get observer service');
     return true;
   }
 
   try
   {
-    var cancelQuit = Components.classes["@mozilla.org/supports-PRBool;1"]
+    var cancelQuit = Components.classes['@mozilla.org/supports-PRBool;1']
       .createInstance(Components.interfaces.nsISupportsPRBool);
-    os.notifyObservers(cancelQuit, "quit-application-requested", null);
+    os.notifyObservers(cancelQuit, 'quit-application-requested', null);
 
     // Something aborted the quit process.
     if (cancelQuit.data)
     {
-      dlog('canQuitApplication: something aborted the quit process');
+      window.dlog('canQuitApplication: something aborted the quit process');
       return false;
     }
   }
   catch (ex)
   {
-    dlog('canQuitApplication: ' + ex);
+    window.dlog('canQuitApplication: ' + ex);
   }
-  os.notifyObservers(null, "quit-application-granted", null);
+  os.notifyObservers(null, 'quit-application-granted', null);
   return true;
 }
 
 function goQuitApplication()
 {
-  dlog('goQuitApplication() called');
+  window.dlog('goQuitApplication() called');
 
   var privs = 'UniversalPreferencesRead UniversalPreferencesWrite ' +
     'UniversalXPConnect';
@@ -1274,9 +918,9 @@ function goQuitApplication()
   while (enumerator.hasMoreElements())
   {
     var domWindow = enumerator.getNext();
-    if (("tryToClose" in domWindow) && !domWindow.tryToClose())
+    if (('tryToClose' in domWindow) && !domWindow.tryToClose())
     {
-      dlog('goQuitApplication: domWindow.tryToClose() is false');
+      window.dlog('goQuitApplication: domWindow.tryToClose() is false');
       return false;
     }
     domWindow.close();

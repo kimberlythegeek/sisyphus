@@ -52,7 +52,6 @@ function CUrl(aDepth, aUrl, aReferer)
   this.mDepth = aDepth;
   this.mUrl   = aUrl;
   this.mReferer = aReferer;
-  this.mResponses = []; // 0 should always be this url. > 0 should be referenced from this url
 }
 
 function CSpider(/* String */ aUrl,

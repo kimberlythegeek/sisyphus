@@ -49,7 +49,7 @@
     xmlns="http://www.w3.org/1999/xhtml"
     id="spiderwindow"
     title="Spider"
-    onload="init(event, document.location.search)" onunload="unload()"
+    onload="init(event)" onunload="unload()"
     screenX="4" screenY="4"
     persist="screenX screenY width height sizemode"
     sizemode="normal"
@@ -63,7 +63,6 @@
     <script type="text/javascript" src="isRobotBlocked.js"></script>
     <script type="text/javascript" src="CCallWrapper.js"></script>
     <script type="text/javascript" src="CSpider.js"></script>
-    <script type="text/javascript" src="FormPersist.js"></script>
     <script type="text/javascript" src="spider.js"></script>
     <script type="text/javascript" src="version.js"></script>
     <script type="text/javascript" src="script-loader.js"></script>
@@ -158,8 +157,8 @@
 	  <tr>
 	  <td>HTTP</td>
 	  <td>
-	  <input name="httpresponses" type="checkbox" 
-		 value="on" checked="checked" /> Responses
+	  <input name="httprequests" type="checkbox" 
+		 value="on" checked="checked" /> Requests
 	  </td>
 	  </tr>
 	</table>
@@ -187,10 +186,8 @@
           onclick="gSpider.restart()" disabled="disabled">Restart</button>
         <button name="stop" type="button" 
           onclick="gSpider.stop()">Stop</button>
-        <button name="save" type="button" 
-          onclick="saveParms()">Generate Spider URL</button>
         <button name="reset" type="reset" 
-          onclick="init(event, '')">Reset</button>
+          onclick="init(event)">Reset</button>
         <button name="help" type="button" 
           id="help" onclick="openHelp()">Help</button>
         <button type="button" 
