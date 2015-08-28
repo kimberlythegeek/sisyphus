@@ -9,20 +9,21 @@ import re
 import requests
 import sys
 
-sisyphus_dir = os.environ["TEST_DIR"]
-tempdir = os.path.join(sisyphus_dir, 'python')
-if tempdir not in sys.path:
-    sys.path.append(tempdir)
+if __name__ == '__main__':
+    sisyphus_dir = os.environ["TEST_DIR"]
+    tempdir = os.path.join(sisyphus_dir, 'python')
+    if tempdir not in sys.path:
+        sys.path.append(tempdir)
 
-tempdir = os.path.join(tempdir, 'sisyphus')
-if tempdir not in sys.path:
-    sys.path.append(tempdir)
+    tempdir = os.path.join(tempdir, 'sisyphus')
+    if tempdir not in sys.path:
+        sys.path.append(tempdir)
 
-tempdir = os.path.join(tempdir, 'webapp')
-if tempdir not in sys.path:
-    sys.path.append(tempdir)
+    tempdir = os.path.join(tempdir, 'webapp')
+    if tempdir not in sys.path:
+        sys.path.append(tempdir)
 
-os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
 
 import sisyphus.webapp.settings
 
@@ -49,6 +50,8 @@ class CrashLoader(object):
         self.branches = {}
         self.buildtypes = {}
         self.operating_systems = {}
+        self.load_products()
+        self.load_operating_systems()
 
     def load_products(self):
         """Load Product data from the Branch table.
@@ -322,14 +325,7 @@ class CrashLoader(object):
 
         return pending_socorro
 
-    def load_urls(self, urlsfile, user_id, signature):
-
-        urls = []
-        urlsfilehandle = open(urlsfile, 'r')
-        for url in urlsfilehandle:
-            url = url.rstrip('\n')[:1000] ### Should get the length from the model
-            urls.append(url)
-        urlsfilehandle.close()
+    def load_urls(self, urls, user_id, signature):
 
         pending_socorro = {}
 
@@ -553,18 +549,14 @@ def main():
 
     usage = '''usage: %prog [options]
 
+Load urls into Bughunter either from Socorro or from a file containing
+one url per line. By default, %prog will load urls from Socorro unless
+the --urls option is specified.
+
 Example:
 %prog --start-date 2015-07-20T00:00:00 --stop-date 2015-07-20T01:00:00
 '''
     parser = OptionParser(usage=usage)
-
-    parser.add_option('--source', action='store', type='string',
-                      dest='source',
-                      default='socorro',
-                      help='Source location for crash urls. Use "socorro" to '
-                      'load crash data directly from Socorro. Use "file" to '
-                      'load crash data from a file containing urls. Defaults '
-                      'to socorro.')
 
     parser.add_option('--skipurls', action='store', type='string',
                       dest='skipurlsfile',
@@ -578,40 +570,38 @@ Example:
 
     parser.add_option('--start-date', action='store', type='string',
                       dest='start_date', default=None,
-                      help='Start date for crashes when source is socorro. '
-                      'The default is yesterday.')
+                      help='Start date for crashes when loading urls from '
+                      'socorro. The default is yesterday.')
 
     parser.add_option('--stop-date', action='store', type='string',
                       dest='stop_date', default=None,
-                      help='Stop date for crashes when source is socorro. '
-                      'The default is today.')
+                      help='Stop date for crashes when loading urls from '
+                      'socorro. The default is today.')
 
     parser.add_option('--username', action='store', type='string',
                       dest='username',
                       default=None,
                       help='Bughunter user name associated with the url '
-                      'submission when source is file.')
+                      'submission when loading urls from a file.')
 
     parser.add_option('--email', action='store', type='string',
                       dest='email',
                       default=None,
                       help='Bughunter email associated with the url '
-                      'submission when source is file.')
+                      'submission when loading urls from a file.')
 
     parser.add_option('--urls', action='store', type='string',
                       dest='urlsfile',
                       default=None,
-                      help='File containing urls to load when source is file.')
+                      help='File containing urls to load when loading urls '
+                      'from a file.')
 
     parser.add_option('--signature', action='store', type='string',
                       dest='signature',
                       default=None,
-                      help='Signature to use when source is file.')
+                      help='Signature to use when loading urls from a  file.')
 
     (options, args) = parser.parse_args()
-
-    if options.source not in 'socorro,file':
-        parser.error('source must be either socorro or file.')
 
     crashloader = CrashLoader()
 
@@ -621,7 +611,7 @@ Example:
             skipurl = skipurl.rstrip('\n')
             crashloader.skipurls.append(skipurl)
         skipurlsfilehandle.close()
-    if options.source == 'file':
+    if options.urlsfile:
         if not options.username and not options.email:
             parser.error('username or email is required')
         user_id = utils.get_django_user_id(options.username, options.email)
@@ -634,15 +624,18 @@ Example:
         if not options.start_date:
             options.start_date = (today - datetime.timedelta(days=1)).isoformat()
 
-    crashloader.load_products()
-    crashloader.load_operating_systems()
-
     while not utils.getLock('sisyphus.bughunter.sitetestrun', 300):
         continue
 
-    if options.source == 'file':
+    if options.urlsfile:
+        urls = []
         waiting_testruns = {}
-        pending_socorro = crashloader.load_urls(options.urlsfile, user_id, options.signature)
+        urlsfilehandle = open(options.urlsfile, 'r')
+        for url in urlsfilehandle:
+            url = url.rstrip('\n')[:1000] ### Should get the length from the model
+            urls.append(url)
+        urlsfilehandle.close()
+        pending_socorro = crashloader.load_urls(urls, user_id, options.signature)
         priority = '1'
     else:
         waiting_testruns = crashloader.load_waiting_testruns()

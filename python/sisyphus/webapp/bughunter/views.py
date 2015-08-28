@@ -25,7 +25,7 @@ from django.utils.http import urlquote
 from django.views.decorators.csrf import csrf_exempt
 
 from sisyphus.automation import utils
-from sisyphus.automation.crashtest import crashurlloader
+from sisyphus.automation.crashtest.crashloader import CrashLoader
 from sisyphus.webapp.bughunter import models
 
 ###
@@ -376,7 +376,7 @@ ORDER BY `SiteTestRun`.`fatal_message` DESC , Crash.signature ASC"""
             response_data.append(crash)
 
     return HttpResponse(json.dumps(response_data), mimetype=APP_JS)
-        
+
 ####
 #BUGHUNTER VIEW SERVICE METHODS
 ####
@@ -397,29 +397,29 @@ def bhview_setup(func):
       full_proc_path = "%s%s" % (proc_path, proc_name)
 
       ##Get any named fields##
-      nfields = {} 
+      nfields = {}
       for f in NAMED_FIELDS:
          if f in request.POST:
             if f == 'url':
                """
-               NOTE: This is a hack to enable matching url's from the database that are utf-8 
-                     encoded that contain non-english or non ASCII characters.  Django will encode them a 
-                     second time before loading request.GET or request.POST and the browser 
-                     also encodes them a second time when executing an HTTP GET using the XMLRequestObject.  
+               NOTE: This is a hack to enable matching url's from the database that are utf-8
+                     encoded that contain non-english or non ASCII characters.  Django will encode them a
+                     second time before loading request.GET or request.POST and the browser
+                     also encodes them a second time when executing an HTTP GET using the XMLRequestObject.
                      Once the url has been utf-8 encoded twice it cannot be accurately decoded
                      and will fail to match the single encoded url's stored in the database.
-                       Switching the web service to use HTTP POST instead of GET ressolves 
+                       Switching the web service to use HTTP POST instead of GET ressolves
                      the browser XMLRequestObject encoding problem and accessing the raw untreated
-                     POST data through django's request.body allows us to bypass having 
+                     POST data through django's request.body allows us to bypass having
                      to use the corrupted url data in request.GET and request.POST.
-                       This enables access to the url byte string which can be used to match the 
-                     url stored in the database.  Pain and suffering... Jeads  
+                       This enables access to the url byte string which can be used to match the
+                     url stored in the database.  Pain and suffering... Jeads
                """
                match = re.search('%s=(http.*?$)' % (f), request.body)
                if match:
                   ###
                   # urllib.unquote_plus unquotes javascript's encodeURIComponent()
-                  # DHUB.escapeString escapes strings for mysql which will prevent 
+                  # DHUB.escapeString escapes strings for mysql which will prevent
                   # SQL injection
                   ###
                   nfields[f] = settings.DHUB.escape_string( urllib.unquote(match.group(1)) )
@@ -443,7 +443,7 @@ def bhview_setup(func):
 def view_login(request):
 
     if request.method != 'POST':
-        ##User loads page##  
+        ##User loads page##
         return render_to_response('bughunter.login.html', {})
 
     username = request.POST['username']
@@ -499,1017 +499,1030 @@ def bhview(request, target=settings.VIEW_LOGIN_PAGE):
 
 @login_required
 def get_help(request, target=settings.VIEW_LOGIN_PAGE):
-   get_token(request)
-   request.META["CSRF_COOKIE_USED"] = True
-   data = {}
-   return render_to_response('help/bughunter.generic.help.html', data)
+    get_token(request)
+    request.META["CSRF_COOKIE_USED"] = True
+    data = {}
+    return render_to_response('help/bughunter.generic.help.html', data)
 
 @login_required
 def get_date_range(request, **kwargs):
 
-   start_date, end_date = _get_date_range()
-   current_date = datetime.date.today()
-   dates_json = json.dumps( { 'start_date':str(start_date), 
-                              'end_date':str(end_date),
-                              'current_date':str(current_date) } )
+    start_date, end_date = _get_date_range()
+    current_date = datetime.date.today()
+    dates_json = json.dumps( { 'start_date':str(start_date),
+                               'end_date':str(end_date),
+                               'current_date':str(current_date) } )
 
-   return HttpResponse(dates_json, mimetype=APP_JS)
+    return HttpResponse(dates_json, mimetype=APP_JS)
 
 @login_required
 def resubmit_urls(request):
-   
-   get_token(request)
-   request.META["CSRF_COOKIE_USED"] = True
 
-   raw_data = json.loads(request.body)
+    get_token(request)
+    request.META["CSRF_COOKIE_USED"] = True
 
-   urls = []
-   comments = ""
-   escape_func = settings.DHUB.escape_string;
+    raw_data = json.loads(request.body)
 
-   if 'urls' in raw_data:
-      for url in raw_data['urls']:
-         urls.append( urllib.unquote(url) )
+    urls = []
+    comments = ""
+    escape_func = settings.DHUB.escape_string;
 
-   if 'comments' in raw_data:
-      comments = escape_func( urllib.unquote(raw_data['comments']) )
+    if 'urls' in raw_data:
+        for url in raw_data['urls']:
+            urls.append( urllib.unquote(url) )
 
-   data = { 'urls':urls,
-            'signature':raw_data['comments'],
-            'skipurls':[],
-            'user_id':request.user.id,
-            'skipurlsfile':""}
+    if 'comments' in raw_data:
+        comments = escape_func( urllib.unquote(raw_data['comments']) )
 
-   response = crashurlloader.load_urls(data, True)
-   message_json = json.dumps( { 'message':response } )
+    try:
+        crashloader = CrashLoader()
 
-   return HttpResponse(message_json, mimetype=APP_JS)
+        while not utils.getLock('sisyphus.bughunter.sitetestrun', 300):
+            continue
+
+        waiting_testruns = {}
+        pending_socorro = crashloader.load_urls(urls, request.user.id,
+                                                raw_data['comments'])
+        priority = '1'
+        crashloader.create_socorro_rows(pending_socorro, waiting_testruns,
+                                        priority)
+        message = 'Uploaded %s urls' % len(urls)
+    except Exception, e:
+        exceptionType, exceptionValue, errorMessage  = utils.formatException()
+        message = 'resubmit_urls: %s : %s : %s\n' % (exceptionType,
+                                                     exceptionValue, errorMessage)
+        sys.stderr.write(message)
+    finally:
+        utils.releaseLock('sisyphus.bughunter.sitetestrun')
+
+    message_json = json.dumps( { 'message':message } )
+    return HttpResponse(message_json, mimetype=APP_JS)
 
 @bhview_setup
 @login_required
 def get_bhview(request, **kwargs):
-   """
-   The goal of the get_bhview webservice is to be able to add
-   new service methods by simply adding a new sql view to 
-   the data proc file bughunter.json.  It works off of the 
-   following url structure:   
+    """
+    The goal of the get_bhview webservice is to be able to add
+    new service methods by simply adding a new sql view to
+    the data proc file bughunter.json.  It works off of the
+    following url structure:
 
-   /views/viewname?named_field=VALUE
+    /views/viewname?named_field=VALUE
 
-   viewname - Could be a data hub proc name or a key in 
-              VIEW_ADAPTERS.  VIEW_ADAPTERS is a dictionary that maps
-              viewnames requiring special handling to function 
-              references that can handle them.  This allows 
-              adapters to call multiple procs if required or
-              do something more extravagant.  When no adapter 
-              is available for a view name it's assumed that the 
-              viewname will be found in proc_path = "bughunter.views."
-              in the data hub proc json file.
+    viewname - Could be a data hub proc name or a key in
+               VIEW_ADAPTERS.  VIEW_ADAPTERS is a dictionary that maps
+               viewnames requiring special handling to function
+               references that can handle them.  This allows
+               adapters to call multiple procs if required or
+               do something more extravagant.  When no adapter
+               is available for a view name it's assumed that the
+               viewname will be found in proc_path = "bughunter.views."
+               in the data hub proc json file.
 
-   See the datasource README for more documentation
+    See the datasource README for more documentation
 
-   named_field= The named_fields require a view_adapter to manage 
-                their incorporation into an arguments to execute().
+    named_field= The named_fields require a view_adapter to manage
+                 their incorporation into an arguments to execute().
 
-   To add a new service method add SQL to bughunter.json and you're
-   done unless you require named fields.  If you cannot get what you 
-   want with a single SQL statement add an adapter function reference 
-   to VIEW_ADAPTERS and do something awesome.
-   """
-   ##Populated by bhview_decorator##
-   proc_name = kwargs['proc_name']
-   proc_path = kwargs['proc_path']
-   full_proc_path = kwargs['full_proc_path']
-   nfields = kwargs['named_fields']
+    To add a new service method add SQL to bughunter.json and you're
+    done unless you require named fields.  If you cannot get what you
+    want with a single SQL statement add an adapter function reference
+    to VIEW_ADAPTERS and do something awesome.
+    """
+    ##Populated by bhview_decorator##
+    proc_name = kwargs['proc_name']
+    proc_path = kwargs['proc_path']
+    full_proc_path = kwargs['full_proc_path']
+    nfields = kwargs['named_fields']
 
-   if settings.DEBUG:
-      ###
-      #Write IP address and datetime to log
-      ###
-      print "Client IP:%s" % (request.META['REMOTE_ADDR'])
-      print "Request Datetime:%s" % (str(datetime.datetime.now()))
+    if settings.DEBUG:
+        ###
+        #Write IP address and datetime to log
+        ###
+       print "Client IP:%s" % (request.META['REMOTE_ADDR'])
+       print "Request Datetime:%s" % (str(datetime.datetime.now()))
 
-   response_json = ""
-   if proc_name in VIEW_ADAPTERS:
-      ####
-      #Found a data adapter for the proc, call it
-      ####
-      if proc_name in settings.CACHE_QUERIES:
-         #####
-         #Use cache query for developing/debugging purposes
-         #####
-         response_json = json.dumps( settings.CACHE_QUERIES[proc_name] )
-      else:
-         response_json = VIEW_ADAPTERS[proc_name](proc_path, 
-                                                  proc_name, 
-                                                  full_proc_path, 
-                                                  nfields,
-                                                  request.user.id)
-   else:
-      response_json = '{ "error":"Data view name %s not recognized" }' % proc_name
+    response_json = ""
+    if proc_name in VIEW_ADAPTERS:
+        ####
+        #Found a data adapter for the proc, call it
+        ####
+       if proc_name in settings.CACHE_QUERIES:
+           #####
+           #Use cache query for developing/debugging purposes
+           #####
+          response_json = json.dumps( settings.CACHE_QUERIES[proc_name] )
+       else:
+           response_json = VIEW_ADAPTERS[proc_name](proc_path,
+                                                    proc_name,
+                                                    full_proc_path,
+                                                    nfields,
+                                                    request.user.id)
+    else:
+        response_json = '{ "error":"Data view name %s not recognized" }' % proc_name
 
-   return HttpResponse(response_json, mimetype=APP_JS)
+    return HttpResponse(response_json, mimetype=APP_JS)
 
 ####
 #USER DATA: URL Resubmissions
 ####
 def _get_resubmission_urls(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'signature':'sr',
-                    'url':'sr' }
+    col_prefixes = { 'signature':'sr',
+                     'url':'sr' }
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   table_struct = settings.DHUB.execute(proc=full_proc_path,
-                                       debug_show=settings.DEBUG,
-                                       replace=[ nfields['start_date'], nfields['end_date'], str(user_id), rep ],
-                                       return_type='table')
+    table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                        debug_show=settings.DEBUG,
+                                        replace=[ nfields['start_date'], nfields['end_date'], str(user_id), rep ],
+                                        return_type='table')
 
-   response_data = _aggregate_user_data(table_struct)
+    response_data = _aggregate_user_data(table_struct)
 
-   columns = [ 'Date',
-               'signature',
-               'url',
-               'status',
-               'Total Count']
+    columns = [ 'Date',
+                'signature',
+                'url',
+                'status',
+                'Total Count']
 
-   return json.dumps( { 'columns':columns, 
-                        'data':response_data,
-                        'start_date':nfields['start_date'], 
-                        'end_date':nfields['end_date'] } )
+    return json.dumps( { 'columns':columns,
+                         'data':response_data,
+                         'start_date':nfields['start_date'],
+                         'end_date':nfields['end_date'] } )
 
 def _get_all_resubmission_urls(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'signature':'sr',
-                    'url':'sr' }
+    col_prefixes = { 'signature':'sr',
+                     'url':'sr' }
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   table_struct = settings.DHUB.execute(proc=full_proc_path,
-                                       debug_show=settings.DEBUG,
-                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
-                                       return_type='table')
+    table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                        debug_show=settings.DEBUG,
+                                        replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                        return_type='table')
 
-   response_data = _aggregate_all_user_data(table_struct)
+    response_data = _aggregate_all_user_data(table_struct)
 
-   columns = [ 'User',
-               'Date',
-               'signature',
-               'url',
-               'status',
-               'Total Count']
+    columns = [ 'User',
+                'Date',
+                'signature',
+                'url',
+                'status',
+                'Total Count']
 
-   return json.dumps( { 'columns':columns, 
-                        'data':response_data,
-                        'start_date':nfields['start_date'], 
-                        'end_date':nfields['end_date'] } )
+    return json.dumps( { 'columns':columns,
+                         'data':response_data,
+                         'start_date':nfields['start_date'],
+                         'end_date':nfields['end_date'] } )
 
 #####
 #SITE TESTING DATA ADAPTERS: Crashes
 #####
 def _get_crashes_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'signature':'c',
-                    'fatal_message':'str',
-                    'url':'stc',
-                    'address':'stc',
-                    'pluginfilename':'stc',
-                    'pluginversion':'stc',
-                    'exploitability':'stc' }
+    col_prefixes = { 'signature':'c',
+                     'fatal_message':'str',
+                     'url':'stc',
+                     'address':'stc',
+                     'pluginfilename':'stc',
+                     'pluginversion':'stc',
+                     'exploitability':'stc' }
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
-      full_proc_path = proc_path + 'new_crash_signatures_st'
+    if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
+       full_proc_path = proc_path + 'new_crash_signatures_st'
 
-   table_struct = settings.DHUB.execute(proc=full_proc_path,
-                                       debug_show=settings.DEBUG,
-                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
-                                       return_type='table')
+    table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                        debug_show=settings.DEBUG,
+                                        replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                        return_type='table')
 
-   response_data = _aggregate_crashes_platform_data(table_struct)
-   
-   columns = [ 'signature', 
-               'fatal_message', 
-               'Total Count', 
-               'Platform' ]
+    response_data = _aggregate_crashes_platform_data(table_struct)
 
-   return json.dumps( { 'columns':columns, 
-                        'data':response_data,
-                        'start_date':nfields['start_date'], 
-                        'end_date':nfields['end_date'] } )
+    columns = [ 'signature',
+                'fatal_message',
+                'Total Count',
+                'Platform' ]
+
+    return json.dumps( { 'columns':columns,
+                         'data':response_data,
+                         'start_date':nfields['start_date'],
+                         'end_date':nfields['end_date'] } )
 
 def _get_crash_urls_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'signature':'c',
-                    'url':'stc',
-                    'fatal_message':'str',
-                    'address':'stc',
-                    'pluginfilename':'stc',
-                    'pluginversion':'stc',
-                    'exploitability':'stc' }
+    col_prefixes = { 'signature':'c',
+                     'url':'stc',
+                     'fatal_message':'str',
+                     'address':'stc',
+                     'pluginfilename':'stc',
+                     'pluginversion':'stc',
+                     'exploitability':'stc' }
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   table_struct = settings.DHUB.execute(proc=full_proc_path,
-                                       debug_show=settings.DEBUG,
-                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
-                                       return_type='table')
+    table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                        debug_show=settings.DEBUG,
+                                        replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                        return_type='table')
 
-   response_data = _aggregate_url_platform_data(table_struct)
+    response_data = _aggregate_url_platform_data(table_struct)
 
-   columns = ['url', 'Total Count', 'Platform']
+    columns = ['url', 'Total Count', 'Platform']
 
-   return json.dumps( { 'columns':columns, 
-                        'data':response_data,
-                        'start_date':nfields['start_date'], 
-                        'end_date':nfields['end_date'] } )
+    return json.dumps( { 'columns':columns,
+                         'data':response_data,
+                         'start_date':nfields['start_date'],
+                         'end_date':nfields['end_date'] } )
 
 def _get_crash_detail_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'signature':'c',
-                    'url':'stc',
-                    'fatal_message':'str',
-                    'address':'stc',
-                    'pluginfilename':'stc',
-                    'pluginversion':'stc',
-                    'exploitability':'stc' }
+    col_prefixes = { 'signature':'c',
+                     'url':'stc',
+                     'fatal_message':'str',
+                     'address':'stc',
+                     'pluginfilename':'stc',
+                     'pluginversion':'stc',
+                     'exploitability':'stc' }
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   temp_table_name = 'temp_urls_st_' + get_rand_str(8)
+    temp_table_name = 'temp_urls_st_' + get_rand_str(8)
 
-   ##Build temp table##
-   settings.DHUB.execute(proc=proc_path + 'temp_urls_st',
-                         debug_show=settings.DEBUG,
-                         replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
+    ##Build temp table##
+    settings.DHUB.execute(proc=proc_path + 'temp_urls_st',
+                          debug_show=settings.DEBUG,
+                          replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
 
-   ##Get the crashdetails##
-   data = settings.DHUB.execute(proc=full_proc_path,
-                                debug_show=settings.DEBUG,
-                                replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
-                                return_type='table')
+    ##Get the crashdetails##
+    data = settings.DHUB.execute(proc=full_proc_path,
+                                 debug_show=settings.DEBUG,
+                                 replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
+                                 return_type='table')
 
-   ##Remove temp table##
-   settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
-                         debug_show=settings.DEBUG,
-                         replace=[ temp_table_name ])
+    ##Remove temp table##
+    settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
+                          debug_show=settings.DEBUG,
+                          replace=[ temp_table_name ])
 
-   return json.dumps( {'columns':data['columns'], 
-                       'data':data['data'], 
-                       'start_date':nfields['start_date'], 
-                       'end_date':nfields['end_date']} )
+    return json.dumps( {'columns':data['columns'],
+                        'data':data['data'],
+                        'start_date':nfields['start_date'],
+                        'end_date':nfields['end_date']} )
 #####
 #SITE TESTING DATA ADAPTERS: Assertions
 #####
 def _get_assertions_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'assertion':'a',
-                    'location':'a',
-                    'url':'sta' }
+    col_prefixes = { 'assertion':'a',
+                     'location':'a',
+                     'url':'sta' }
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
-      full_proc_path = proc_path + 'new_assertions_st'
+    if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
+       full_proc_path = proc_path + 'new_assertions_st'
 
-   table_struct = settings.DHUB.execute(proc=full_proc_path,
-                                       debug_show=settings.DEBUG,
-                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
-                                       return_type='table')
+    table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                        debug_show=settings.DEBUG,
+                                        replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                        return_type='table')
 
-   response_data = _aggregate_assertion_platform_data(table_struct)
-   
-   columns = [ 'assertion', 
-               'location', 
-               'Occurrence Count',
-               'Total Count', 
-               'Platform' ]
+    response_data = _aggregate_assertion_platform_data(table_struct)
 
-   return json.dumps( { 'columns':columns, 
-                        'data':response_data,
-                        'start_date':nfields['start_date'], 
-                        'end_date':nfields['end_date'] } )
+    columns = [ 'assertion',
+                'location',
+                'Occurrence Count',
+                'Total Count',
+                'Platform' ]
+
+    return json.dumps( { 'columns':columns,
+                         'data':response_data,
+                         'start_date':nfields['start_date'],
+                         'end_date':nfields['end_date'] } )
 
 def _get_assertion_urls_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'url':'sta',
-                    'assertion':'a' }
+    col_prefixes = { 'url':'sta',
+                     'assertion':'a' }
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   table_struct = settings.DHUB.execute(proc=full_proc_path,
-                                       debug_show=settings.DEBUG,
-                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
-                                       return_type='table')
+    table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                        debug_show=settings.DEBUG,
+                                        replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                        return_type='table')
 
-   response_data = _aggregate_url_platform_data(table_struct)
+    response_data = _aggregate_url_platform_data(table_struct)
 
-   columns = ['url', 'Occurrence Count', 'Total Count', 'Platform']
+    columns = ['url', 'Occurrence Count', 'Total Count', 'Platform']
 
-   return json.dumps( { 'columns':columns, 
-                        'data':response_data,
-                        'start_date':nfields['start_date'], 
-                        'end_date':nfields['end_date'] } )
+    return json.dumps( { 'columns':columns,
+                         'data':response_data,
+                         'start_date':nfields['start_date'],
+                         'end_date':nfields['end_date'] } )
 
 def _get_assertion_detail_st(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'assertion':'a',
-                    'location':'a', 
-                    'url':'sta' }
+    col_prefixes = { 'assertion':'a',
+                     'location':'a',
+                     'url':'sta' }
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   temp_table_name = 'temp_assertion_urls_st_' + get_rand_str(8)
+    temp_table_name = 'temp_assertion_urls_st_' + get_rand_str(8)
 
-   ##Build temp table##
-   settings.DHUB.execute(proc=proc_path + 'temp_assertion_urls_st',
-                         debug_show=settings.DEBUG,
-                         replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
+    ##Build temp table##
+    settings.DHUB.execute(proc=proc_path + 'temp_assertion_urls_st',
+                          debug_show=settings.DEBUG,
+                          replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
 
-   ##Get the assertiondetails##
-   data = settings.DHUB.execute(proc=full_proc_path,
-                                debug_show=settings.DEBUG,
-                                replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
-                                return_type='table')
+    ##Get the assertiondetails##
+    data = settings.DHUB.execute(proc=full_proc_path,
+                                 debug_show=settings.DEBUG,
+                                 replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
+                                 return_type='table')
 
-   ##Remove temp table##
-   settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
-                         debug_show=settings.DEBUG,
-                         replace=[ temp_table_name ])
+    ##Remove temp table##
+    settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
+                          debug_show=settings.DEBUG,
+                          replace=[ temp_table_name ])
 
-   return json.dumps( {'columns':data['columns'], 
-                       'data':data['data'], 
-                       'start_date':nfields['start_date'], 
-                       'end_date':nfields['end_date']} )
+    return json.dumps( {'columns':data['columns'],
+                        'data':data['data'],
+                        'start_date':nfields['start_date'],
+                        'end_date':nfields['end_date']} )
 
 #####
 #UNIT TESTING ADAPTERS
 #####
 def _get_crashes_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'signature':'c',
-                    'url':'sr',
-                    'fatal_message':'str',
-                    'address':'stc',
-                    'pluginfilename':'stc',
-                    'pluginversion':'stc',
-                    'exploitability':'stc' }
+    col_prefixes = { 'signature':'c',
+                     'url':'sr',
+                     'fatal_message':'str',
+                     'address':'stc',
+                     'pluginfilename':'stc',
+                     'pluginversion':'stc',
+                     'exploitability':'stc' }
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
-      full_proc_path = proc_path + 'new_crash_signatures_ut'
+    if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
+       full_proc_path = proc_path + 'new_crash_signatures_ut'
 
-   table_struct = settings.DHUB.execute(proc=full_proc_path,
-                                       debug_show=settings.DEBUG,
-                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
-                                       return_type='table')
+    table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                        debug_show=settings.DEBUG,
+                                        replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                        return_type='table')
 
-   response_data = _aggregate_crashes_platform_data(table_struct)
-   
-   columns = [ 'signature', 
-               'fatal_message', 
-               'Total Count', 
-               'Platform' ]
+    response_data = _aggregate_crashes_platform_data(table_struct)
 
-   return json.dumps( { 'columns':columns, 
-                        'data':response_data,
-                        'start_date':nfields['start_date'], 
-                        'end_date':nfields['end_date'] } )
+    columns = [ 'signature',
+                'fatal_message',
+                'Total Count',
+                'Platform' ]
+
+    return json.dumps( { 'columns':columns,
+                         'data':response_data,
+                         'start_date':nfields['start_date'],
+                         'end_date':nfields['end_date'] } )
 
 def _get_assertions_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'assertion':'a',
-                    'location':'a' }
+    col_prefixes = { 'assertion':'a',
+                     'location':'a' }
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
-      full_proc_path = proc_path + 'new_assertions_ut'
+    if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
+       full_proc_path = proc_path + 'new_assertions_ut'
 
-   table_struct = settings.DHUB.execute(proc=full_proc_path,
-                                       debug_show=settings.DEBUG,
-                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
-                                       return_type='table')
+    table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                        debug_show=settings.DEBUG,
+                                        replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                        return_type='table')
 
-   response_data = _aggregate_assertion_platform_data(table_struct)
-   
-   columns = [ 'assertion', 
-               'location', 
-               'Occurrence Count',
-               'Total Count', 
-               'Platform' ]
+    response_data = _aggregate_assertion_platform_data(table_struct)
 
-   return json.dumps( { 'columns':columns, 
-                        'data':response_data,
-                        'start_date':nfields['start_date'], 
-                        'end_date':nfields['end_date'] } )
+    columns = [ 'assertion',
+                'location',
+                'Occurrence Count',
+                'Total Count',
+                'Platform' ]
+
+    return json.dumps( { 'columns':columns,
+                         'data':response_data,
+                         'start_date':nfields['start_date'],
+                         'end_date':nfields['end_date'] } )
 
 def _get_assertion_detail_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'assertion':'a',
-                    'location':'a', 
-                    'url':'uta' }
+    col_prefixes = { 'assertion':'a',
+                     'location':'a',
+                     'url':'uta' }
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   temp_table_name = 'temp_assertion_urls_ut_' + get_rand_str(8)
+    temp_table_name = 'temp_assertion_urls_ut_' + get_rand_str(8)
 
-   ##Build temp table##
-   settings.DHUB.execute(proc=proc_path + 'temp_assertion_urls_ut',
-                         debug_show=settings.DEBUG,
-                         replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
+    ##Build temp table##
+    settings.DHUB.execute(proc=proc_path + 'temp_assertion_urls_ut',
+                          debug_show=settings.DEBUG,
+                          replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
 
-   ##Get the assertiondetails##
-   data = settings.DHUB.execute(proc=full_proc_path,
-                                debug_show=settings.DEBUG,
-                                replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
-                                return_type='table')
+    ##Get the assertiondetails##
+    data = settings.DHUB.execute(proc=full_proc_path,
+                                 debug_show=settings.DEBUG,
+                                 replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
+                                 return_type='table')
 
-   ##Remove temp table##
-   settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
-                         debug_show=settings.DEBUG,
-                         replace=[ temp_table_name ])
+    ##Remove temp table##
+    settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
+                          debug_show=settings.DEBUG,
+                          replace=[ temp_table_name ])
 
-   return json.dumps( {'columns':data['columns'], 
-                       'data':data['data'], 
-                       'start_date':nfields['start_date'], 
-                       'end_date':nfields['end_date']} )
+    return json.dumps( {'columns':data['columns'],
+                        'data':data['data'],
+                        'start_date':nfields['start_date'],
+                        'end_date':nfields['end_date']} )
 
 def _get_assertion_urls_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'url':'uta',
-                    'assertion':'a' }
+    col_prefixes = { 'url':'uta',
+                     'assertion':'a' }
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   table_struct = settings.DHUB.execute(proc=full_proc_path,
-                                       debug_show=settings.DEBUG,
-                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
-                                       return_type='table')
+    table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                        debug_show=settings.DEBUG,
+                                        replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                        return_type='table')
 
-   response_data = _aggregate_url_platform_data(table_struct)
+    response_data = _aggregate_url_platform_data(table_struct)
 
-   columns = ['url', 'Occurrence Count', 'Total Count', 'Platform']
+    columns = ['url', 'Occurrence Count', 'Total Count', 'Platform']
 
-   return json.dumps( { 'columns':columns, 
-                        'data':response_data,
-                        'start_date':nfields['start_date'], 
-                        'end_date':nfields['end_date'] } )
+    return json.dumps( { 'columns':columns,
+                         'data':response_data,
+                         'start_date':nfields['start_date'],
+                         'end_date':nfields['end_date'] } )
 
 #####
 #UNIT TESTING VALGRIND ADAPTERS
 #####
 def _get_valgrinds_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'signature':'v',
-                    'message':'v' }
+    col_prefixes = { 'signature':'v',
+                     'message':'v' }
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
-      full_proc_path = proc_path + 'new_valgrinds_ut'
+    if ('new_signatures' in nfields) and (nfields['new_signatures'] == 'on'):
+       full_proc_path = proc_path + 'new_valgrinds_ut'
 
-   table_struct = settings.DHUB.execute(proc=full_proc_path,
-                                       debug_show=settings.DEBUG,
-                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
-                                       return_type='table')
+    table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                        debug_show=settings.DEBUG,
+                                        replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                        return_type='table')
 
-   response_data = _aggregate_valgrind_platform_data(table_struct)
-   
-   columns = [ 'signature', 
-               'message', 
-               'Total Count', 
-               'Platform' ]
+    response_data = _aggregate_valgrind_platform_data(table_struct)
 
-   return json.dumps( { 'columns':columns, 
-                        'data':response_data,
-                        'start_date':nfields['start_date'], 
-                        'end_date':nfields['end_date'] } )
+    columns = [ 'signature',
+                'message',
+                'Total Count',
+                'Platform' ]
+
+    return json.dumps( { 'columns':columns,
+                         'data':response_data,
+                         'start_date':nfields['start_date'],
+                         'end_date':nfields['end_date'] } )
 
 def _get_valgrind_urls_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'url':'utv',
-                    'message':'v',
-                    'signature':'v' }
+    col_prefixes = { 'url':'utv',
+                     'message':'v',
+                     'signature':'v' }
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   table_struct = settings.DHUB.execute(proc=full_proc_path,
-                                       debug_show=settings.DEBUG,
-                                       replace=[ nfields['start_date'], nfields['end_date'], rep ],
-                                       return_type='table')
+    table_struct = settings.DHUB.execute(proc=full_proc_path,
+                                        debug_show=settings.DEBUG,
+                                        replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                        return_type='table')
 
-   response_data = _aggregate_url_platform_data(table_struct)
+    response_data = _aggregate_url_platform_data(table_struct)
 
-   columns = ['url', 'Total Count', 'Platform']
+    columns = ['url', 'Total Count', 'Platform']
 
-   return json.dumps( { 'columns':columns, 
-                        'data':response_data,
-                        'start_date':nfields['start_date'], 
-                        'end_date':nfields['end_date'] } )
+    return json.dumps( { 'columns':columns,
+                         'data':response_data,
+                         'start_date':nfields['start_date'],
+                         'end_date':nfields['end_date'] } )
 
 def _get_valgrind_detail_ut(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'signature':'v',
-                    'message':'v', 
-                    'url':'utv' }
+    col_prefixes = { 'signature':'v',
+                     'message':'v',
+                     'url':'utv' }
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   temp_table_name = 'temp_valgrind_urls_ut_' + get_rand_str(8)
+    temp_table_name = 'temp_valgrind_urls_ut_' + get_rand_str(8)
 
-   ##Build temp table##
-   settings.DHUB.execute(proc=proc_path + 'temp_valgrind_urls_ut',
-                         debug_show=settings.DEBUG,
-                         replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
+    ##Build temp table##
+    settings.DHUB.execute(proc=proc_path + 'temp_valgrind_urls_ut',
+                          debug_show=settings.DEBUG,
+                          replace=[ nfields['start_date'], nfields['end_date'], rep, temp_table_name ])
 
-   ##Get the assertiondetails##
-   data = settings.DHUB.execute(proc=full_proc_path,
-                                debug_show=settings.DEBUG,
-                                replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
-                                return_type='table')
+    ##Get the assertiondetails##
+    data = settings.DHUB.execute(proc=full_proc_path,
+                                 debug_show=settings.DEBUG,
+                                 replace=[ nfields['start_date'], nfields['end_date'], temp_table_name ],
+                                 return_type='table')
 
-   ##Remove temp table##
-   settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
-                         debug_show=settings.DEBUG,
-                         replace=[ temp_table_name ])
+    ##Remove temp table##
+    settings.DHUB.execute(proc=proc_path + 'drop_temp_table',
+                          debug_show=settings.DEBUG,
+                          replace=[ temp_table_name ])
 
-   return json.dumps( {'columns':data['columns'], 
-                       'data':data['data'], 
-                       'start_date':nfields['start_date'], 
-                       'end_date':nfields['end_date']} )
+    return json.dumps( {'columns':data['columns'],
+                        'data':data['data'],
+                        'start_date':nfields['start_date'],
+                        'end_date':nfields['end_date']} )
 
 #####
 #CRASH TABLE ADAPTERS
 #####
 def _get_socorro_record(proc_path, proc_name, full_proc_path, nfields, user_id):
 
-   col_prefixes = { 'signature':'sr',
-                    'url':'sr',
-                    'socorro_id':'sr'}
+    col_prefixes = { 'signature':'sr',
+                     'url':'sr',
+                     'socorro_id':'sr'}
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   proc = full_proc_path
-   column_name = 'socorro_id'
-   replace_list = [ nfields['start_date'], nfields['end_date'], rep ]
+    proc = full_proc_path
+    column_name = 'socorro_id'
+    replace_list = [ nfields['start_date'], nfields['end_date'], rep ]
 
-   #####
-   #If we have an id don't use the date range.  The date
-   #range will not necessarily match in socorro_record and
-   #we're only returning one row so we don't need it.
-   #####
-   if rep.find(column_name) > -1:
-      ###
-      #In the socorro table sororro_id corresponds to the
-      #id column
-      ###
-      rep = rep.replace('socorro_id', 'id').replace('AND', '')
-      proc = proc_path + 'socorro_record_no_date'
-      replace_list = [rep]
+    #####
+    #If we have an id don't use the date range.  The date
+    #range will not necessarily match in socorro_record and
+    #we're only returning one row so we don't need it.
+    #####
+    if rep.find(column_name) > -1:
+       ###
+       #In the socorro table sororro_id corresponds to the
+       #id column
+       ###
+       rep = rep.replace('socorro_id', 'id').replace('AND', '')
+       proc = proc_path + 'socorro_record_no_date'
+       replace_list = [rep]
 
-   data = settings.DHUB.execute(proc=proc,
-                                debug_show=settings.DEBUG,
-                                replace=replace_list,
-                                return_type='table')
+    data = settings.DHUB.execute(proc=proc,
+                                 debug_show=settings.DEBUG,
+                                 replace=replace_list,
+                                 return_type='table')
 
-   return json.dumps( {'columns':data['columns'], 
-                       'data':data['data'], 
-                       'start_date':nfields['start_date'], 
-                       'end_date':nfields['end_date']} )
+    return json.dumps( {'columns':data['columns'],
+                        'data':data['data'],
+                        'start_date':nfields['start_date'],
+                        'end_date':nfields['end_date']} )
 
 #####
 #PLATFORM AGGREGATION METHODS
 #####
 def _aggregate_crashes_platform_data(table_struct):
 
-   #####
-   #Aggregate the os_name, os_version, and cpu_name by branch
-   #####
-   data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int)))))
+    #####
+    #Aggregate the os_name, os_version, and cpu_name by branch
+    #####
+    data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int)))))
 
-   for row in table_struct['data']:
+    for row in table_struct['data']:
 
-      cpu_data = _format_cpu_data(row)
+       cpu_data = _format_cpu_data(row)
 
-      platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
-      data[row['signature']][row['fatal_message']][row['branch']][platform]['total_count'] += row['total_count']
+       platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
+       data[row['signature']][row['fatal_message']][row['branch']][platform]['total_count'] += row['total_count']
 
-   response_data = []
-   for signature, sig_matches in data.iteritems():
-      for fatal_message, branches in sig_matches.iteritems():
+    response_data = []
+    for signature, sig_matches in data.iteritems():
+       for fatal_message, branches in sig_matches.iteritems():
 
-         total_count, platform, aggregation_count = _format_branch_data(branches)
+          total_count, platform, aggregation_count = _format_branch_data(branches)
 
-         crash = { 'signature': signature,
-                   'fatal_message': fatal_message,
-                   'Platform': platform,
-                   'Total Count':total_count}
+          crash = { 'signature': signature,
+                    'fatal_message': fatal_message,
+                    'Platform': platform,
+                    'Total Count':total_count}
 
-         response_data.append(crash)
+          response_data.append(crash)
 
-   return response_data
+    return response_data
 
 def _aggregate_assertion_platform_data(table_struct):
 
-   #####
-   #Aggregate the os_name, os_version, and cpu_name by branch
-   #####
-   data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int)))))
+    #####
+    #Aggregate the os_name, os_version, and cpu_name by branch
+    #####
+    data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int)))))
 
-   for row in table_struct['data']:
+    for row in table_struct['data']:
 
-      cpu_data = _format_cpu_data(row)
+       cpu_data = _format_cpu_data(row)
 
-      platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
-      data[row['assertion']][row['location']][row['branch']][platform]['total_count'] += int(row['total_count'])
-      data[row['assertion']][row['location']][row['branch']][platform]['occurrence_count'] += int(row['occurrence_count'])
+       platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
+       data[row['assertion']][row['location']][row['branch']][platform]['total_count'] += int(row['total_count'])
+       data[row['assertion']][row['location']][row['branch']][platform]['occurrence_count'] += int(row['occurrence_count'])
 
-   response_data = []
-   for assertion, matches in data.iteritems():
+    response_data = []
+    for assertion, matches in data.iteritems():
 
-      occurrence_count = 0
+       occurrence_count = 0
 
-      for location, branches in matches.iteritems():
+       for location, branches in matches.iteritems():
 
-         total_count, formated_platform, occurrence_count = _format_branch_data(branches)
+          total_count, formated_platform, occurrence_count = _format_branch_data(branches)
 
-         crash = { 'assertion': assertion,
-                   'location': location,
-                   'Platform': formated_platform,
-                   'Total Count':total_count,
-                   'Occurrence Count':occurrence_count}
+          crash = { 'assertion': assertion,
+                    'location': location,
+                    'Platform': formated_platform,
+                    'Total Count':total_count,
+                    'Occurrence Count':occurrence_count}
 
-         response_data.append(crash)
+          response_data.append(crash)
 
-   return response_data
+    return response_data
 
 def _aggregate_valgrind_platform_data(table_struct):
 
-   #####
-   #Aggregate the os_name, os_version, and cpu_name by branch
-   #####
-   data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int)))))
+    #####
+    #Aggregate the os_name, os_version, and cpu_name by branch
+    #####
+    data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int)))))
 
-   for row in table_struct['data']:
+    for row in table_struct['data']:
 
-      cpu_data = _format_cpu_data(row)
+       cpu_data = _format_cpu_data(row)
 
-      platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
-      data[row['signature']][row['message']][row['branch']][platform]['total_count'] += int(row['total_count'])
+       platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
+       data[row['signature']][row['message']][row['branch']][platform]['total_count'] += int(row['total_count'])
 
-   response_data = []
-   for signature, matches in data.iteritems():
+    response_data = []
+    for signature, matches in data.iteritems():
 
-      occurrence_count = 0
+       occurrence_count = 0
 
-      for message, branches in matches.iteritems():
+       for message, branches in matches.iteritems():
 
-         total_count, formated_platform, occurrence_count = _format_branch_data(branches)
+          total_count, formated_platform, occurrence_count = _format_branch_data(branches)
 
-         crash = { 'signature': signature,
-                   'message': message,
-                   'Platform': formated_platform,
-                   'Total Count':total_count }
+          crash = { 'signature': signature,
+                    'message': message,
+                    'Platform': formated_platform,
+                    'Total Count':total_count }
 
-         response_data.append(crash)
+          response_data.append(crash)
 
-   return response_data
+    return response_data
 
 def _aggregate_url_platform_data(table_struct):
 
-   #####
-   #Aggregate the os_name, os_version, and cpu_name by branch
-   #####
-   data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int))))
+    #####
+    #Aggregate the os_name, os_version, and cpu_name by branch
+    #####
+    data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int))))
 
-   for row in table_struct['data']:
+    for row in table_struct['data']:
 
-      cpu_data = _format_cpu_data(row)
+       cpu_data = _format_cpu_data(row)
 
-      platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
-      data[row['url']][row['branch']][platform]['total_count'] += int(row['total_count'])
+       platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
+       data[row['url']][row['branch']][platform]['total_count'] += int(row['total_count'])
 
-      if 'occurrence_count' in row:
-         data[row['url']][row['branch']][platform]['occurrence_count'] += int(row['occurrence_count'])
+       if 'occurrence_count' in row:
+          data[row['url']][row['branch']][platform]['occurrence_count'] += int(row['occurrence_count'])
 
-   response_data = []
-   for url, branches in data.iteritems():
+    response_data = []
+    for url, branches in data.iteritems():
 
-      total_count, platform, occurence_count = _format_branch_data(branches)
+       total_count, platform, occurence_count = _format_branch_data(branches)
 
-      url_summary = { 'Occurrence Count': occurence_count,
-                      'Total Count':total_count, 
-                      'url': url,
-                      'Platform': platform }
+       url_summary = { 'Occurrence Count': occurence_count,
+                       'Total Count':total_count,
+                       'url': url,
+                       'Platform': platform }
 
-      response_data.append(url_summary)
+       response_data.append(url_summary)
 
-   return response_data
+    return response_data
 
 def _aggregate_user_data(table_struct):
 
-   data = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+    data = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
 
-   for row in table_struct['data']:
+    for row in table_struct['data']:
 
-      ##Don't wrap the date##
-      row['date'] = '<span class="no-wrap">' + row['date'] + '</span>'
+       ##Don't wrap the date##
+       row['date'] = '<span class="no-wrap">' + row['date'] + '</span>'
 
-      ####
-      #Aggregate the state
-      ####
-      data[ row['signature'] ][ row['url'] ][ row['state'] ] += int(row['total_count'])
-      data[ row['signature'] ][ row['url'] ][ 'total_count' ] += int(row['total_count'])
-      data[ row['signature'] ][ row['url'] ][ 'date' ] = row['date']
+       ####
+       #Aggregate the state
+       ####
+       data[ row['signature'] ][ row['url'] ][ row['state'] ] += int(row['total_count'])
+       data[ row['signature'] ][ row['url'] ][ 'total_count' ] += int(row['total_count'])
+       data[ row['signature'] ][ row['url'] ][ 'date' ] = row['date']
 
-   response_data = []
-   status_list = ['waiting', 'executing', 'completed']
-   for sig, sig_object in data.iteritems():
-      for url in sig_object.keys():
-         status_object = sig_object[url]
+    response_data = []
+    status_list = ['waiting', 'executing', 'completed']
+    for sig, sig_object in data.iteritems():
+       for url in sig_object.keys():
+          status_object = sig_object[url]
 
-         ##format the status as a single string##
-         status = _format_status_field(status_object, status_list)
+          ##format the status as a single string##
+          status = _format_status_field(status_object, status_list)
 
-         url_summary = { 'Date':status_object['date'],
-                         'signature':sig,
-                         'url':url,
-                         'status':status,
-                         'Total Count':status_object['total_count'] }
+          url_summary = { 'Date':status_object['date'],
+                          'signature':sig,
+                          'url':url,
+                          'status':status,
+                          'Total Count':status_object['total_count'] }
 
-         response_data.append(url_summary)
+          response_data.append(url_summary)
 
-   return response_data
+    return response_data
 
 def _format_status_field(status_object, status_list):
 
-   status = ""
-   for s in status_list:
-      if s in status_object:
-         ##uppercase first character##
-         statusText = s[0].upper() + s[1:len(s)]
-         count = status_object[s]
+    status = ""
+    for s in status_list:
+       if s in status_object:
+          ##uppercase first character##
+          statusText = s[0].upper() + s[1:len(s)]
+          count = status_object[s]
 
-         if s == 'completed':
-            if int(status_object[s]) == status_object['total_count']:
-               ##All jobs are complete, set status and exit loop##
-               status = '<span class="no-wrap bh-status-completed">ALL JOBS COMPLETE</span>'
-               break
-            else:
-               status +='<span class="bh-status-' + s + '"><b>' + statusText + ':</b>' + str(count) + '</span>'
-         else:
-            status += '<span class="bh-status-' + s + '"><b>' + statusText + ':</b>' + str(count) + '</span>&nbsp;&nbsp;'
+          if s == 'completed':
+             if int(status_object[s]) == status_object['total_count']:
+                ##All jobs are complete, set status and exit loop##
+                status = '<span class="no-wrap bh-status-completed">ALL JOBS COMPLETE</span>'
+                break
+             else:
+                status +='<span class="bh-status-' + s + '"><b>' + statusText + ':</b>' + str(count) + '</span>'
+          else:
+             status += '<span class="bh-status-' + s + '"><b>' + statusText + ':</b>' + str(count) + '</span>&nbsp;&nbsp;'
 
-   return status
+    return status
 
 def _aggregate_all_user_data(table_struct):
 
-   data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int))))
+    data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int))))
 
-   for row in table_struct['data']:
+    for row in table_struct['data']:
 
-      ##Don't wrap the date##
-      row['date'] = '<span class="no-wrap">' + row['date'] + '</span>'
+       ##Don't wrap the date##
+       row['date'] = '<span class="no-wrap">' + row['date'] + '</span>'
 
-      ####
-      #Aggregate the state
-      ####
-      data[ row['email'] ][ row['signature'] ][ row['url'] ][ row['state'] ] += int(row['total_count'])
-      data[ row['email'] ][ row['signature'] ][ row['url'] ][ 'total_count' ] += int(row['total_count'])
-      data[ row['email'] ][ row['signature'] ][ row['url'] ][ 'date' ] = row['date']
+       ####
+       #Aggregate the state
+       ####
+       data[ row['email'] ][ row['signature'] ][ row['url'] ][ row['state'] ] += int(row['total_count'])
+       data[ row['email'] ][ row['signature'] ][ row['url'] ][ 'total_count' ] += int(row['total_count'])
+       data[ row['email'] ][ row['signature'] ][ row['url'] ][ 'date' ] = row['date']
 
-   response_data = []
-   status_list = ['waiting', 'executing', 'completed']
-   for email, email_object in data.iteritems():
-      for sig, sig_object in email_object.iteritems():
-         for url in sig_object.keys():
-            status_object = sig_object[url]
+    response_data = []
+    status_list = ['waiting', 'executing', 'completed']
+    for email, email_object in data.iteritems():
+       for sig, sig_object in email_object.iteritems():
+          for url in sig_object.keys():
+             status_object = sig_object[url]
 
-            ##format the status as a single string##
-            status = _format_status_field(status_object, status_list)
+             ##format the status as a single string##
+             status = _format_status_field(status_object, status_list)
 
-            url_summary = {'User':email, 
-                           'Date':status_object['date'],
-                           'signature':sig,
-                           'url':url,
-                           'status':status,
-                           'Total Count':status_object['total_count'] }
+             url_summary = {'User':email,
+                            'Date':status_object['date'],
+                            'signature':sig,
+                            'url':url,
+                            'status':status,
+                            'Total Count':status_object['total_count'] }
 
-            response_data.append(url_summary)
+             response_data.append(url_summary)
 
-   return response_data
+    return response_data
 
 def _format_branch_data(branches):
 
-   platform = "" 
-   counts_broken_down = "" 
-   total_count = 0
-   occurrence_count = 0
+    platform = ""
+    counts_broken_down = ""
+    total_count = 0
+    occurrence_count = 0
 
-   ##Build the platform string, sort branches alphabetically##
-   for branch in sorted(branches.keys()):
-      counts_broken_down += "<b>%s</b>:&nbsp;&nbsp;&nbsp;" % branch
-      for line in branches[branch]: 
-         counts_broken_down += "%s&nbsp;&nbsp;&nbsp;" % line.replace(' ', '&nbsp;')
+    ##Build the platform string, sort branches alphabetically##
+    for branch in sorted(branches.keys()):
+       counts_broken_down += "<b>%s</b>:&nbsp;&nbsp;&nbsp;" % branch
+       for line in branches[branch]:
+          counts_broken_down += "%s&nbsp;&nbsp;&nbsp;" % line.replace(' ', '&nbsp;')
 
-         if 'total_count' in branches[branch][line]:
-            total_count += branches[branch][line]['total_count']
+          if 'total_count' in branches[branch][line]:
+             total_count += branches[branch][line]['total_count']
 
-         if 'occurrence_count' in branches[branch][line]:
-            occurrence_count += branches[branch][line]['occurrence_count']
+          if 'occurrence_count' in branches[branch][line]:
+             occurrence_count += branches[branch][line]['occurrence_count']
 
-      counts_broken_down += "<br />"
-      platform += counts_broken_down
-      counts_broken_down = ""
+       counts_broken_down += "<br />"
+       platform += counts_broken_down
+       counts_broken_down = ""
 
-   return total_count, platform, occurrence_count
+    return total_count, platform, occurrence_count
 
 def _format_cpu_data(row):
 
-   architecture = ""
-   cpu_bits = "32"
-   build_cpu_bits = "32"
+    architecture = ""
+    cpu_bits = "32"
+    build_cpu_bits = "32"
 
-   if row['cpu_name'].find('_') > -1:
-      cpu_parts = row['cpu_name'].split('_')
-      architecture = cpu_parts[0]
-      cpu_bits = cpu_parts[1]
-   else:
-      architecture = row['cpu_name']
+    if row['cpu_name'].find('_') > -1:
+       cpu_parts = row['cpu_name'].split('_')
+       architecture = cpu_parts[0]
+       cpu_bits = cpu_parts[1]
+    else:
+       architecture = row['cpu_name']
 
-   if row['build_cpu_name'].find('_') > -1:
-      build_cpu_bits = row['build_cpu_name'].split('_')[1]
-      
-   cpu_data = "%s %s/%s" % (architecture, cpu_bits, build_cpu_bits)
+    if row['build_cpu_name'].find('_') > -1:
+       build_cpu_bits = row['build_cpu_name'].split('_')[1]
 
-   return cpu_data
+    cpu_data = "%s %s/%s" % (architecture, cpu_bits, build_cpu_bits)
+
+    return cpu_data
 
 #####
 #UTILITY METHODS
 #####
 def _get_date_range():
 
-   start_date = datetime.date.today() - datetime.timedelta(hours=24)
-   end_date = datetime.date.today() + datetime.timedelta(hours=24)
+    start_date = datetime.date.today() - datetime.timedelta(hours=24)
+    end_date = datetime.date.today() + datetime.timedelta(hours=24)
 
-   return start_date, end_date
+    return start_date, end_date
 
 def _get_datetime_from_string(datestring):
 
-   ####
-   #The regex and match parsing was adapted from doParseDate above.  The return
-   #values have been modified to support timedeltas with date + timestamps.
-   ####
+    ####
+    #The regex and match parsing was adapted from doParseDate above.  The return
+    #values have been modified to support timedeltas with date + timestamps.
+    ####
 
-   ##Set fallback to today's date if match fails##
-   dt = datetime.date.today()
+    ##Set fallback to today's date if match fails##
+    dt = datetime.date.today()
 
-   ##Parse the datestring and hope for the best##
-   datestring = datestring.strip()
-   m = re.match("^(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d)(?: (?P<hour>\d\d)(?::(?P<minute>\d\d)(?::(?P<second>\d\d))?)?)?$", datestring)
-   if m:
-      date = (int(m.group("year")), int(m.group("month")), int(m.group("day")),
-               m.group("hour") and int(m.group("hour")) or 0,
-               m.group("minute") and int(m.group("minute")) or 0,
-               m.group("second") and int(m.group("second")) or 0)
+    ##Parse the datestring and hope for the best##
+    datestring = datestring.strip()
+    m = re.match("^(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d)(?: (?P<hour>\d\d)(?::(?P<minute>\d\d)(?::(?P<second>\d\d))?)?)?$", datestring)
+    if m:
+       date = (int(m.group("year")), int(m.group("month")), int(m.group("day")),
+                m.group("hour") and int(m.group("hour")) or 0,
+                m.group("minute") and int(m.group("minute")) or 0,
+                m.group("second") and int(m.group("second")) or 0)
 
-      tstamp = None
-      dtime = None
-      try:
-         tstamp = datetime.time(*date[3:len(date)])
-      except ValueError:
-         ##Don't create timestamps by default
-         pass
-         
-      try:
-         dtime = datetime.date(*date[0:3])
-      except ValueError:
-         dtime = datetime.date.today()
-         
-      if tstamp:
-         ###
-         # Combine the date and timestamp into a datetime type
-         ###
-         dt = datetime.datetime.combine( dtime, tstamp )
-      else:
-         dt = dtime
+       tstamp = None
+       dtime = None
+       try:
+          tstamp = datetime.time(*date[3:len(date)])
+       except ValueError:
+          ##Don't create timestamps by default
+          pass
 
-   return dt
+       try:
+          dtime = datetime.date(*date[0:3])
+       except ValueError:
+          dtime = datetime.date.today()
+
+       if tstamp:
+          ###
+          # Combine the date and timestamp into a datetime type
+          ###
+          dt = datetime.datetime.combine( dtime, tstamp )
+       else:
+          dt = dtime
+
+    return dt
 
 def _build_new_rep(nfields, col_prefixes):
 
-   rep = ""
-   if nfields:
-      ##Build all named into a where clause fields##
-      for field in NAMED_FIELDS:
-         if (field == 'start_date') or (field == 'end_date'):
-            continue
-         if (field in nfields) and (field in col_prefixes):
-            if field == 'socorro_id':
-               rep += " AND %s.%s=%s " % (col_prefixes[field], field, int(nfields[field]))
-            else: 
-               if (nfields[field][0] == '%') or (nfields[field][ len( nfields[field] )-1 ] == '%'): 
-                  rep += " AND %s.%s LIKE '%s' " % (col_prefixes[field], field, nfields[field])
-               else:
-                  rep += " AND %s.%s='%s' " % (col_prefixes[field], field, nfields[field])
+    rep = ""
+    if nfields:
+       ##Build all named into a where clause fields##
+       for field in NAMED_FIELDS:
+          if (field == 'start_date') or (field == 'end_date'):
+             continue
+          if (field in nfields) and (field in col_prefixes):
+             if field == 'socorro_id':
+                rep += " AND %s.%s=%s " % (col_prefixes[field], field, int(nfields[field]))
+             else:
+                if (nfields[field][0] == '%') or (nfields[field][ len( nfields[field] )-1 ] == '%'):
+                   rep += " AND %s.%s LIKE '%s' " % (col_prefixes[field], field, nfields[field])
+                else:
+                   rep += " AND %s.%s='%s' " % (col_prefixes[field], field, nfields[field])
 
-   return rep
+    return rep
 
 def _set_dates_for_placeholders(nfields):
 
-   ##Handle null fields##
-   start, end = _get_date_range()
-   if ('start_date' not in nfields) or (nfields['start_date'] == ''):
-      nfields['start_date'] = str(start)
-   if ('end_date' not in nfields) or (nfields['end_date'] == ''):
-      nfields['end_date'] = str(end)
+    ##Handle null fields##
+    start, end = _get_date_range()
+    if ('start_date' not in nfields) or (nfields['start_date'] == ''):
+       nfields['start_date'] = str(start)
+    if ('end_date' not in nfields) or (nfields['end_date'] == ''):
+       nfields['end_date'] = str(end)
 
-   ##utf-8 encode and Parse date and time##
-   start_date = _get_datetime_from_string( nfields['start_date'].encode('utf-8') )
-   end_date = _get_datetime_from_string( nfields['end_date'].encode('utf-8') )
+    ##utf-8 encode and Parse date and time##
+    start_date = _get_datetime_from_string( nfields['start_date'].encode('utf-8') )
+    end_date = _get_datetime_from_string( nfields['end_date'].encode('utf-8') )
 
-   start_type = type(start_date)
-   end_type = type(end_date)
+    start_type = type(start_date)
+    end_type = type(end_date)
 
-   if start_type != end_type:
-      ####
-      #Find which one is not datetime and convert it
-      #so we can compute a timedelta without a type 
-      #error
-      ####
-      dt_type = type(datetime.datetime.today())
-      if start_type != dt_type:
-         start_date = datetime.datetime.combine( start_date, datetime.time(0, 0, 0) )
-      elif end_type != dt_type:
-         end_date = datetime.datetime.combine( end_date, datetime.time(0, 0, 0) )
+    if start_type != end_type:
+       ####
+       #Find which one is not datetime and convert it
+       #so we can compute a timedelta without a type
+       #error
+       ####
+       dt_type = type(datetime.datetime.today())
+       if start_type != dt_type:
+          start_date = datetime.datetime.combine( start_date, datetime.time(0, 0, 0) )
+       elif end_type != dt_type:
+          end_date = datetime.datetime.combine( end_date, datetime.time(0, 0, 0) )
 
-   ##Measure the difference in days##
-   time_difference = end_date - start_date
+    ##Measure the difference in days##
+    time_difference = end_date - start_date
 
-   ##Maximum date range allowed in days##
-   max_difference = datetime.timedelta(days=60)
+    ##Maximum date range allowed in days##
+    max_difference = datetime.timedelta(days=60)
 
-   ####
-   # if the maximum date range is exceeded, use the start date
-   # provided to calculate an end date within max_difference.
-   #####
-   if time_difference > max_difference: 
-      end_days = start_date + max_difference
-      end_date = str(end_days)
+    ####
+    # if the maximum date range is exceeded, use the start date
+    # provided to calculate an end date within max_difference.
+    #####
+    if time_difference > max_difference:
+       end_days = start_date + max_difference
+       end_date = str(end_days)
 
-   nfields['start_date'] = str(start_date)
-   nfields['end_date'] = str(end_date)
+    nfields['start_date'] = str(start_date)
+    nfields['end_date'] = str(end_date)
 
 def _get_json(nfields, col_prefixes, path):
 
-   _set_dates_for_placeholders(nfields)
+    _set_dates_for_placeholders(nfields)
 
-   rep = _build_new_rep(nfields, col_prefixes)
+    rep = _build_new_rep(nfields, col_prefixes)
 
-   data = settings.DHUB.execute(proc=path,
-                                debug_show=settings.DEBUG,
-                                replace=[ nfields['start_date'], nfields['end_date'], rep ],
-                                return_type='table')
+    data = settings.DHUB.execute(proc=path,
+                                 debug_show=settings.DEBUG,
+                                 replace=[ nfields['start_date'], nfields['end_date'], rep ],
+                                 return_type='table')
 
-   return json.dumps( {'columns':data['columns'], 
-                       'data':data['data'], 
-                       'start_date':nfields['start_date'], 
-                       'end_date':nfields['end_date']} )
+    return json.dumps( {'columns':data['columns'],
+                        'data':data['data'],
+                        'start_date':nfields['start_date'],
+                        'end_date':nfields['end_date']} )
 
 ####
 #VIEW_ADAPTERS maps view names to function
