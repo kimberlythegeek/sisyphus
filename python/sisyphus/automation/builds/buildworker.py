@@ -3,20 +3,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from optparse import OptionParser
-import os
-import stat
-import time
 import datetime
+import os
 import sys
-import subprocess
-import re
+import time
 
-import platform
-import base64 # for encoding document attachments.
-import urlparse
-import urllib
-import glob
+from optparse import OptionParser
 
 sisyphus_dir     = os.environ["TEST_DIR"]
 tempdir          = os.path.join(sisyphus_dir, 'python')
@@ -48,8 +40,6 @@ class BuildWorker(sisyphus.automation.worker.Worker):
     def doWork(self):
 
         waittime                = 0
-        daily_checkup_interval  = datetime.timedelta(days=1)
-        daily_last_checkup_time = datetime.datetime.now() - 2*daily_checkup_interval
         build_checkup_interval  = datetime.timedelta(hours=3)
 
         checkup_interval        = datetime.timedelta(minutes=5)
@@ -90,7 +80,10 @@ class BuildWorker(sisyphus.automation.worker.Worker):
                     for self.buildtype in self.builddata[self.product][self.branch]:
                         if self.isNewBuildNeeded(build_checkup_interval):
 
-                            self.publishNewBuild()
+                            if self.tinderbox:
+                                self.getTinderboxProduct()
+                            else:
+                                self.publishNewBuild()
                             if self.build_row.state == "error":
                                 # A build error occurred. Do not wait before attempting new builds
                                 waittime = 0
@@ -130,6 +123,22 @@ def main():
                        help='Override default processor type: intel32, intel64, amd32, amd64',
                        default=None)
 
+    parser.add_option('--buildspec', action='append',
+                       dest='buildspecs',
+                       help='Build specifiers: Restricts the builds built by '
+                      'this worker to one of opt, debug, opt-asan, debug-asan. '
+                      'Defaults to all build types specified in the Branches '
+                      'To restrict this worker to a subset of build specifiers, '
+                      'list each desired specifier in separate '
+                      '--buildspec options.',
+                       default=[])
+
+    parser.add_option('--tinderbox', action='store_true',
+                       dest='tinderbox',
+                       help='Download latest tinderbox builds. '
+                      'Defaults to False.',
+                       default=False)
+
     (options, args) = parser.parse_args()
 
     exception_counter = 0
@@ -142,7 +151,7 @@ def main():
     while True:
         try:
             this_worker.doWork()
-        except KeyboardInterrupt, SystemExit:
+        except (KeyboardInterrupt, SystemExit):
             raise
         except:
 
@@ -168,7 +177,7 @@ def main():
 
                         if curr_worker_row.state != "disabled":
                             this_worker.state = "waiting"
-                            this.worker.save()
+                            this_worker.save()
                             break
 
             this_worker.logMessage('main: exception %s: %s' % (str(exceptionValue), errorMessage))
@@ -178,9 +187,10 @@ def main():
 
 if __name__ == "__main__":
     try:
+        this_worker = None
         restart = True
         main()
-    except KeyboardInterrupt, SystemExit:
+    except (KeyboardInterrupt, SystemExit):
         restart = False
     except:
         exceptionType, exceptionValue, errorMessage = utils.formatException()

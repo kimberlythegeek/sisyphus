@@ -116,5 +116,13 @@ done
 if ! $TEST_DIR/bin/timed_run.py ${TEST_STARTUP_TIMEOUT} "install extensions - first restart" \
     $executable -P $profilename -silent ; then
     echo "Ignoring 1st failure to -silent"
+    if ls $profiledirectory/minidumps/*.dmp 2> /dev/null; then
+        echo "Ignoring dump files created during profile creation"
+        rm -f $profiledirectory/minidumps/*
+    fi
+fi
+if ls $profiledirectory/minidumps/*.dmp 2> /dev/null; then
+    echo "Ignoring dump files created after profile creation"
+    rm -f $profiledirectory/minidumps/*
 fi
 exit 0

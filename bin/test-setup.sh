@@ -126,7 +126,9 @@ fi
 TEST_DATAFILES=$datafiles
 
 dumpenvironment
-dumphardware
+
+# don't dump hardware to the log. It has not been used.
+#dumphardware
 
 if [[ -z "$product" || -z "$branch" ]]; then
     echo "product and branch are required"

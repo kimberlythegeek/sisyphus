@@ -49,8 +49,8 @@ class Command(BaseCommand):
       finally:
          views_file_obj.close()
       ##Strip out comments and newlines##
-      t = BaseHub.stripPythonComments(data_view_file)
-      data_views = BaseHub.deserializeJson(data_view_file)
+      t = BaseHub.strip_python_comments(data_view_file)
+      data_views = BaseHub.deserialize_json(data_view_file)
 
       Command.build_nav(data_views)
 

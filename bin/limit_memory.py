@@ -20,7 +20,7 @@ if sys.platform == 'linux2':
     mem = memory.determine_memory()
     ram_limit     = int(percent * mem['ram'] / mem['unit'])
     virtual_limit = int(percent * mem['max_virtual'] / mem['unit'])
-    print 'ulimit -m %s -v %s' % (ram_limit, virtual_limit)
+    print 'ulimit -m %s' % ram_limit
 elif sys.platform == 'cygwin':
     print 'echo ulimit can not be used to limit memory or virtual memory usage on cygwin'
 elif sys.platform == 'darwin':

@@ -2,22 +2,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from optparse import OptionParser
-import os
-import stat
-import time
 import datetime
-import sys
-import subprocess
+import os
 import re
-
-import platform
-import base64 # for encoding document attachments.
-import urlparse
-import urllib
-import glob
-
 import signal
+import subprocess
+import sys
+import time
+
+from optparse import OptionParser
 
 sisyphus_dir     = os.environ["TEST_DIR"]
 tempdir          = os.path.join(sisyphus_dir, 'python')
@@ -166,6 +159,18 @@ class CrashTestWorker(worker.Worker):
         reSpiderBegin      = re.compile(r'^Spider: Begin loading (.*)')
         reSpider           = re.compile(r'^Spider:')
         reUrlExitStatus    = re.compile(r'^(http.*): EXIT STATUS: (.*) [(].*[)].*')
+        # AddressSanitizer patterns
+        # reAsanStart pid - group 1, message - group 2
+        reAsanStart        = re.compile(r'^==(\d+)==ERROR: (AddressSanitizer: .*)')
+        # reAsanEnd pid - group 1 must match, reason - group 2
+        reAsanEnd          = re.compile(r'^==(\d+)==(.*)')
+        # reAsanFrame frame number - group 1, address - group 2, funcdecl - group 3
+        reAsanFrame        = re.compile(r'^ {4}(#\d+) (0x[0-9a-fA-F]+) in (.*) [^ ]+$')
+        reAsanThread       = re.compile(r'Thread.*created by.*here:')
+        # rAsanSummary - reason - group 1
+        reAsanSummary      = re.compile(r'SUMMARY: AddressSanitizer: ([^ ]*)')
+        reAsan             = re.compile(r'AddressSanitizer')
+        reAsanBlank        = re.compile(r' *$')
 
         # Spider: HTTP Response: originalURI: http://bclary.com/build/style URI: http://bclary.com/build/style referer: http://bclary.com/ status: 200 status text: ok content-type: text/css succeeded: true
         reHTTP    = re.compile(r'^Spider: HTTP Response: originalURI:')
@@ -189,25 +194,33 @@ class CrashTestWorker(worker.Worker):
         # a test result is seen in the output.
         assertion_dict = {}
         valgrind_text  = ""
-
-        data    = u""
+        # There may be an Asan message for each process.
+        asan_list = []
 
         # attempt to silence undefined errors if exception thrown during communicate.
         stdout = ''
 
         fatal_error = False
+        buildspec = self.parse_buildspec(self.buildtype)
+        if buildspec['extra']:
+            branch = '%s-%s' % (self.branch, buildspec['extra'])
+        else:
+            branch = self.branch
+        args = [
+            "./bin/tester.sh",
+            "-t",
+            "tests/mozilla.org/top-sites/test.sh -u " +
+            url +
+            self.invisible + " -H -D 1 -h " + self.userhook,
+            self.product,
+            branch,
+            buildspec['buildtype'],
+        ]
+
+        self.debugMessage('Running test: %s' % args)
 
         proc = subprocess.Popen(
-            [
-                "./bin/tester.sh",
-                "-t",
-                "tests/mozilla.org/top-sites/test.sh -u " +
-                url +
-                self.invisible + " -H -D 1 -h " + self.userhook,
-                self.product,
-                self.branch,
-                self.buildtype
-                ],
+            args,
             preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -238,7 +251,7 @@ class CrashTestWorker(worker.Worker):
                 signal.alarm(0)
                 signal.signal(signal.SIGALRM, default_alarm_handler)
 
-        except KeyboardInterrupt, SystemExit:
+        except (KeyboardInterrupt, SystemExit):
             raise
         except Exception, e:
 
@@ -289,6 +302,53 @@ class CrashTestWorker(worker.Worker):
 
                 # decode to unicode
                 line = utils.makeUnicodeString(line)
+
+                match = reAsanStart.match(line)
+                if match:
+                    asan_list.append({
+                        'pid': match.group(1),
+                        'error': match.group(2),
+                        'text': line,
+                        'frames': [],
+                        'reason': '',
+                        'frames_collected': False,
+                        'completed': False,
+                        })
+                    self.testrun_row.fatal_message = match.group(2)
+                    continue
+                if asan_list and not asan_list[-1]['completed']:
+                    match = reAsanFrame.match(line)
+                    if match:
+                        asan_list[-1]['text'] += line
+                        if not asan_list[-1]['frames_collected']:
+                            asan_list[-1]['frames'].append(match.group(3))
+                        continue
+                    match = reAsanBlank.match(line)
+                    if match:
+                        asan_list[-1]['text'] += line
+                    match = reAsan.match(line)
+                    if match:
+                        asan_list[-1]['text'] += line
+                        continue
+                    match = reAsanThread.match(line)
+                    if match:
+                        asan_list[-1]['text'] += line
+                        continue
+                    match = reAsanSummary.match(line)
+                    if match:
+                        asan_list[-1]['text'] += line
+                        asan_list[-1]['reason'] = match.group(1)
+                        asan_list[-1]['frames_collected'] = True
+                        continue
+                    if not asan_list[-1]['reason']:
+                        # ignore lines such as ==7924==WARNING: ...
+                        match = reAsanEnd.match(line)
+                        if match:
+                            if match.group(1) != asan_list[-1]['pid']:
+                                self.debugMessage('Asan pid %s mismatch %s: %s' % (
+                                    match.group(1), asan_list[-1]['pid'], line))
+                            asan_list[-1]['completed'] = True
+                            asan_list[-1]['text'] += line
 
                 match = reFatalError.match(line)
                 if match:
@@ -424,6 +484,8 @@ class CrashTestWorker(worker.Worker):
             uploader.add('log', baselogfilename, logfilename, True)
             self.testrun_row = uploader.send()
 
+            self.process_asan(asan_list, page, dmpuploadpath)
+
             symbolsPath = os.path.join(executablepath, 'crashreporter-symbols')
 
             symbolsPathList = [symbolsPath]
@@ -478,7 +540,7 @@ class CrashTestWorker(worker.Worker):
                 reproduce_signature = False
 
         if (reproduce_signature and
-            self.testrun_row.crashed and
+            (self.testrun_row.crashed or asan_list) and
             self.testrun_row.priority not in '01'):
 
             # Generate new priority 0 jobs for the other operating systems if the job
@@ -495,7 +557,7 @@ class CrashTestWorker(worker.Worker):
                 # guarantees the branch row with the highest major_version will be kept.
                 branches_dict = {}
                 for branch_row in branches_rows:
-                    branches_dict[branch_row.branch] = branch_row
+                    branches_dict[branch_row.branch + branch_row.buildtype] = branch_row
                 branches_list = []
                 for branch in branches_dict:
                     branches_list.append(branches_dict[branch])
@@ -511,21 +573,46 @@ class CrashTestWorker(worker.Worker):
                     # reproducible on the same machine where it originally occured.
                     if (worker_row.hostname   != self.hostname and
                         worker_row.os_name    == self.os_name and
+                        worker_row.os_version == self.os_version and
                         worker_row.cpu_name   == self.cpu_name and
                         worker_row.build_cpu_name == self.build_cpu_name and
-                        worker_row.os_version == self.os_version):
+                        worker_row.buildspecs == self.buildspecs):
                         continue
 
-                    worker_os_cpu_key = worker_row.os_name + worker_row.cpu_name + worker_row.build_cpu_name + worker_row.os_version
+                    worker_os_cpu_key = (
+                        worker_row.os_name + worker_row.os_version +
+                        worker_row.cpu_name + worker_row.build_cpu_name +
+                        worker_row.buildspecs)
+
                     if worker_os_cpu_key in os_cpu_hash:
                         # we've already emitted a signature for this os/cpu.
                         continue
 
                     os_cpu_hash[worker_os_cpu_key] = 1
 
+                    if worker_row.buildspecs:
+                        buildspecs = set(worker_row.buildspecs.split(','))
+                    else:
+                        buildspecs = set()
+
                     for branch_row in branches_list:
                         if branch_row.product != self.product:
                             continue
+
+                        if buildspecs and branch_row.buildtype not in buildspecs:
+                            self.debugMessage('Not generating a 0 priority job for worker '
+                                              '%s %s for branch %s buildtype %s' % (
+                                                  worker_row.hostname,
+                                                  worker_row.buildspecs,
+                                                  branch_row.branch,
+                                                  branch_row.buildtype))
+                            continue
+                        self.debugMessage('Generating a 0 priority job for worker '
+                                          '%s %s for branch %s buildtype %s' % (
+                                              worker_row.hostname,
+                                              worker_row.buildspecs,
+                                              branch_row.branch,
+                                              branch_row.buildtype))
 
                         # PowerPC is not supported after Firefox 3.6
                         if branch_row.major_version > '0306' and worker_row.cpu_name == 'ppc':
@@ -599,7 +686,7 @@ class CrashTestWorker(worker.Worker):
 
                         self.debugMessage('runTest: adding reproducer signature document: %s' % new_test_run)
 
-            except KeyboardInterrupt, SystemExit:
+            except (KeyboardInterrupt, SystemExit):
                 raise
             except:
                 exceptionType, exceptionValue, errorMessage = utils.formatException()
@@ -618,7 +705,7 @@ class CrashTestWorker(worker.Worker):
             else:
                 try:
                     cursor = connection.cursor()
-                    cursor.execute("""DELETE SocorroRecord, SiteTestRun FROM SocorroRecord, SiteTestRun WHERE
+                    cursor.execute("""DELETE SiteTestRun FROM SocorroRecord, SiteTestRun WHERE
                                    SiteTestRun.socorro_id = SocorroRecord.id AND
                                    SiteTestRun.state = 'waiting' AND
                                    SocorroRecord.url = %s""",
@@ -670,37 +757,36 @@ class CrashTestWorker(worker.Worker):
         sitetestrun_row = None
         locktimeout     = 300
 
-        if not utils.getLock('sisyphus.bughunter.sitetestrun', locktimeout):
-            self.debugMessage("getJob: lock timed out")
-        else:
-            try:
-                # job index will present waiting high priority jobs in order
-                # state
-                # os_name
-                # os_version
-                # cpu_name
-                # build_cpu_name
-                # priority
-                sitetestrun_row = (models.SiteTestRun.objects.filter(
+        for priority in 0, 1, 3:
+            if not utils.getLock('sisyphus.bughunter.sitetestrun', locktimeout):
+                self.debugMessage("getJob: lock timed out")
+            else:
+                try:
+                    sitetestrun_row = models.SiteTestRun.objects.filter(
+                        priority = priority,
                         state__exact = "waiting",
                         os_name__exact = self.os_name,
                         os_version__exact = self.os_version,
                         cpu_name__exact = self.cpu_name,
-                        build_cpu_name__exact = self.build_cpu_name)[0])
-                sitetestrun_row.worker = self.worker_row
-                sitetestrun_row.state = 'executing'
-                sitetestrun_row.save()
+                        build_cpu_name__exact = self.build_cpu_name,
+                        buildtype__in = tuple(self.buildspecs.split(','))
+                    )[0]
+                    sitetestrun_row.worker = self.worker_row
+                    sitetestrun_row.state = 'executing'
+                    sitetestrun_row.save()
+                    break
 
-            except IndexError:
-                sitetestrun_row = None
+                except IndexError:
+                    sitetestrun_row = None
 
-            except models.SiteTestRun.DoesNotExist:
-                sitetestrun_row = None
+                except models.SiteTestRun.DoesNotExist:
+                    sitetestrun_row = None
 
-            finally:
-                lockDuration = utils.releaseLock('sisyphus.bughunter.sitetestrun')
-                if lockDuration > datetime.timedelta(seconds=5):
-                    self.logMessage("getJobs: releaseLock('sisyphus.bughunter.sitetestrun') duration: %s" % lockDuration)
+                finally:
+                    lockDuration = utils.releaseLock('sisyphus.bughunter.sitetestrun')
+                    if lockDuration > datetime.timedelta(seconds=5):
+                        self.logMessage("getJobs: releaseLock('sisyphus.bughunter.sitetestrun') duration: %s" % lockDuration)
+                    self.debugMessage('getJob: %s %s' % (sitetestrun_row, lockDuration))
 
         return sitetestrun_row
 
@@ -745,15 +831,11 @@ class CrashTestWorker(worker.Worker):
             if not self.testrun_row:
                 if self.state != "waiting":
                     self.logMessage('No signatures available to process, going idle.')
-                major_version = None
-                branch_data   = None
-                branch        = None
                 waittime      = 900
                 self.state    = "waiting"
                 self.save()
                 continue
 
-            major_version  = self.testrun_row.major_version
             self.product   = self.testrun_row.product
             self.branch    = self.testrun_row.branch
             self.buildtype = self.testrun_row.buildtype
@@ -762,7 +844,11 @@ class CrashTestWorker(worker.Worker):
 
             if build_needed:
                 if self.isBuilder:
-                    self.publishNewBuild()
+                    if self.tinderbox:
+                        self.getTinderboxProduct()
+                        self.installBuild()
+                    else:
+                        self.publishNewBuild()
                 elif self.build_row and self.build_row.buildavailable:
                     self.installBuild()
 
@@ -790,7 +876,7 @@ class CrashTestWorker(worker.Worker):
                 self.state            = 'completed'
                 self.testrun_row  = None
                 self.save()
-            except KeyboardInterrupt, SystemExit:
+            except (KeyboardInterrupt, SystemExit):
                 raise
             except Exception, e:
                 exceptionType, exceptionValue, errorMessage = utils.formatException()
@@ -808,7 +894,7 @@ class CrashTestWorker(worker.Worker):
                         # program and start over.
                         try:
                             self.logMessage('runTest: %s, OSError.errno=%d. Restarting.' %
-                                            (url, e.errno))
+                                            (self.testrun_row.socorro.url, e.errno))
                         except:
                             # Just ignore the error if we can't log the problem.
                             pass
@@ -891,6 +977,24 @@ def main():
                        help='Do not attempt to reproduce crashes with signatures of the form (frame)',
                        default=False)
 
+    parser.add_option('--buildspec', action='append',
+                       dest='buildspecs',
+                       help='Build specifiers: Restricts the builds tested by '
+                      'this worker to one of opt, debug, opt-asan, debug-asan. '
+                      'Defaults to all build types specified in the Branches '
+                      'To restrict this worker to a subset of build specifiers, '
+                      'list each desired specifier in separate '
+                      '--buildspec options.',
+                       default=[])
+
+    parser.add_option('--tinderbox', action='store_true',
+                       dest='tinderbox',
+                       help='If --build is specified, this will cause the '
+                      'worker to download the latest tinderbox builds '
+                      'instead of performing custom builds. '
+                      'Defaults to False.',
+                       default=False)
+
     try:
         (options, args) = parser.parse_args()
     except:
@@ -909,7 +1013,7 @@ def main():
     while True:
         try:
             this_worker.doWork()
-        except KeyboardInterrupt, SystemExit:
+        except (KeyboardInterrupt, SystemExit):
             raise
         except:
 
@@ -936,7 +1040,7 @@ def main():
                 if this_worker.state == "disabled":
                     while True:
                         time.sleep(300)
-                        curr_worker_row = models.Worker.objects.get(pk = self.worker_row.id)
+                        curr_worker_row = models.Worker.objects.get(pk = this_worker.worker_row.id)
                         if curr_worker_row.state != "disabled":
                             this_worker.state = "waiting"
                             break
@@ -951,7 +1055,7 @@ if __name__ == "__main__":
         this_worker = None
         restart     = True
         main()
-    except KeyboardInterrupt, SystemExit:
+    except (KeyboardInterrupt, SystemExit):
         restart = False
     except:
         exceptionType, exceptionValue, errorMessage = utils.formatException()

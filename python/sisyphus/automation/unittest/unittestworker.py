@@ -2,19 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from optparse import OptionParser
-import os
-import stat
-import time
 import datetime
-import sys
-import subprocess
+import os
 import re
-import base64 # for encoding document attachments.
-import urllib
-import glob
-import signal
-import tempfile
+import subprocess
+import sys
+import time
+
+from optparse import OptionParser
 
 sisyphus_dir     = os.environ["TEST_DIR"]
 tempdir          = os.path.join(sisyphus_dir, 'python')
@@ -31,7 +26,6 @@ if tempdir not in sys.path:
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
 
-import sisyphus.webapp.settings
 sisyphus_url      = os.environ["SISYPHUS_URL"]
 post_files_url    = sisyphus_url + '/post_files/'
 
@@ -133,7 +127,6 @@ class UnitTestWorker(worker.Worker):
 
         size    = 0         # current log size
         maxsize = 0xfffffff # maximum log size ~ 268435455
-        data    = u""       # log buffer
 
         # update the worker every hour to keep from being marked a zombie.
         update_interval = datetime.timedelta(minutes=60)
@@ -142,7 +135,6 @@ class UnitTestWorker(worker.Worker):
         # time out the unittest after unittest_timeout seconds
         unittest_timeout   = datetime.timedelta(seconds = self.global_timeout * 3600)
         unittest_starttime = datetime.datetime.now()
-        unittest_endtime   = unittest_starttime + unittest_timeout
 
         # XXX: using set-build-env.sh is a kludge needed on windows which
         # allows us to use cygwin to setup the msys mozilla-build
@@ -164,15 +156,19 @@ class UnitTestWorker(worker.Worker):
 
 
         logfile = open(logfilename, 'wb+')
+        buildspec = self.parse_buildspec(self.buildtype)
+        args = [
+            "./bin/set-build-env.sh",
+            "-p", self.product,
+            "-b", self.branch,
+            "-T", self.buildtype,
+            "-c", "make -C firefox-%s EXTRA_TEST_ARGS=\"%s\" %s" % (self.buildtype, extra_test_args, self.testrun_row.unittestbranch.test)
+        ]
+        if buildspec['extra']:
+            args.extend(['-e', buildspec['extra']])
 
         proc = subprocess.Popen(
-            [
-                "./bin/set-build-env.sh",
-                "-p", self.product,
-                "-b", self.branch,
-                "-T", self.buildtype,
-                "-c", "make -C firefox-%s EXTRA_TEST_ARGS=\"%s\" %s" % (self.buildtype, extra_test_args, self.testrun_row.unittestbranch.test)
-                ],
+            args,
             preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
             bufsize=1, # line buffered
             stdout=subprocess.PIPE,
@@ -276,7 +272,6 @@ class UnitTestWorker(worker.Worker):
                 if process_messages:
                     self.process_assertions(assertion_dict, unittest_id, self.testrun_row.unittestbranch.test, extra_test_args)
                     self.process_valgrind(valgrind_text, unittest_id, self.testrun_row.unittestbranch.test,  extra_test_args)
-                    assertion_dist   = {}
                     valgrind_text    = ""
                     unittest_id = next_unittest_id
 
@@ -528,16 +523,12 @@ class UnitTestWorker(worker.Worker):
             if not self.testrun_row:
                 if self.state != "waiting":
                     self.logMessage('Creating new jobs.')
-                major_version = None
-                branch_data   = None
-                branch        = None
                 waittime      = 0
                 self.state    = "waiting"
                 self.save()
                 self.createJobs()
                 continue
 
-            major_version  = self.testrun_row.major_version
             self.product   = self.testrun_row.product
             self.branch    = self.testrun_row.branch
             self.buildtype = self.testrun_row.buildtype
@@ -565,7 +556,7 @@ class UnitTestWorker(worker.Worker):
 
             try:
                 self.runTest(self.testrun_row.extra_test_args)
-            except KeyboardInterrupt, SystemExit:
+            except (KeyboardInterrupt, SystemExit):
                 raise
             except:
                 exceptionType, exceptionValue, errorMessage = utils.formatException()
@@ -641,6 +632,22 @@ Example:
                        help='Override default processor type: intel32, intel64, amd32, amd64',
                        default=None)
 
+    parser.add_option('--buildspec', action='append',
+                       dest='buildspecs',
+                       help='Build specifiers: Restricts the builds tested by '
+                      'this worker to one of opt, debug, opt-asan, debug-asan. '
+                      'Defaults to all build types specified in the Branches '
+                      'To restrict this worker to a subset of build specifiers, '
+                      'list each desired specifier in separate '
+                      '--buildspec options.',
+                       default=[])
+
+    parser.add_option('--tinderbox', action='store_true',
+                       dest='tinderbox',
+                       help='Download latest tinderbox builds. '
+                      'Defaults to False.',
+                       default=False)
+
     (options, args) = parser.parse_args()
 
     if options.debugger_args and not options.debugger:
@@ -657,7 +664,7 @@ Example:
     while True:
         try:
             this_worker.doWork()
-        except KeyboardInterrupt, SystemExit:
+        except (KeyboardInterrupt, SystemExit):
             raise
         except:
 
@@ -684,7 +691,7 @@ Example:
                 if this_worker.state == "disabled":
                     while True:
                         time.sleep(300)
-                        curr_worker_doc = models.Worker.objects.get(pk = self.worker_row.id)
+                        curr_worker_doc = models.Worker.objects.get(pk = this_worker.worker_row.id)
                         if curr_worker_doc.state != "disabled":
                             this_worker.state = "waiting"
                             break
@@ -699,7 +706,7 @@ if __name__ == "__main__":
         this_worker = None
         restart = True
         main()
-    except KeyboardInterrupt, SystemExit:
+    except (KeyboardInterrupt, SystemExit):
         restart = False
     except:
         exceptionType, exceptionValue, errorMessage = utils.formatException()

@@ -10,7 +10,10 @@ import os
 import subprocess
 import urlparse
 import urllib
+import urllib2
 import sys
+
+from bs4 import BeautifulSoup
 
 def makeUnicodeString(s):
     # http://farmdev.com/talks/unicode/
@@ -308,6 +311,7 @@ class FileUploader(object):
             # will modify it.
             self.dest_row.save()
             result = urllib2.urlopen(request)
+            result.close()
         except KeyboardInterrupt, SystemExit:
             raise
         except urllib2.HTTPError, e:

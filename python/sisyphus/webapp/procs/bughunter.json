@@ -100,6 +100,7 @@
                           str.os_version,
                           str.cpu_name,
                           str.build_cpu_name,
+                          str.buildtype,
                           COUNT( c.id ) AS 'total_count'
                     FROM Crash AS c
                     JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
@@ -110,7 +111,8 @@
                              str.branch,
                              str.os_name,
                              str.os_version,
-                             str.cpu_name
+                             str.cpu_name,
+                             str.buildtype
                     ORDER BY str.fatal_message DESC, c.signature ASC
                     LIMIT 1000",
 
@@ -125,6 +127,7 @@
                           str.os_version,
                           str.cpu_name,
                           str.build_cpu_name,
+                          str.buildtype,
                           COUNT( c.id ) AS 'total_count'
                     FROM Crash AS c
                     JOIN SiteTestCrash AS stc ON c.id = stc.crash_id
@@ -140,7 +143,8 @@
                              str.branch,
                              str.os_name,
                              str.os_version,
-                             str.cpu_name
+                             str.cpu_name,
+                             str.buildtype
                     ORDER BY str.fatal_message DESC, c.signature ASC
                     LIMIT 1000",
 
@@ -166,6 +170,7 @@
                        c.build_cpu_name,
                        c.product,
                        c.branch,
+                       str.buildtype,
                        stc.url,
                        DATE_FORMAT(stc.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
                        stc.reason,
@@ -206,6 +211,7 @@
                        c.os_version,
                        c.cpu_name,
                        c.build_cpu_name,
+                       str.buildtype,
                        DATE_FORMAT(stc.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
                        COUNT(stc.url) AS 'total_count'
                  FROM Crash AS c
@@ -228,6 +234,7 @@
                        a.os_version,
                        a.cpu_name,
                        a.build_cpu_name,
+                       a.buildtype,
                        COUNT( a.id ) AS 'total_count',
                        SUM( sta.count ) AS 'occurrence_count'
                 FROM Assertion AS a
@@ -256,6 +263,7 @@
                           a.os_version,
                           a.cpu_name,
                           a.build_cpu_name,
+                          a.buildtype,
                           COUNT( a.id ) AS 'total_count',
                           SUM( sta.count ) AS 'occurrence_count'
                     FROM Assertion AS a
@@ -287,6 +295,7 @@
                        a.os_version,
                        a.cpu_name,
                        a.build_cpu_name,
+                       a.buildtype,
                        DATE_FORMAT(sta.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
                        COUNT(sta.url) AS 'total_count',
                        SUM( sta.count ) AS 'occurrence_count'
@@ -321,6 +330,7 @@
                        a.build_cpu_name,
                        a.product,
                        a.branch,
+                       a.buildtype,
                        sta.url,
                        DATE_FORMAT(sta.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
                        sta.stack,
@@ -352,6 +362,7 @@
                           utr.os_version,
                           utr.cpu_name,
                           utr.build_cpu_name,
+                          utr.buildtype,
                           COUNT( c.id ) AS 'total_count'
                     FROM Crash AS c
                     JOIN UnitTestCrash AS utc ON c.id = utc.crash_id
@@ -362,7 +373,8 @@
                              utr.branch,
                              utr.os_name,
                              utr.os_version,
-                             utr.cpu_name
+                             utr.cpu_name,
+                             utr.buildtype
                     ORDER BY utr.fatal_message DESC, c.signature ASC
                     LIMIT 1000",
 
@@ -377,6 +389,7 @@
                           utr.os_version,
                           utr.cpu_name,
                           utr.build_cpu_name,
+                          utr.buildtype,
                           COUNT( c.id ) AS 'total_count'
                     FROM Crash AS c
                     JOIN UnitTestCrash AS utc ON c.id = utc.crash_id
@@ -392,7 +405,8 @@
                              utr.branch,
                              utr.os_name,
                              utr.os_version,
-                             utr.cpu_name
+                             utr.cpu_name,
+                             utr.buildtype
                     ORDER BY utr.fatal_message DESC, c.signature ASC
                     LIMIT 1000",
 
@@ -407,6 +421,7 @@
                        a.os_version,
                        a.cpu_name,
                        a.build_cpu_name,
+                       a.buildtype,
                        COUNT( a.id ) AS 'total_count',
                        SUM( uta.count ) AS 'occurrence_count'
                 FROM Assertion AS a
@@ -418,7 +433,8 @@
                          a.os_name,
                          a.os_version,
                          a.cpu_name,
-                         a.build_cpu_name
+                         a.build_cpu_name,
+                         a.buildtype
                 ORDER BY a.assertion ASC
                 LIMIT 1000",
 
@@ -435,6 +451,7 @@
                           a.os_version,
                           a.cpu_name,
                           a.build_cpu_name,
+                          a.buildtype,
                           COUNT( a.id ) AS 'total_count',
                           SUM( uta.count ) AS 'occurrence_count'
                     FROM Assertion AS a
@@ -451,7 +468,8 @@
                              a.os_name,
                              a.os_version,
                              a.cpu_name,
-                             a.build_cpu_name
+                             a.build_cpu_name,
+                             a.buildtype
                     ORDER BY a.assertion ASC
                     LIMIT 1000",
 
@@ -466,13 +484,14 @@
                        a.os_version,
                        a.cpu_name,
                        a.build_cpu_name,
+                       a.buildtype,
                        DATE_FORMAT(uta.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
                        COUNT(uta.url) AS 'total_count',
                        SUM( uta.count ) AS 'occurrence_count'
                  FROM Assertion AS a
                  JOIN UnitTestAssertion AS uta ON a.id = uta.assertion_id
                  WHERE (uta.datetime >= 'REP0' AND uta.datetime <= 'REP1') REP2
-                 GROUP BY uta.url, a.branch, a.os_name, a.os_version, a.build_cpu_name
+                 GROUP BY uta.url, a.branch, a.os_name, a.os_version, a.build_cpu_name, a.buildtype,
                  ORDER BY uta.datetime DESC
                  LIMIT 1000",
 
@@ -500,6 +519,7 @@
                        a.build_cpu_name,
                        a.product,
                        a.branch,
+                       a.buildtype,
                        uta.url,
                        DATE_FORMAT(uta.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
                        uta.stack,
@@ -527,6 +547,7 @@
                        v.os_version,
                        v.cpu_name,
                        v.build_cpu_name,
+                       v.buildtype,
                        COUNT( v.id ) AS 'total_count'
                 FROM Valgrind AS v 
                 JOIN UnitTestValgrind AS utv ON v.id = utv.valgrind_id
@@ -537,7 +558,8 @@
                          v.os_name,
                          v.os_version,
                          v.cpu_name,
-                         v.build_cpu_name
+                         v.build_cpu_name,
+                         v.buildtype
                 LIMIT 1000",
 
          "host_type":"master_host"
@@ -553,6 +575,7 @@
                           v.os_version,
                           v.cpu_name,
                           v.build_cpu_name,
+                          v.buildtype,
                           COUNT( v.id ) AS 'total_count'
                     FROM Valgrind AS v 
                     JOIN UnitTestValgrind AS utv ON v.id = utv.valgrind_id
@@ -568,7 +591,8 @@
                              v.os_name,
                              v.os_version,
                              v.cpu_name,
-                             v.build_cpu_name
+                             v.build_cpu_name,
+                             b.buildtype
                     LIMIT 1000",
 
             "host_type":"master_host"
@@ -582,12 +606,13 @@
                        v.os_version,
                        v.cpu_name,
                        v.build_cpu_name,
+                       v.buildtype,
                        DATE_FORMAT(utv.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
                        COUNT(utv.url) AS 'total_count'
                  FROM Valgrind AS v
                  JOIN UnitTestValgrind AS utv ON v.id = utv.valgrind_id
                  WHERE (utv.datetime >= 'REP0' AND utv.datetime <= 'REP1') REP2
-                 GROUP BY utv.url, v.branch, v.os_name, v.os_version, v.build_cpu_name
+                 GROUP BY utv.url, v.branch, v.os_name, v.os_version, v.build_cpu_name, v.buildtype
                  ORDER BY utv.datetime DESC
                  LIMIT 1000",
 
@@ -615,6 +640,7 @@
                        v.build_cpu_name,
                        v.product,
                        v.branch,
+                       v.buildtype,
                        utv.url,
                        DATE_FORMAT(utv.datetime, '%Y-%m-%d %H:%i:%s') AS 'datetime',
                        utv.stack,

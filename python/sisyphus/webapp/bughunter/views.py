@@ -28,6 +28,7 @@ from sisyphus.automation import utils
 from sisyphus.automation.crashtest.crashloader import CrashLoader
 from sisyphus.webapp.bughunter import models
 
+
 ###
 # Returns a random string with specified number of characters.  Adapted from
 # http://code.activestate.com/recipes/576722-pseudo-random-string/
@@ -1140,7 +1141,7 @@ def _aggregate_crashes_platform_data(table_struct):
        cpu_data = _format_cpu_data(row)
 
        platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
-       data[row['signature']][row['fatal_message']][row['branch']][platform]['total_count'] += row['total_count']
+       data[row['signature']][row['fatal_message']][row['branch'] + '&nbsp;' + row['buildtype']][platform]['total_count'] += row['total_count']
 
     response_data = []
     for signature, sig_matches in data.iteritems():
@@ -1169,8 +1170,8 @@ def _aggregate_assertion_platform_data(table_struct):
        cpu_data = _format_cpu_data(row)
 
        platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
-       data[row['assertion']][row['location']][row['branch']][platform]['total_count'] += int(row['total_count'])
-       data[row['assertion']][row['location']][row['branch']][platform]['occurrence_count'] += int(row['occurrence_count'])
+       data[row['assertion']][row['location']][row['branch'] + '&nbsp;' + row['buildtype']][platform]['total_count'] += int(row['total_count'])
+       data[row['assertion']][row['location']][row['branch'] + '&nbsp;' + row['buildtype']][platform]['occurrence_count'] += int(row['occurrence_count'])
 
     response_data = []
     for assertion, matches in data.iteritems():
@@ -1203,7 +1204,7 @@ def _aggregate_valgrind_platform_data(table_struct):
        cpu_data = _format_cpu_data(row)
 
        platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
-       data[row['signature']][row['message']][row['branch']][platform]['total_count'] += int(row['total_count'])
+       data[row['signature']][row['message']][row['branch'] + '&nbsp;' + row['buildtype']][platform]['total_count'] += int(row['total_count'])
 
     response_data = []
     for signature, matches in data.iteritems():
@@ -1235,10 +1236,10 @@ def _aggregate_url_platform_data(table_struct):
        cpu_data = _format_cpu_data(row)
 
        platform = '%s %s %s <b>%s</b>' % (row['os_name'], row['os_version'], cpu_data, row['total_count'])
-       data[row['url']][row['branch']][platform]['total_count'] += int(row['total_count'])
+       data[row['url']][row['branch'] + '&nbsp;' + row['buildtype']][platform]['total_count'] += int(row['total_count'])
 
        if 'occurrence_count' in row:
-          data[row['url']][row['branch']][platform]['occurrence_count'] += int(row['occurrence_count'])
+          data[row['url']][row['branch'] + '&nbsp;' + row['buildtype']][platform]['occurrence_count'] += int(row['occurrence_count'])
 
     response_data = []
     for url, branches in data.iteritems():

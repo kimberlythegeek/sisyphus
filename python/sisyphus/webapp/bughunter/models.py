@@ -21,12 +21,14 @@ class Worker(AbstractWorker):
     datetime          = models.DateTimeField(auto_now=True, auto_now_add=True)
     state             = models.CharField(max_length=10, db_index=True)
     worker_type       = models.CharField(max_length=16, db_index=True)
+    buildspecs        = models.CharField(max_length=128, null = False, blank = True)
 
     def __unicode__(self):
         return self.hostname
 
     class Meta:
         db_table = 'Worker'
+        ordering = ['hostname']
 
 class WorkerForm(ModelForm):
     class Meta:
@@ -39,6 +41,7 @@ class Log(models.Model):
 
     class Meta:
         db_table = 'Log'
+        ordering = ['datetime']
 
 class AbstractProduct(AbstractWorker):
     """ An abstract base class containing common product information
@@ -46,7 +49,7 @@ class AbstractProduct(AbstractWorker):
     particular class of machine. """
     product           = models.CharField(max_length=16, db_index=True) # Firefox, ...
     branch            = models.CharField(max_length=16, db_index=True) # Gecko branch: 1.9.2, 2.0.0, ...
-    buildtype         = models.CharField(max_length=8, db_index=True)  # opt, debug, nightly/release
+    buildtype         = models.CharField(max_length=32, db_index=True)  # opt, debug, nightly/release
 
     class Meta:
         abstract = True
@@ -58,7 +61,7 @@ class Branch(models.Model):
     product           = models.CharField(max_length=16)
     branch            = models.CharField(max_length=16)
     major_version     = models.CharField(max_length=16)
-    buildtype         = models.CharField(max_length=8)
+    buildtype         = models.CharField(max_length=32)
 
     def __unicode__(self):
         return '%s/%s' % (self.product, self.branch)
@@ -426,6 +429,8 @@ class SiteTestRun(AbstractProduct):
 
     class Meta:
         db_table = 'SiteTestRun'
+        index_together = [['priority', 'state', 'os_name', 'os_version',
+                           'cpu_name', 'build_cpu_name', 'buildtype']]
 
 class SiteTestRunForm(ModelForm):
     class Meta:

@@ -60,7 +60,7 @@
                        "exploitability":"1" },
            "control_panel":"named_fields.html",
            "data_adapter":"named_fields",
-           "hidden_columns":{ "changeset":"18", "bug_list":"19", "steps":"20", "exitstatus":"21", "priority":"22" },
+           "hidden_columns":{ "changeset":"19", "bug_list":"20", "steps":"21", "exitstatus":"22", "priority":"23", "socorro_id": "24" },
            "charts":[ { "name":"table", "read_name":"Table" } ]
          }
       ],
@@ -93,7 +93,7 @@
                        "url":"1"},
            "control_panel":"assertion_urls.html",
            "data_adapter":"named_fields",
-           "hidden_columns":{ "changeset":"13", "bug_list":"14", "steps":"15", "exitstatus":"16", "priority":"17" },
+           "hidden_columns":{ "changeset":"14", "bug_list":"15", "steps":"16", "exitstatus":"17", "priority":"18" },
            "charts":[ { "name":"table", "read_name":"Table" } ]
          }
 
@@ -144,7 +144,7 @@
                        "url":"1"},
            "control_panel":"assertion_urls.html",
            "data_adapter":"named_fields",
-           "hidden_columns":{ "changeset":"13", "exitstatus":"14" },
+           "hidden_columns":{ "changeset":"14", "exitstatus":"15" },
            "charts":[ { "name":"table", "read_name":"Table" } ]
          }
 
@@ -179,7 +179,7 @@
                         "url":"1"},
             "control_panel":"valgrind_urls.html",
             "data_adapter":"named_fields",
-            "hidden_columns":{ "changeset":"13", "exitstatus":"14" },
+            "hidden_columns":{ "changeset":"14", "exitstatus":"15" },
             "charts":[ { "name":"table", "read_name":"Table" } ]
          }
      ]

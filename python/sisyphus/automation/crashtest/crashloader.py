@@ -2,12 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from optparse import OptionParser
 import datetime
 import os
 import re
 import requests
 import sys
+
+from optparse import OptionParser
 
 if __name__ == '__main__':
     sisyphus_dir = os.environ["TEST_DIR"]
@@ -24,8 +25,6 @@ if __name__ == '__main__':
         sys.path.append(tempdir)
 
     os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
-
-import sisyphus.webapp.settings
 
 from django.db import connection
 from sisyphus.automation import utils
@@ -124,8 +123,11 @@ class CrashLoader(object):
             if cpu_name not in self.operating_systems[os_name][os_version]:
                 self.operating_systems[os_name][os_version][cpu_name] = {}
 
+            buildspecs = set(worker_row.buildspecs.split(','))
             if build_cpu_name not in self.operating_systems[os_name][os_version][cpu_name]:
-                self.operating_systems[os_name][os_version][cpu_name][build_cpu_name] = 1
+                self.operating_systems[os_name][os_version][cpu_name][build_cpu_name] = buildspecs
+            else:
+                self.operating_systems[os_name][os_version][cpu_name][build_cpu_name] = self.operating_systems[os_name][os_version][cpu_name][build_cpu_name].union(buildspecs)
 
     def ordered_ffversion(self, versionstring):
          versionstring = re.sub('[a-z].*$', '', versionstring)
@@ -405,13 +407,13 @@ class CrashLoader(object):
 
     def create_socorro_rows(self, pending_socorro, waiting_testruns, priority):
 
-        keys = [key for key in pending_socorro]
+        socorro_keys = [socorro_key for socorro_key in pending_socorro]
 
-        for key in keys:
+        for socorro_key in socorro_keys:
 
-            socorro_row = pending_socorro[key]
+            socorro_row = pending_socorro[socorro_key]
 
-            del pending_socorro[key]
+            del pending_socorro[socorro_key]
 
             # Instead of making the workers determine the best possible
             # match for a job, we will now create the jobs to match the
@@ -465,7 +467,12 @@ class CrashLoader(object):
                 for os_version in operating_systems[os_name]:
                     for cpu_name in operating_systems[os_name][os_version]:
                         for build_cpu_name in operating_systems[os_name][os_version][cpu_name]:
+                            buildspecs = self.operating_systems[os_name][os_version][cpu_name][build_cpu_name]
+
                             for buildtype in self.buildtypes[product]:
+
+                                if buildtype not in buildspecs:
+                                    continue
 
                                 key = "%s:%s:%s:%s:%s:%s:%s:%s" % (
                                     socorro_row.url,
