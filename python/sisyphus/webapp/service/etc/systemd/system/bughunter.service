@@ -1,6 +1,6 @@
 [Unit]
 Description=Bughunter service
-After=mysqld.service nginx.service
+After=mariadb.service nginx.service
 
 [Service]
 WorkingDirectory=/mozilla/builds/hg.mozilla.org/sisyphus/python/sisyphus/

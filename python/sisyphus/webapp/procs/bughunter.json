@@ -491,7 +491,7 @@
                  FROM Assertion AS a
                  JOIN UnitTestAssertion AS uta ON a.id = uta.assertion_id
                  WHERE (uta.datetime >= 'REP0' AND uta.datetime <= 'REP1') REP2
-                 GROUP BY uta.url, a.branch, a.os_name, a.os_version, a.build_cpu_name, a.buildtype,
+                 GROUP BY uta.url, a.branch, a.os_name, a.os_version, a.build_cpu_name, a.buildtype
                  ORDER BY uta.datetime DESC
                  LIMIT 1000",
 
@@ -592,7 +592,7 @@
                              v.os_version,
                              v.cpu_name,
                              v.build_cpu_name,
-                             b.buildtype
+                             v.buildtype
                     LIMIT 1000",
 
             "host_type":"master_host"

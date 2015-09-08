@@ -5,7 +5,7 @@ import json
 from datasource.bases.BaseHub import BaseHub
 from datasource.hubs.MySQL import MySQL
 
-from bughunter.filters.templatetags.bh_unorderedlist import bh_unorderedlist
+from sisyphus.webapp.bughunter.filters.templatetags import bh_unorderedlist
 
 # Set Database connectivity via environment
 SISYPHUS_DATABASE          = os.environ["SISYPHUS_DATABASE"]
@@ -138,7 +138,7 @@ TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
-    path('templates')
+    path('templates'),
 )
 
 INSTALLED_APPS = (
@@ -151,8 +151,8 @@ INSTALLED_APPS = (
     'django.contrib.admindocs',
 
     ##Bughunter related apps##
-    'bughunter',
-    'bughunter.filters',
+    'sisyphus.webapp.bughunter',
+    'sisyphus.webapp.bughunter.filters',
 )
 
 SERIALIZATION_MODULES = {

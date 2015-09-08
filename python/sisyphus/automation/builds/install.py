@@ -17,7 +17,7 @@ import urlparse
 import urllib
 import glob
 
-sisyphus_dir     = os.environ["TEST_DIR"]
+sisyphus_dir     = os.environ["SISYPHUS_DIR"]
 tempdir          = os.path.join(sisyphus_dir, 'python')
 if tempdir not in sys.path:
     sys.path.append(tempdir)

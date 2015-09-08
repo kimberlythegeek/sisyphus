@@ -90,11 +90,11 @@ def log_in(request):
         login(request, user)
         response = {'username': user.username}
     response_json = json.dumps(response)
-    return HttpResponse(response_json, mimetype=APP_JS)
+    return HttpResponse(response_json, content_type=APP_JS)
 
 def log_out(request):
     logout(request)
-    return HttpResponse('{}', mimetype=APP_JS)
+    return HttpResponse('{}', content_type=APP_JS)
 
 
 def crashtests(request):
@@ -163,11 +163,11 @@ def worker_summary(request):
 
     worker_data_list.sort(cmp=lambda x, y: cmp(x['id'], y['id']))
     worker_data_list_json = json.dumps(worker_data_list)
-    return HttpResponse(worker_data_list_json, mimetype=APP_JS)
+    return HttpResponse(worker_data_list_json, content_type=APP_JS)
 
 def worker_api(request, worker_id):
     serialized_workers = serializers.serialize('json', [models.Worker.objects.get(pk=worker_id)])
-    response = HttpResponse(serialized_workers, mimetype=APP_JS)
+    response = HttpResponse(serialized_workers, content_type=APP_JS)
     # Guh, shoot me.
     # Since the datetimes in the db are stored in local time, we need
     # to provide the server's local time to the client so it can provide
@@ -189,7 +189,7 @@ def worker_log_api(request, worker_id, start, end):
         serialized_logs = serializers.serialize("json", logs)
     elif request.method == 'DELETE':
         logs.delete()
-    return HttpResponse(serialized_logs, mimetype=APP_JS)
+    return HttpResponse(serialized_logs, content_type=APP_JS)
 
 @login_required
 def all_workers_log_api(request, start, end):
@@ -212,7 +212,7 @@ def all_workers_log_api(request, start, end):
                         json_workers = json.loads(serialized_workers)
                         log['fields']['worker'] = json_workers[0]
             serialized_logs = json.dumps(json_logs)
-            return HttpResponse(serialized_logs, mimetype=APP_JS)
+            return HttpResponse(serialized_logs, content_type=APP_JS)
         if request.method == 'DELETE':
             # Clear Logs should clear entire log, not just displayed entries.
             models.Log.objects.all().delete()
@@ -220,7 +220,7 @@ def all_workers_log_api(request, start, end):
         exceptionType, exceptionValue, errorMessage  = utils.formatException()
         sys.stderr.write("all_workers_log_api: Exception: %s.\n" % errorMessage)
 
-    return HttpResponse('[]', mimetype=APP_JS)
+    return HttpResponse('[]', content_type=APP_JS)
 
 @csrf_exempt
 def post_files(request):
@@ -329,7 +329,7 @@ def post_files(request):
 @login_required
 def workers_api(request):
     serialized_workers = serializers.serialize('json', models.Worker.objects.order_by('hostname').exclude(state='disabled'))
-    return HttpResponse(serialized_workers, mimetype=APP_JS)
+    return HttpResponse(serialized_workers, content_type=APP_JS)
 
 def crashes_by_date(request, start, end, other_parms):
     other_parms_list = filter(lambda x: x, other_parms.split('/'))
@@ -376,7 +376,7 @@ ORDER BY `SiteTestRun`.`fatal_message` DESC , Crash.signature ASC"""
                       'branches': branches }
             response_data.append(crash)
 
-    return HttpResponse(json.dumps(response_data), mimetype=APP_JS)
+    return HttpResponse(json.dumps(response_data), content_type=APP_JS)
 
 ####
 #BUGHUNTER VIEW SERVICE METHODS
@@ -514,7 +514,7 @@ def get_date_range(request, **kwargs):
                                'end_date':str(end_date),
                                'current_date':str(current_date) } )
 
-    return HttpResponse(dates_json, mimetype=APP_JS)
+    return HttpResponse(dates_json, content_type=APP_JS)
 
 @login_required
 def resubmit_urls(request):
@@ -557,7 +557,7 @@ def resubmit_urls(request):
         utils.releaseLock('sisyphus.bughunter.sitetestrun')
 
     message_json = json.dumps( { 'message':message } )
-    return HttpResponse(message_json, mimetype=APP_JS)
+    return HttpResponse(message_json, content_type=APP_JS)
 
 @bhview_setup
 @login_required
@@ -622,7 +622,7 @@ def get_bhview(request, **kwargs):
     else:
         response_json = '{ "error":"Data view name %s not recognized" }' % proc_name
 
-    return HttpResponse(response_json, mimetype=APP_JS)
+    return HttpResponse(response_json, content_type=APP_JS)
 
 ####
 #USER DATA: URL Resubmissions

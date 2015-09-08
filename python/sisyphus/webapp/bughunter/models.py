@@ -18,7 +18,7 @@ class Worker(AbstractWorker):
     """ An abstract base class that encapsulates the information related to a worker."""
 
     hostname          = models.CharField(max_length=64, db_index=True)
-    datetime          = models.DateTimeField(auto_now=True, auto_now_add=True)
+    datetime          = models.DateTimeField(auto_now=True)
     state             = models.CharField(max_length=10, db_index=True)
     worker_type       = models.CharField(max_length=16, db_index=True)
     buildspecs        = models.CharField(max_length=128, null = False, blank = True)
@@ -32,10 +32,11 @@ class Worker(AbstractWorker):
 
 class WorkerForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = Worker
 
 class Log(models.Model):
-    datetime          = models.DateTimeField(auto_now=True, auto_now_add=True)
+    datetime          = models.DateTimeField(auto_now=True)
     worker            = models.ForeignKey(Worker)
     message           = models.TextField()
 
@@ -71,6 +72,7 @@ class Branch(models.Model):
 
 class BranchForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = Branch
 
 class Build(AbstractProduct):
@@ -83,7 +85,7 @@ class Build(AbstractProduct):
     worker             = models.ForeignKey(Worker) # CouchDB change: couchdb field is worker_id, but use django style for foreign key names
     buildavailable     = models.NullBooleanField()
     state              = models.CharField(max_length=64)
-    datetime           = models.DateTimeField(auto_now=True, auto_now_add=True)
+    datetime           = models.DateTimeField(auto_now=True)
     buildsuccess       = models.NullBooleanField()
     packagesuccess     = models.NullBooleanField()
     clobbersuccess     = models.NullBooleanField()
@@ -105,6 +107,7 @@ class Build(AbstractProduct):
 
 class BuildForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = Build
 
 class Crash(AbstractProduct):
@@ -136,6 +139,7 @@ class Crash(AbstractProduct):
 
 class CrashForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = Crash
 
 class AbstractCrash(models.Model): #AbstractCrash(AbstractProduct):
@@ -143,7 +147,7 @@ class AbstractCrash(models.Model): #AbstractCrash(AbstractProduct):
     actual crash during a test."""
 
     url               = models.CharField(max_length=1000, db_index=True)
-    datetime          = models.DateTimeField(auto_now=True, auto_now_add=True)
+    datetime          = models.DateTimeField(auto_now=True)
     minidump          = models.CharField(max_length=256, null = True, blank = True) # breakpad minidump
     extradump         = models.CharField(max_length=256, null = True, blank = True)
     msdump            = models.CharField(max_length=256, null = True, blank = True) # optional (new) ms dump file
@@ -188,6 +192,7 @@ class Assertion(AbstractProduct):
 
 class AssertionForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = Assertion
 
 class AbstractAssertion(models.Model): #AbstractAssertion(AbstractProduct):
@@ -195,7 +200,7 @@ class AbstractAssertion(models.Model): #AbstractAssertion(AbstractProduct):
     actual assertion during a test."""
 
     url               = models.CharField(null = True, max_length=1000, db_index=True)
-    datetime          = models.DateTimeField(auto_now=True, auto_now_add=True)
+    datetime          = models.DateTimeField(auto_now=True)
     stack             = models.TextField(null = True, blank = True) # New field. 256 is too small, but I don't know what to use yet.
     count             = models.IntegerField(null = True)
 
@@ -232,6 +237,7 @@ class Valgrind(AbstractProduct):
 
 class ValgrindForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = Valgrind
 
 class AbstractValgrind(models.Model): #AbstractValgrind(AbstractProduct):
@@ -239,7 +245,7 @@ class AbstractValgrind(models.Model): #AbstractValgrind(AbstractProduct):
     actual valgrind message during a test."""
 
     url               = models.CharField(max_length=1000, db_index=True)
-    datetime          = models.DateTimeField(auto_now=True, auto_now_add=True)
+    datetime          = models.DateTimeField(auto_now=True)
     stack             = models.TextField() # CouchDB: This is a block of text with newlines and raw addresses that contains the valgrind message/stack.
     count             = models.IntegerField()
 
@@ -269,13 +275,14 @@ class UnitTestBranch(models.Model):
 
 class UnitTestBranchForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = UnitTestBranch
 
 class UnitTestRun(AbstractProduct):
     worker            = models.ForeignKey(Worker, null = True, blank = True)
     unittestbranch    = models.ForeignKey(UnitTestBranch, null = True, blank = True)
     changeset         = models.CharField(max_length=16, null = True, blank = True)
-    datetime          = models.DateTimeField(auto_now=True, auto_now_add=True)
+    datetime          = models.DateTimeField(auto_now=True)
     major_version     = models.CharField(max_length=4, null = True, blank = True)
     crashed           = models.NullBooleanField()
     extra_test_args   = models.CharField(max_length=256, null = True, blank = True)
@@ -293,6 +300,7 @@ class UnitTestRun(AbstractProduct):
 
 class UnitTestRunForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = UnitTestRun
 
 # http://dev.mysql.com/doc/refman/5.1/en/charset-unicode-utf8.html
@@ -312,6 +320,7 @@ class UnitTestResult(models.Model): #UnitTestResult(AbstractProduct):
 
 class UnitTestResultForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = UnitTestResult
 
 class UnitTestCrash(AbstractCrash):
@@ -323,6 +332,7 @@ class UnitTestCrash(AbstractCrash):
 
 class UnitTestCrashForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = UnitTestCrash
 
 class UnitTestCrashDumpMetaData(AbstractCrashDumpMetaData):
@@ -333,6 +343,7 @@ class UnitTestCrashDumpMetaData(AbstractCrashDumpMetaData):
 
 class UnitTestCrashDumpMetaDataForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = UnitTestCrashDumpMetaData
 
 class UnitTestAssertion(AbstractAssertion):
@@ -344,6 +355,7 @@ class UnitTestAssertion(AbstractAssertion):
 
 class UnitTestAssertionForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = UnitTestAssertion
 
 class UnitTestValgrind(AbstractValgrind):
@@ -355,6 +367,7 @@ class UnitTestValgrind(AbstractValgrind):
 
 class UnitTestValgrindForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = UnitTestValgrind
 
 ##############################
@@ -402,13 +415,14 @@ class SocorroRecord(models.Model):
 
 class SocorroRecordForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = SocorroRecord
 
 class SiteTestRun(AbstractProduct):
     worker            = models.ForeignKey(Worker,         null = True, blank = True)
     socorro           = models.ForeignKey(SocorroRecord)
     changeset         = models.CharField(max_length=16,   null = True, blank = True)
-    datetime          = models.DateTimeField(auto_now=True, auto_now_add=True)
+    datetime          = models.DateTimeField(auto_now=True)
     major_version     = models.CharField(max_length=4)
     bug_list          = models.CharField(max_length=256,  null = True, blank = True)
     crashed           = models.NullBooleanField()
@@ -434,6 +448,7 @@ class SiteTestRun(AbstractProduct):
 
 class SiteTestRunForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = SiteTestRun
 
 # Should this and UnitTestCrash be ManyToMany relationships?
@@ -446,6 +461,7 @@ class SiteTestCrash(AbstractCrash):
 
 class SiteTestCrashForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = SiteTestCrash
 
 class SiteTestCrashDumpMetaData(AbstractCrashDumpMetaData):
@@ -456,6 +472,7 @@ class SiteTestCrashDumpMetaData(AbstractCrashDumpMetaData):
 
 class SiteTestCrashDumpMetaDataForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = SiteTestCrashDumpMetaData
 
 class SiteTestAssertion(AbstractAssertion):
@@ -467,6 +484,7 @@ class SiteTestAssertion(AbstractAssertion):
 
 class SiteTestAssertionForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = SiteTestAssertion
 
 class SiteTestValgrind(AbstractValgrind):
@@ -478,6 +496,7 @@ class SiteTestValgrind(AbstractValgrind):
 
 class SiteTestValgrindForm(ModelForm):
     class Meta:
+        fields = "__all__"
         model = SiteTestValgrind
 
 # Singleton tables

@@ -11,7 +11,7 @@ import sys
 from optparse import OptionParser
 
 if __name__ == '__main__':
-    sisyphus_dir = os.environ["TEST_DIR"]
+    sisyphus_dir = os.environ["SISYPHUS_DIR"]
     tempdir = os.path.join(sisyphus_dir, 'python')
     if tempdir not in sys.path:
         sys.path.append(tempdir)
@@ -25,6 +25,9 @@ if __name__ == '__main__':
         sys.path.append(tempdir)
 
     os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
+
+    import django
+    django.setup()
 
 from django.db import connection
 from sisyphus.automation import utils

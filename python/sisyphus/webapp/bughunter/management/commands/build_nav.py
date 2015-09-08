@@ -7,7 +7,7 @@ from django.template import Template, Context
 from django.core.management.base import BaseCommand, CommandError
 
 from datasource.bases.BaseHub import BaseHub
-from bughunter.filters.templatetags.bh_unorderedlist import bh_unorderedlist
+from sisyphus.webapp.bughunter.filters.templatetags import bh_unorderedlist
 
 class Command(BaseCommand):
 
