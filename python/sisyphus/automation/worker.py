@@ -1219,7 +1219,6 @@ class Worker(object):
 
         return False
 
-    ###
     def get_remote_text(self, url):
         """Return the string containing the contents of a remote url if the
         HTTP response code is 200, otherwise return None.
@@ -1409,7 +1408,7 @@ class Worker(object):
         build_file_pattern = self.product + '.*'
         build_file_ext = ''
 
-        tinderbox_prefix = 'https://ftp.mozilla.org/pub/mozilla.org/firefox/tinderbox-builds'
+        tinderbox_prefix = 'https://archive.mozilla.org/pub/firefox/tinderbox-builds'
         tinderbox_repo_name = ''
         if self.branch == 'nightly':
             tinderbox_repo_name = 'mozilla-central'
@@ -1449,16 +1448,35 @@ class Worker(object):
         if buildspec['buildtype'] == 'debug':
             tinderbox_debug = '-debug'
 
-        tinderbox_dir = '%s/%s%s%s%s/latest' % (
+        tinderbox_dir = '%s/%s%s%s%s/' % (
             tinderbox_prefix,
             tinderbox_repo_name,
             tinderbox_os_bits,
             tinderbox_asan,
             tinderbox_debug)
 
-        if not self.isBuildClaimed():
+        # The links from the tinderbox directory are returned in date
+        # order. Currently, the last link is to the obsolete "latest"
+        # directory which means that currently the latest timestamp is
+        # the second to last entry. When the latest link is removed in
+        # the future, the latest timestamp will be the last entry.
+        re_timestamp = re.compile('[0-9]+')
+        build_dir = None
+        build_links = self.url_links(tinderbox_dir)
+        while build_links:
+            build_link = build_links[-1]
+            text = build_link.get_text().strip('/')
+            if re_timestamp.match(text):
+                build_dir = '%s%s/' % (tinderbox_dir, text)
+                break
+            build_links = build_links[:-1]
+        if not build_dir:
+            self.logMessage('getTinderboxBuild: no builds found at %s' %
+                            tinderbox_dir)
+            buildsuccess = False
+        elif not self.isBuildClaimed():
             build_regex = re.compile(build_file_pattern)
-            build_url = self.get_build_url(tinderbox_dir, build_regex)
+            build_url = self.get_build_url(build_dir, build_regex)
             if not build_url:
                 buildsuccess = False
             else:
@@ -1516,7 +1534,7 @@ class Worker(object):
 
         self.saveBuild()
 
-    ###
+
     def buildProduct(self):
         buildsteps      = "clobber checkout build"
         buildchangeset  = None
