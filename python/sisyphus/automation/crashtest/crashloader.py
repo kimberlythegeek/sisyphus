@@ -606,6 +606,11 @@ Example:
                       help='File containing urls to load when loading urls '
                       'from a file.')
 
+    parser.add_option('--duplicates', action='store_true',
+                      dest='duplicates',
+                      default=False,
+                      help='Included duplicates. Default is to exclude them.')
+
     parser.add_option('--signature', action='store', type='string',
                       dest='signature',
                       default=None,
@@ -637,9 +642,12 @@ Example:
     while not utils.getLock('sisyphus.bughunter.sitetestrun', 300):
         continue
 
+    if options.duplicates:
+        waiting_testruns = {}
+    else:
+        waiting_testruns = crashloader.load_waiting_testruns()
     if options.urlsfile:
         urls = []
-        waiting_testruns = {}
         urlsfilehandle = open(options.urlsfile, 'r')
         for url in urlsfilehandle:
             url = url.rstrip('\n')[:1000] ### Should get the length from the model
@@ -648,7 +656,6 @@ Example:
         pending_socorro = crashloader.load_urls(urls, user_id, options.signature)
         priority = '1'
     else:
-        waiting_testruns = crashloader.load_waiting_testruns()
         pending_socorro = crashloader.load_socorro_crashdata(options.start_date,
                                                              options.stop_date,
                                                              options.include_hangs)
