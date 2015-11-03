@@ -694,11 +694,13 @@ var gProgressListener = {
 
     if (aFlags && (aFlags & Ci.nsIWebProgressListener.LOCATION_CHANGE_ERROR_PAGE)) {
       dlog('onLocationChange: force timeout due to ERROR_PAGE current uri ' +
-           gSpider.mCurrentUrl.mUrl);
+           (gSpider.mCurrentUrl ? gSpider.mCurrentUrl.mUrl : 'null'));
       gPageLoader.ontimeout();
     }
     else {
-        dlog('onLocationChange: original ' + gSpider.mCurrentUrl.mUrl + ' final ' + aLocationURI.spec);
+      dlog('onLocationChange: original ' +
+           (gSpider.mCurrentUrl ? gSpider.mCurrentUrl.mUrl : 'null') +
+           ' final ' + aLocationURI.spec);
     }
   },
 
