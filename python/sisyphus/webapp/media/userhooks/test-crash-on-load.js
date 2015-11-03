@@ -45,6 +45,8 @@ function userOnAfterPage()
   setTimeout(completePage, gPageWait);
 }
 
+userOnPageTimeout = userOnAfterPage;
+
 function completePage()
 {
   dlog('completePage()');
