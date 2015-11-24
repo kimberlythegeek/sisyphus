@@ -677,7 +677,7 @@ var ExternalLink = new Class({
    initialize: function(selector, options){
 
       this.bugzillaBase = 'https://bugzilla.mozilla.org/buglist.cgi?quicksearch=ALL classification:"Client Software" OR classification:"Components" AND ';
-      this.crashstatsBase = "http://crash-stats.mozilla.com/query/query?do_query=1&query_type=contains&query=";
+      this.crashstatsBase = "http://crash-stats.mozilla.com/search/?signature=~";
 
       this.bugzillaFieldMap = { sig: { value:'sig:REP' },
                                 url: { value:'url:REP' },
