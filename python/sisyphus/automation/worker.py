@@ -772,10 +772,8 @@ class Worker(object):
                 self.logMessage('process_dump_files: exception processing dump crash report: %s, %s, %s' % (dumpFile,
                                                                                                             exceptionValue,
                                                                                                             errorMessage))
-
-            if not exploitablePath:
-                exploitability = None
-            else:
+            exploitability = None
+            if exploitablePath:
                 try:
                     proc = subprocess.Popen(
                         [
