@@ -443,7 +443,10 @@ class Worker(object):
             # consolidated in the database. Otherwise the branch name
             # will result in different Assertion objects for different
             # branches even for the same assertion.
-            assertionfile = re.sub('(/work)?/mozilla/builds/[^/]+/mozilla/', '', assertionfile)
+            assertionfile = re.sub(
+                '(/work)?/mozilla/builds/[^/]+/mozilla/|'
+                '/builds/.*/build/(src/)?',
+                '', assertionfile)
 
             assertion_rows = models.Assertion.objects.filter(
                 os_name         = self.os_name,
