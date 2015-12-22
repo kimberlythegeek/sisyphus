@@ -35,3 +35,7 @@ user_pref("browser.newtabpage.enabled", false);
 user_pref("browser.newtabpage.directory.source", "about:blank");
 user_pref("network.proxy.type", 5);
 user_pref("xpinstall.signatures.required", false);
+user_pref("hangmonitor.timeout", 0); // no hang monitor
+//https://dxr.mozilla.org/mozilla-central/source/toolkit/components/terminator/nsTerminator.cpp#50
+//https://dxr.mozilla.org/mozilla-central/source/toolkit/components/terminator/nsTerminator.cpp#364
+user_pref("toolkit.asyncshutdown.crash_timeout", 240000);
