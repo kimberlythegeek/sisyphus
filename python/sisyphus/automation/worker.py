@@ -171,6 +171,8 @@ class Worker(object):
         self.builddata = {}
 
         branches_rows = models.Branch.objects.all()
+        if not self.buildspecs:
+            self.buildspecs = ','.join(set([row.buildtype for row in branches_rows]))
 
         if len(branches_rows) == 0:
             raise Exception('Branch table is empty.')
