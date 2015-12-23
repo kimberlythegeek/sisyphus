@@ -1294,7 +1294,7 @@ class Worker(object):
             if build_regex.match(filename):
                 self.debugMessage('find_builds_by_directory: found filename: %s' % filename)
                 return '%s%s' % (directory, filename)
-        self.logMessage('No builds found.')
+        self.logMessage('No builds found in %s.' % directory)
         return None
 
     ###
@@ -1464,61 +1464,57 @@ class Worker(object):
         # the second to last entry. When the latest link is removed in
         # the future, the latest timestamp will be the last entry.
         re_timestamp = re.compile('[0-9]+')
-        build_dir = None
+        build_url = None
+        build_regex = re.compile(build_file_pattern)
         build_links = self.url_links(tinderbox_dir)
-        while build_links:
+        while build_links and not build_url:
             build_link = build_links[-1]
             text = build_link.get_text().strip('/')
             if re_timestamp.match(text):
                 build_dir = '%s%s/' % (tinderbox_dir, text)
-                break
+                build_url = self.get_build_url(build_dir, build_regex)
             build_links = build_links[:-1]
-        if not build_dir:
+        if not build_url:
             self.logMessage('getTinderboxBuild: no builds found at %s' %
                             tinderbox_dir)
             buildsuccess = False
         elif not self.isBuildClaimed():
-            build_regex = re.compile(build_file_pattern)
-            build_url = self.get_build_url(build_dir, build_regex)
-            if not build_url:
+            uploader = utils.FileUploader(post_files_url,
+                                          'Build', self.build_row, self.build_row.build_id,
+                                          'builds')
+            # Download the product package
+            fieldname = 'product_package'
+            filename = '%s.%s' % (self.build_id, build_file_ext)
+            build_path = '/tmp/' + filename
+            symbols_path = None
+            if not utils.downloadFile(build_url, build_path):
+                self.logMessage('getTinderboxBuild: failed to download %s' %
+                                build_url)
                 buildsuccess = False
             else:
-                uploader = utils.FileUploader(post_files_url,
-                                              'Build', self.build_row, self.build_row.build_id,
-                                              'builds')
-                # Download the product package
-                fieldname = 'product_package'
-                filename = '%s.%s' % (self.build_id, build_file_ext)
-                build_path = '/tmp/' + filename
-                symbols_path = None
-                if not utils.downloadFile(build_url, build_path):
-                    self.logMessage('getTinderboxBuild: failed to download %s' %
-                                    build_url)
-                    buildsuccess = False
-                else:
-                    # Add the product package to the uploader
-                    uploader.add(fieldname, filename, build_path)
-                    if buildspec['extra'] != 'asan':
-                        # asan builds do not have separate symbols file
-                        symbols_url = build_url.replace(build_file_ext, 'crashreporter-symbols.zip')
-                        fieldname = 'symbols_file'
-                        filename = '%s.crashreporter-symbols.zip' % self.build_row.build_id
-                        symbols_path = '/tmp/' + filename
-                        if not utils.downloadFile(symbols_url, symbols_path):
-                            self.logMessage('getTinderboxBuild: failed to download %s' %
-                                            symbols_url)
-                            buildsuccess = False
-                        else:
-                            # Add the crash symbols to the uploader
-                            uploader.add(fieldname, filename, symbols_path)
-                            self.logMessage('success uploading %s %s %s' % (self.product, self.branch, self.buildtype))
-                    if buildsuccess:
-                        self.build_row = uploader.send()
+                # Add the product package to the uploader
+                uploader.add(fieldname, filename, build_path)
+                if buildspec['extra'] != 'asan':
+                    # asan builds do not have separate symbols file
+                    symbols_url = build_url.replace(build_file_ext, 'crashreporter-symbols.zip')
+                    fieldname = 'symbols_file'
+                    filename = '%s.crashreporter-symbols.zip' % self.build_row.build_id
+                    symbols_path = '/tmp/' + filename
+                    if not utils.downloadFile(symbols_url, symbols_path):
+                        self.logMessage('getTinderboxBuild: failed to download %s' %
+                                        symbols_url)
+                        buildsuccess = False
+                    else:
+                        # Add the crash symbols to the uploader
+                        uploader.add(fieldname, filename, symbols_path)
+                        self.logMessage('success uploading %s %s %s' % (self.product, self.branch, self.buildtype))
+                if buildsuccess:
+                    self.build_row = uploader.send()
 
-                if os.path.exists(build_path):
-                    os.unlink(build_path)
-                if symbols_path and os.path.exists(symbols_path):
-                    os.unlink(symbols_path)
+            if os.path.exists(build_path):
+                os.unlink(build_path)
+            if symbols_path and os.path.exists(symbols_path):
+                os.unlink(symbols_path)
 
         self.build_row.builddate      = builddate
         self.build_row.buildavailable = buildsuccess
