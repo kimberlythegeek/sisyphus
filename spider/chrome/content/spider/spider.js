@@ -692,7 +692,7 @@ var gProgressListener = {
       dlog('onLocationChange: ' + this.request_to_str(aRequest) + ' ' + aLocationURI.spec + ' ' + state_message);
     }
 
-    if (aFlags && (aFlags & Ci.nsIWebProgressListener.LOCATION_CHANGE_ERROR_PAGE)) {
+    if (aRequest && aFlags && (aFlags & Ci.nsIWebProgressListener.LOCATION_CHANGE_ERROR_PAGE)) {
       dlog('onLocationChange: force timeout due to ERROR_PAGE current uri ' +
            (gSpider.mCurrentUrl ? gSpider.mCurrentUrl.mUrl : 'null'));
       gPageLoader.ontimeout();
