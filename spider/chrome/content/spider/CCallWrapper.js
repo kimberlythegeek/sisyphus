@@ -122,7 +122,9 @@ CCallWrapper.prototype.cancel = function CCallWrapper_cancel()
 
 CCallWrapper.asyncExecute = function CCallWrapper_asyncExecute(/* CCallWrapper */ callwrapper)
 {
-  CCallWrapper.mPendingCalls[callwrapper.mId].mTimerId = setTimeout('CCallWrapper.mPendingCalls["' + callwrapper.mId + '"].execute()', callwrapper.mDelay);
+  CCallWrapper.mPendingCalls[callwrapper.mId].mTimerId =
+  setTimeout(function (){CCallWrapper.mPendingCalls[callwrapper.mId].execute();},
+             callwrapper.mDelay);
   dlog('CCallwrapper.asyncExecute mMethodName=' + callwrapper.mMethodName + ', mTimerId=' + callwrapper.mTimerId + ', mId=' + callwrapper.mId + ', mDelay=' + callwrapper.mDelay);
 };
 

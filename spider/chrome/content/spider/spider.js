@@ -161,7 +161,7 @@ function init(evt)
 
   if (gForm.autostart.checked)
   {
-    setTimeout('main(gForm)', 100);
+    setTimeout(function (){main(gForm);}, 100);
   }
 }
 
@@ -373,7 +373,7 @@ function main(form)
     {
       update_status('Page loaded', 'mOnAfterPage: exception: ' + ex + ', ' + ex.stack);
     }
-    gRestartThread = setTimeout('observeHookSignal()', 1000);
+    gRestartThread = setTimeout(function (){observeHookSignal();}, 1000);
     return false;
   };
 
@@ -410,7 +410,7 @@ function main(form)
     {
       unregisterConsoleListener();
       unregisterDialogCloser();
-      setTimeout('goQuitApplication()', 100);
+      setTimeout(function (){goQuitApplication();}, 100);
     }
     return true;
   };
@@ -544,17 +544,17 @@ function observeHookSignal()
   {
     window.dlog('observeHookSignal() gSpider.restart() in  gWaitTime');
     gPageCompleted = true;
-    gRestartThread = setTimeout('gSpider.restart()', gWaitTime);
+    gRestartThread = setTimeout(function (){gSpider.restart();}, gWaitTime);
   }
   else if (!gPageCompleted)
   {
     window.dlog('observeHookSignal() observeHookSignal() in  1000');
-    gRestartThread = setTimeout('observeHookSignal()', 1000);
+    gRestartThread = setTimeout(function (){observeHookSignal();}, 1000);
   }
   else
   {
     window.dlog('observeHookSignal() gSpider.restart() in 100');
-    gRestartThread = setTimeout('gSpider.restart()', 100);
+    gRestartThread = setTimeout(function (){gSpider.restart();}, 100);
   }
 }
 
