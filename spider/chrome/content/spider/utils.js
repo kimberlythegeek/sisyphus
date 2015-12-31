@@ -165,7 +165,12 @@ observe:function gConsoleListener_Observe( aMessage )
 
     msg += category;
 
-    type = this.consoleStrings.getString(typeName);
+    try {
+      type = this.consoleStrings.getString(typeName);
+    }
+    catch(ex) {
+      type = typeName.replace(/^type/, '');
+    }
 
     msg += ' ' + type + ' ';
 
