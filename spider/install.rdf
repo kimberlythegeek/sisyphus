@@ -6,7 +6,7 @@
 
                 <em:id>{47b978aa-2fbb-4f64-886f-b2845d76c709}</em:id>
                 <em:name>Spider</em:name>
-                <em:version>0.1.0.1</em:version>
+                <em:version>0.1.0.2</em:version>
                 <em:description>A Web Spider for Firefox, and Gecko applications</em:description>
                 <em:creator>Bob Clary</em:creator>
                 <em:homepageURL>http://bclary.com/projects/spider/</em:homepageURL>
@@ -26,7 +26,16 @@
                         <Description>
                                 <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
                                 <em:minVersion>4.0</em:minVersion>
-                                <em:maxVersion>*</em:maxVersion>
+                                <em:maxVersion>46.0</em:maxVersion>
+                        </Description>
+                </em:targetApplication>
+
+    <!-- Firefox for Android -->
+                <em:targetApplication>
+                        <Description>
+                                <em:id>{aa3c5121-dab2-40e2-81ca-7ea25febc110}</em:id>
+                                <em:minVersion>11.0</em:minVersion>
+                                <em:maxVersion>46.0</em:maxVersion>
                         </Description>
                 </em:targetApplication>
 
@@ -34,8 +43,8 @@
                 <em:targetApplication>
                         <Description>
                                 <em:id>{3550f703-e582-4d05-9a08-453d09bdfdc6}</em:id>
-                                <em:minVersion>4.0</em:minVersion>
-                                <em:maxVersion>*</em:maxVersion>
+                                <em:minVersion>5.0</em:minVersion>
+                                <em:maxVersion>46.0</em:maxVersion>
                         </Description>
                 </em:targetApplication>
 
@@ -44,7 +53,7 @@
                         <Description>
                                 <em:id>{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}</em:id>
                                 <em:minVersion>2.0</em:minVersion>
-                                <em:maxVersion>*</em:maxVersion>
+                                <em:maxVersion>2.42</em:maxVersion>
                         </Description>
                 </em:targetApplication>
 
@@ -53,7 +62,7 @@
                         <Description>
                                 <em:id>{a23983c0-fd0e-11dc-95ff-0800200c9a66}</em:id>
                                 <em:minVersion>1.0</em:minVersion>
-                                <em:maxVersion>*</em:maxVersion>
+                                <em:maxVersion>40.0</em:maxVersion>
                         </Description>
                 </em:targetApplication>
 
