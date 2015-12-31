@@ -9,7 +9,6 @@ chrome/spider.jar: $(FILES)
 
 spider.xpi: file.manifest chrome/Makejar chrome/spider.jar $(FILES)
 	zip -r -o $@ `cat file.manifest`
-	install $@ ../xpi/all/
 
 clean:
 	make -C chrome -f Makejar clean
