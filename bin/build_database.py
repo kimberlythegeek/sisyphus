@@ -20,11 +20,11 @@ The json structure of the database is illustrated by:
 
 {
     "builds": {
-        "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/2011/04/2011-04-01-03-mozilla-central-debug/firefox-4.2a1pre.en-US.debug-mac.dmg ": {
+        "http://archive.mozilla.org/pub/firefox/nightly/2011/04/2011-04-01-03-mozilla-central-debug/firefox-4.2a1pre.en-US.debug-mac.dmg ": {
             "buildid": "20110331213228", 
             "changeset": "http://hg.mozilla.org/mozilla-central/rev/1a89509e25e4"
         }, 
-        "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/2011/04/2011-04-01-03-mozilla-central/firefox-4.2a1pre.en-US.mac.dmg ": {
+        "http://archive.mozilla.org/pub/firefox/nightly/2011/04/2011-04-01-03-mozilla-central/firefox-4.2a1pre.en-US.mac.dmg ": {
             "buildid": "20110401030438", 
             "changeset": "http://hg.mozilla.org/mozilla-central/rev/1a89509e25e4"
         }, 
@@ -161,7 +161,7 @@ def build_database(options):
                               platform_data.cpu_name,
                               platform_data.suffix))
     httplib = httplib2.Http();
-    ftpurl = 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly'
+    archiveurl = 'http://archive.mozilla.org'
 
     now = datetime.datetime.now()
     yesterday = datetime.datetime(now.year, now.month, now.day) - datetime.timedelta(days=1)
@@ -169,7 +169,7 @@ def build_database(options):
 
     while last_update <= yesterday:
 
-        directory_url = '%s/%04d/%02d/' % (ftpurl, last_update.year, last_update.month)
+        directory_url = '%s/pub/firefox/nightly/%04d/%02d/' % (archiveurl, last_update.year, last_update.month)
         directory_resp, directory_content = httplib.request(directory_url, "GET")
 
         if directory_resp.status == 200:
@@ -177,14 +177,14 @@ def build_database(options):
             for directory_link in directory_soup.findAll('a'):
                 match = re_branches.search(directory_link.get('href'))
                 if match:
-                    builddir_url = '%s%s' % (directory_url, directory_link.get('href'))
+                    builddir_url = '%s%s' % (archiveurl, directory_link.get('href'))
                     builddir_resp, build_content = httplib.request(builddir_url, "GET")
                     if builddir_resp.status == 200:
                         builddir_soup = BeautifulSoup.BeautifulSoup(build_content)
                         for build_link in builddir_soup.findAll('a'):
-                            match = re_builds.match(build_link.get('href'))
+                            match = re_builds.search(build_link.get('href'))
                             if match:
-                                buildurl = "%s%s" % (builddir_url, build_link.get('href'))
+                                buildurl = "%s%s" % (archiveurl, build_link.get('href'))
                                 if buildurl in database['builds']:
                                     continue
                                 buildtxturl = re.sub(platform_data.suffix, 'txt', buildurl)

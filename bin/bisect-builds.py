@@ -214,6 +214,10 @@ def bisect_builds(options):
 
     database = None
 
+    if not bisection_array:
+        print "No builds found"
+        return
+
     bisection_array.sort(cmp_builds)
 
     upper_index = len(bisection_array) - 1
