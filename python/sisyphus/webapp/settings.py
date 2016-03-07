@@ -112,7 +112,7 @@ VIEW_LANDING_PAGE = '/bughunter/views/'
 # URL prefix for admin media -- CSS, JavaScript and images. Make sure to use a
 # trailing slash.
 # Examples: "http://foo.com/media/", "/media/".
-ADMIN_MEDIA_PREFIX = '/djangoadmin/media/'
+STATIC_URL = '/djangoadmin/media/'
 
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = os.environ["SISYPHUS_DJANGO_SECRET_KEY"]
@@ -134,12 +134,18 @@ MIDDLEWARE_CLASSES = (
 
 ROOT_URLCONF = 'sisyphus.webapp.urls'
 
-TEMPLATE_DIRS = (
-    # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
-    # Always use forward slashes, even on Windows.
-    # Don't forget to use absolute paths, not relative paths.
-    path('templates'),
-)
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',]
+            },
+        'DIRS': [path('templates')],
+    },
+]
 
 INSTALLED_APPS = (
     'django.contrib.auth',
