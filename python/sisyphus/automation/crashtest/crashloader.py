@@ -204,7 +204,7 @@ class CrashLoader(object):
                              'platform',
                              'platform_version',
                              'cpu_info',
-                             'cpu_name',
+                             'cpu_arch',
                              'url',
                              'exploitability'],
                 'date': ['>=%s' % start_date, '<=%s' % stop_date],
@@ -235,7 +235,7 @@ class CrashLoader(object):
                 os_version        = crash['platform_version']
                 os_full_version   = os_version
                 cpu_info          = crash['cpu_info']
-                cpu_name          = crash['cpu_name']
+                cpu_name          = crash['cpu_arch']
 
                 # Firefox -> firefox
                 product    = product.lower()
