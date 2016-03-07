@@ -226,6 +226,8 @@ class CrashLoader(object):
             for crash in crashes:
                 signature         = crash['signature']
                 url               = crash['url'] if 'url' in crash else ''
+                if not url:
+                    continue
                 url               = url[:1000] # XXX Should get this from the model
                 product           = crash['product']
                 version           = crash['version']
