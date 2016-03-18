@@ -18,7 +18,6 @@ mk_add_options MOZ_CO_PROJECT=browser
 ac_add_options --enable-application=browser
 ac_add_options --enable-debug
 ac_add_options --disable-optimize
-ac_add_options --enable-libxul
 # do not strip symbols in packaged builds
 ac_add_options --disable-install-strip
 
