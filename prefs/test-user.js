@@ -33,9 +33,24 @@ user_pref("extensions.autoDisableScopes", 10);
 user_pref("toolkit.startup.max_resumed_crashes", -1);
 user_pref("browser.newtabpage.enabled", false);
 user_pref("browser.newtabpage.directory.source", "about:blank");
-user_pref("network.proxy.type", 5);
 user_pref("xpinstall.signatures.required", false);
 user_pref("hangmonitor.timeout", 0); // no hang monitor
-//https://dxr.mozilla.org/mozilla-central/source/toolkit/components/terminator/nsTerminator.cpp#50
-//https://dxr.mozilla.org/mozilla-central/source/toolkit/components/terminator/nsTerminator.cpp#364
 user_pref("toolkit.asyncshutdown.crash_timeout", 240000);
+user_pref("network.proxy.backup.ftp", "proxy.bughunter.ateam.scl3.mozilla.com");
+user_pref("network.proxy.backup.ftp_port", 3128);
+user_pref("network.proxy.backup.socks", "proxy.bughunter.ateam.scl3.mozilla.com");
+user_pref("network.proxy.backup.socks_port", 3128);
+user_pref("network.proxy.backup.ssl", "proxy.bughunter.ateam.scl3.mozilla.com");
+user_pref("network.proxy.backup.ssl_port", 3128);
+user_pref("network.proxy.ftp", "proxy.bughunter.ateam.scl3.mozilla.com");
+user_pref("network.proxy.ftp_port", 3128);
+user_pref("network.proxy.http", "proxy.bughunter.ateam.scl3.mozilla.com");
+user_pref("network.proxy.http_port", 3128);
+user_pref("network.proxy.no_proxies_on", "localhost,127.0.0.1,localaddress,.localdomain.com, 10.0.0.0/8, *.scl3.mozilla.com, *.scl3.mozilla.com, 169.254.169.254");
+user_pref("network.proxy.share_proxy_settings", true);
+user_pref("network.proxy.socks", "proxy.bughunter.ateam.scl3.mozilla.com");
+user_pref("network.proxy.socks_port", 3128);
+user_pref("network.proxy.socks_remote_dns", true);
+user_pref("network.proxy.ssl", "proxy.bughunter.ateam.scl3.mozilla.com");
+user_pref("network.proxy.ssl_port", 3128);
+user_pref("network.proxy.type", 1);

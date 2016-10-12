@@ -125,7 +125,7 @@ startupcrash=false
             rm -f $profiledirectory/minidumps/*
         fi
     fi
-) > /tmp/foo 2>&1
+) > /dev/null 2>&1
 
 if $startupcrash; then
     echo "Ignored startup crash"
