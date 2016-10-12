@@ -44,4 +44,6 @@ user_pref("network.proxy.socks_port", 3128);
 user_pref("network.proxy.socks_remote_dns", true);
 user_pref("network.proxy.ssl", "proxy.bughunter.ateam.scl3.mozilla.com");
 user_pref("network.proxy.ssl_port", 3128);
-user_pref("network.proxy.type", 1);
+user_pref("network.proxy.type", 1)
+user_pref("browser.tabs.remote.autostart", true);
+user_pref("browser.tabs.remote.force-enable", true);
