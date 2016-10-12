@@ -1272,7 +1272,7 @@ class Worker(object):
         if not content:
             return []
 
-        soup = BeautifulSoup(content)
+        soup = BeautifulSoup(content, 'html.parser')
         # do not return a generator but an array, so we can store it for later use
         return [link for link in soup.findAll('a')
                 if not link.get('href').startswith('?') and
@@ -1297,7 +1297,6 @@ class Worker(object):
         self.logMessage('No builds found in %s.' % directory)
         return None
 
-    ###
     def getTinderboxProduct(self):
         buildchangeset  = None
         buildsuccess    = True
@@ -1423,6 +1422,7 @@ class Worker(object):
         else:
             raise Exception('getTinderboxBuild: Unknown branch %s' % self.branch)
 
+        taskcluster_bits = '32'
         tinderbox_os_bits = ''
         if self.os_name == 'Linux':
             tinderbox_os_bits = '-linux' + ('64' if self.cpu_name == 'x86_64' else '')
@@ -1439,6 +1439,9 @@ class Worker(object):
         else:
             raise Exception('getTinderboxBuild: Unknown os %s' % self.os_name)
 
+        if tinderbox_os_bits.endswith('64'):
+            taskcluster_bits = '64'
+
         tinderbox_asan = ''
         if buildspec['extra']:
             if buildspec['extra'] != 'asan':
@@ -1446,40 +1449,53 @@ class Worker(object):
             tinderbox_asan = '-asan'
             build_file_pattern += '-asan'
 
-        build_file_pattern += '.' + build_file_ext
+        build_file_pattern = '(' + build_file_pattern + '|target).' + build_file_ext
+        build_regex = re.compile(build_file_pattern)
 
         tinderbox_debug = ''
         if buildspec['buildtype'] == 'debug':
             tinderbox_debug = '-debug'
 
-        tinderbox_dir = '%s/%s%s%s%s/' % (
-            tinderbox_prefix,
-            tinderbox_repo_name,
-            tinderbox_os_bits,
-            tinderbox_asan,
-            tinderbox_debug)
-
-        # The links from the tinderbox directory are returned in date
-        # order. Currently, the last link is to the obsolete "latest"
-        # directory which means that currently the latest timestamp is
-        # the second to last entry. When the latest link is removed in
-        # the future, the latest timestamp will be the last entry.
-        re_timestamp = re.compile('[0-9]+')
-        build_url = None
-        build_regex = re.compile(build_file_pattern)
-        build_links = self.url_links(tinderbox_dir)
-        while build_links and not build_url:
-            build_link = build_links[-1]
-            text = build_link.get_text().strip('/')
-            if re_timestamp.match(text):
-                build_dir = '%s%s/' % (tinderbox_dir, text)
-                build_url = self.get_build_url(build_dir, build_regex)
-            build_links = build_links[:-1]
+        task_id = utils.find_latest_task_id(tinderbox_repo_name,
+                                            self.os_name,
+                                            taskcluster_bits,
+                                            buildspec['buildtype'],
+                                            buildspec['extra'],
+                                            log=self.debugMessage)
+        build_url = utils.find_build_by_task_id(task_id, build_regex, log=self.debugMessage)
         if not build_url:
-            self.logMessage('getTinderboxBuild: no builds found at %s' %
-                            tinderbox_dir)
-            buildsuccess = False
-        elif not self.isBuildClaimed():
+            self.logMessage('getTinderboxBuild: no builds found: '
+                            'repo: %s, os_name: %s, bits: %s, build_type: %s, extra: %s' %
+                            (tinderbox_repo_name, self.os_name, taskcluster_bits,
+                            buildspec['buildtype'], buildspec['extra']))
+
+            # The links from the tinderbox directory are returned in date
+            # order. Currently, the last link is to the obsolete "latest"
+            # directory which means that currently the latest timestamp is
+            # the second to last entry. When the latest link is removed in
+            # the future, the latest timestamp will be the last entry.
+            tinderbox_dir = '%s/%s%s%s%s/' % (
+                tinderbox_prefix,
+                tinderbox_repo_name,
+                tinderbox_os_bits,
+                tinderbox_asan,
+                tinderbox_debug)
+
+            re_timestamp = re.compile('[0-9]+')
+            build_links = self.url_links(tinderbox_dir)
+            while build_links and not build_url:
+                build_link = build_links[-1]
+                text = build_link.get_text().strip('/')
+                if re_timestamp.match(text):
+                    build_dir = '%s%s/' % (tinderbox_dir, text)
+                    build_url = self.get_build_url(build_dir, build_regex)
+                build_links = build_links[:-1]
+            if not build_url:
+                self.logMessage('getTinderboxBuild: no builds found at %s' %
+                                tinderbox_dir)
+                buildsuccess = False
+
+        if buildsuccess and not self.isBuildClaimed():
             uploader = utils.FileUploader(post_files_url,
                                           'Build', self.build_row, self.build_row.build_id,
                                           'builds')

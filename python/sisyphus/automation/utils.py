@@ -2,18 +2,20 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import traceback
 import datetime
+import os
 import re
 import signal
-import os
 import subprocess
-import urlparse
+import sys
+import traceback
 import urllib
 import urllib2
-import sys
+import urlparse
 
+import taskcluster.client
 from bs4 import BeautifulSoup
+
 
 def makeUnicodeString(s):
     # http://farmdev.com/talks/unicode/
@@ -339,3 +341,114 @@ def mungeUnicodeToUtf8(string):
     # http://stackoverflow.com/questions/3220031/how-to-filter-or-replace-unicode-characters-that-would-take-more-than-3-bytes-i
     reUtf8Unicode = re.compile(u'[^\u0000-\uD7FF\uE000-\uFFFF]', re.UNICODE)
     return reUtf8Unicode.sub(u'\uFFFD', string)
+
+
+# Taskcluster related utilities
+
+def parse_namespace(namespace):
+    os_map = {
+        'linux': {'os_name': 'Linux', 'bits': '32'},
+        'linux64': {'os_name': 'Linux', 'bits': '64'},
+        'win32': {'os_name': 'Windows NT', 'bits': '32'},
+        'win64': {'os_name': 'Windows NT', 'bits': '64'},
+        'macosx64': {'os_name': 'Mac OS X', 'bits': '64'},
+    }
+
+    platform_parts = namespace.split('.')[-1].split('-')
+    platform = platform_parts[0]
+    if platform not in os_map:
+        return None
+    os_data = os_map[platform]
+    build_type = platform_parts[-1]
+    os_data['build_type'] = build_type
+    build_type_extra = ''
+    if len(platform_parts) >= 3:
+        build_type_extra = '-'.join(platform_parts[1:-1])
+    os_data['extra'] = build_type_extra
+    return os_data
+
+
+def get_artifacts(task_id, run_id):
+    queue = taskcluster.client.Queue()
+    response = queue.listArtifacts(task_id, run_id)
+    while True:
+        if 'artifacts' not in response:
+            raise StopIteration
+        artifacts = response['artifacts']
+        for artifact in artifacts:
+            yield artifact
+        if 'continuationToken' not in response:
+            raise StopIteration
+        response = queue.listArtifacts(task_id, run_id, {
+            'continuationToken': response['continationToken']})
+
+
+def find_latest_task_id(repo, os_name, bits, build_type, build_type_extra, log=None):
+    """Return the task id for the latest build for the
+    matching platforms and build types or None if not found.
+    """
+
+    if log:
+        log('find_latest_task_id: repo: %s, os_name: %s, bits: %s, build_type: %s, build_type_extra: %s' %
+            (repo, os_name, bits, build_type, build_type_extra))
+
+    namespace = 'gecko.v2.%s.latest.firefox' % repo
+    payload = {}
+    index = taskcluster.client.Index()
+    response = index.listTasks(namespace, payload)
+
+    if log:
+        log('find_latest_task_id: listTasks(%s, %s): response: %s' %
+            (namespace, payload, response))
+
+    for task in response['tasks']:
+        if log:
+            log('find_latest_task_id: task: %s' % task)
+        task_id = task['taskId']
+        task_namespace = task['namespace']
+        os_data = parse_namespace(task_namespace)
+        if log:
+            log('find_latest_task_id: os_data: %s' % os_data)
+        if not os_data:
+            continue
+        if os_name == os_data['os_name'] and \
+           bits == os_data['bits'] and \
+           build_type == os_data['build_type'] and \
+           build_type_extra == os_data['extra']:
+            if log:
+                log('find_latest_task_id: found task_id: %s' % task_id)
+            return task_id
+    return None
+
+
+def find_build_by_task_id(task_id, re_build, log=None):
+    """Return url to build for the specified task.
+    """
+    if task_id is None:
+        if log:
+            log('find_build_by_task: task_id is None')
+        return None
+    queue = taskcluster.client.Queue()
+    status = queue.status(task_id)['status']
+    if log:
+        log('find_build_by_task_id: status: %s' % status)
+    for run in reversed(status['runs']): # runs
+        if run['state'] != 'completed':
+            continue
+        run_id = run['runId']
+        artifacts = get_artifacts(task_id, run_id)
+        try:
+            build_url = None
+            while not build_url:
+                artifact = artifacts.next()
+                artifact_name = artifact['name']
+                if log:
+                    log('find_build_by_task_id: artifact: %s' % artifact)
+                search = re_build.search(artifact_name)
+                if search:
+                    url_format = 'https://queue.taskcluster.net/v1/task/%s/runs/%s/artifacts/%s'
+                    build_url = url_format % (task_id, run_id, artifact_name)
+                    return build_url
+        except StopIteration:
+            pass
+    return None
