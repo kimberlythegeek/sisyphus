@@ -1361,7 +1361,6 @@ class Worker(object):
 
         try:
             stdout = proc.communicate()[0]
-            self.debugMessage('getTinderboxBuild: set-build-env: %s' % stdout)
         except (KeyboardInterrupt, SystemExit):
             raise
         except:
@@ -1394,6 +1393,8 @@ class Worker(object):
         if not executablepath:
             self.logMessage('failed to get executablepath')
             buildsuccess = False
+
+        self.debugMessage('getTinderboxBuild: set-build-env: %s' % stdout)
 
         if not buildsuccess:
             self.build_row.builddate      = builddate

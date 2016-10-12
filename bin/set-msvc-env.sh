@@ -39,37 +39,39 @@ if [[ -z "$USE_MSVC_VER" ]]; then
     elif [[ -n "$VC10DIR" ]]; then
         USE_MSVC_VER=2010
     else
-        error "Unsupported compiler version"
+        echo "WARNING: compiler version not detected"
     fi
 fi
 
-case "$TEST_PROCESSORTYPE" in
-    *32)
-        startbat=start-shell-msvc${USE_MSVC_VER}.bat
-        ;;
-    *64)
-        startbat=start-shell-msvc${USE_MSVC_VER}-x64.bat
-        ;;
-esac
+if [[ -n "$USE_MSVC_VER" ]]; then
+    case "$TEST_PROCESSORTYPE" in
+        *32)
+            startbat=start-shell-msvc${USE_MSVC_VER}.bat
+            ;;
+        *64)
+            startbat=start-shell-msvc${USE_MSVC_VER}-x64.bat
+            ;;
+    esac
 
-# set VCINSTALLDIR for use in detecting the MS CRT
-# source when building jemalloc.
-# see Advanced Scripting Guide Indirect References
-# http://tldp.org/LDP/abs/html/ivr.html
-eval VCINSTALLDIR=\$VC${USE_MSVC_VER}DIR
+    # set VCINSTALLDIR for use in detecting the MS CRT
+    # source when building jemalloc.
+    # see Advanced Scripting Guide Indirect References
+    # http://tldp.org/LDP/abs/html/ivr.html
+    eval VCINSTALLDIR=\$VC${USE_MSVC_VER}DIR
 
-if [[ -z "$startbat" ]]; then
-    error "startbat is not defined"
+    if [[ -z "$startbat" ]]; then
+        error "startbat is not defined"
+    fi
+
+    startbat="$mozillabuild/$startbat"
+    if [[ ! -e "$startbat" ]]; then
+        error "startbat $startbat does not exist"
+    fi
+
+    # The start batch file changes directory and starts an msys bash shell
+    # which will block its execution. Create a working copy without the
+    # bash invocation to be used to execute commands in the appropriate
+    # msys environment from cygwin.
+    cmdbat=`echo $startbat | sed 's|start|msys-command|'`;
+    sed 's|\(^cd.*USERPROFILE.*\)|rem \1|; s|^start /d.*|cmd /c %MOZILLABUILD%\\msys\\bin\\bash --login -i -c %1|; s|^"%MOZILLABUILD%\\msys\\bin\\bash" --login -i|cmd /c %MOZILLABUILD%\\msys\\bin\\bash --login -i -c %1|' $startbat > $cmdbat
 fi
-
-startbat="$mozillabuild/$startbat"
-if [[ ! -e "$startbat" ]]; then
-    error "startbat $startbat does not exist"
-fi
-
-# The start batch file changes directory and starts an msys bash shell
-# which will block its execution. Create a working copy without the
-# bash invocation to be used to execute commands in the appropriate
-# msys environment from cygwin.
-cmdbat=`echo $startbat | sed 's|start|msys-command|'`;
-sed 's|\(^cd.*USERPROFILE.*\)|rem \1|; s|^start /d.*|cmd /c %MOZILLABUILD%\\msys\\bin\\bash --login -i -c %1|; s|^"%MOZILLABUILD%\\msys\\bin\\bash" --login -i|cmd /c %MOZILLABUILD%\\msys\\bin\\bash --login -i -c %1|' $startbat > $cmdbat
