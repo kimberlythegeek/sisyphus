@@ -23,6 +23,8 @@ variable            description
 -e extra            optional. extra qualifier to pick build tree and mozconfig.
 -d datafiles        optional. one or more filenames of files containing 
                     environment variable definitions to be included.
+-X processortype    optional. overrides the detected processor type. Defaults
+                    to native processor. Can be one of intel32 or intel64.
 -v                  optional. verbose - copies log file output to stdout.
 
 note that the environment variables should have the same names as in the 

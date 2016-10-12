@@ -15,15 +15,11 @@ case $product in
         cd $BUILDTREE/mozilla
 
         if [[ $version < 32 ]]; then
-            # use make for Firefox 31 and earlier
-            # mach may or may not be available and if it is, it uses a hardcoded
-            # /usr/bin/python which may invoke the wrong version of python especially
-            # on RHEL6 where the system python is 2.6.
+            # Force client.mk builds for Firefox 31 and earlier.
             if ! $TEST_DIR/bin/set-build-env.sh $@ -c "${MAKE} -f client.mk build" 2>&1; then
                 error "error during build" $LINENO
             fi
         else
-            # Use mach for Firefox 32 and later
             if ! $TEST_DIR/bin/set-build-env.sh $@ -c "./mach build" 2>&1; then
                 error "error during build" $LINENO
             fi

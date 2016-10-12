@@ -9,7 +9,7 @@
 #
 # source $TEST_DIR/bin/library.sh
 
-if [[ -n "$DEBUG" ]]; then
+if [[ -n "$SISYPHUS_SCRIPT_DEBUG" ]]; then
     echo "calling $0 $@" 1>&2
 fi
 
@@ -28,9 +28,20 @@ ERR_ERROR=100
 ERR_ARGS=101
 
 # emit a call stack for function and source calls
-function debug_frames() {
+function debug_frames()
+{
   local frame=0
   while caller $frame; do let frame=frame+1; done
+}
+
+function kill_mozilla_build()
+{
+    if uname -s | grep -q CYGWIN; then
+        ps -a -l -W | grep mozilla.*build | sed 's|[^0-9]*\([0-9][0-9]*\).*|\1|' | while read pid; do
+            echo "Killing mozilla build process $pid"
+            /usr/bin/kill -f -9 $pid
+        done
+    fi
 }
 
 # in the event of an untrapped script error tail the test log,
@@ -66,9 +77,11 @@ function _err()
             fi
             ;;
     esac
+    kill_mozilla_build
     exit $rc
 }
 
+trap "_err" INT
 trap "_err" ERR
 
 function _exit()
@@ -82,6 +95,7 @@ function _exit()
         # only tail the log once at the top level script
         tail $TEST_LOG 1>&2
     fi
+    kill_mozilla_build
 }
 
 trap "_exit" EXIT
@@ -100,6 +114,7 @@ error()
     if [[ "$0" == "-bash" || "$0" == "bash" ]]; then
         return 0
     fi
+    kill_mozilla_build
     exit $ERR_ERROR
 }
 
@@ -107,7 +122,6 @@ error()
 tonumber() (IFS='. ';let v=0; m=100;digits="$1";for d in $digits; do let v=v+d*m; let m=m/10; done; echo $v)
 # compare two numbers
 lessthan() (if [[ `tonumber $1` -lt `tonumber $2` ]]; then return 0; else return 1; fi )
-
 
 if [[ -z "$LIBRARYSH" ]]; then
     # skip remainder of script if it has already included
@@ -147,8 +161,8 @@ if [[ -z "$LIBRARYSH" ]]; then
 
     debug()
     {
-        if [[ -n "$DEBUG" ]]; then
-            echo "DEBUG: $@"
+        if [[ -n "$SISYPHUS_SCRIPT_DEBUG" ]]; then
+            echo "SISYPHUS_SCRIPT_DEBUG: $@"
         fi
     }
 
@@ -375,9 +389,9 @@ if [[ -z "$LIBRARYSH" ]]; then
 
     # debug msg
     #
-    # output debugging message to stdout if $DEBUG is set
+    # output debugging message to stdout if $SISYPHUS_SCRIPT_DEBUG is set
 
-    DEBUG=${DEBUG:-""}
+    SISYPHUS_SCRIPT_DEBUG=${SISYPHUS_SCRIPT_DEBUG:-""}
 
     SCRIPT=`get_scriptname $0`
 
@@ -490,7 +504,7 @@ if [[ -z "$LIBRARYSH" ]]; then
                 TEST_PROCESSORTYPE=amd
             fi
 
-            if uname | grep -q '64$'; then
+            if python -c 'import platform; print platform.platform();' | grep -q 'WOW|64bit'; then
                 TEST_PROCESSORTYPE=${TEST_PROCESSORTYPE}64
             else
                 TEST_PROCESSORTYPE=${TEST_PROCESSORTYPE}32
@@ -511,15 +525,4 @@ if [[ -z "$LIBRARYSH" ]]; then
 
     # no dialogs on asserts
     XPCOM_DEBUG_BREAK=${XPCOM_DEBUG_BREAK:-warn}
-
-    if [[ -z "$BUILDDIR" ]]; then
-        case `uname -s` in
-            MINGW*)
-                export BUILDDIR=/c/mozilla/builds
-                ;;
-            *)
-                export BUILDDIR=/mozilla/builds
-                ;;
-        esac
-    fi
 fi

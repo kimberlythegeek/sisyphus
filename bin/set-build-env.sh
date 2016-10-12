@@ -149,10 +149,20 @@ for step in step1; do # dummy loop for handling exits
             # location, and if so, set up to call mozilla-build to perform the actual
             # build steps.
             #
-            # To make life simpler, change the mount point of the C: drive in cygwin from
+            # To make life simpler:
+            #
+            # put the /mozilla directory directly under the cygwin
+            # root and add a line to msys's /etc/fstab file to point msys's
+            # path /mozilla to c:\cygwin\mozilla:
+            #
+            # c:/cygwin/mozilla /mozilla
+            #
+            # We can also change the mount point of the C: drive in cygwin from
             # /cygdrive/c to /c via mount -c /
-            # which will make paths to non cygwin and non msys locations identical between cygwin
-            # and msys, e.g. /c/mozilla will work in both to point to c:\mozilla
+            #
+            # This will make all paths relative to the c: drive the same in cygwin and msys
+            # while also making the path to the mozilla directory identical. This also
+            # alleviates the need for a symbolic link in cygwin from /mozilla to /c/mozilla.
             #
             # It is also necessary to set the /tmp path in cygwin and msys to point to the
             # same physical directory.
@@ -306,7 +316,9 @@ for step in step1; do # dummy loop for handling exits
             for f in $(set | grep -F ' ()' | sed 's| ()||'); do
                 unset -f $f
             done
-            if  ! cmd /c `cygpath -w $cmdbat` "cd $BUILDTREE/mozilla; $commands" 2>&1; then
+            unset SCRIPT
+            commandstr="cmd /c $(cygpath -m $cmdbat) 'cd $BUILDTREE/mozilla; $commands'"
+            if  ! bash --noprofile --login -i -c "$commandstr" 2>&1; then
                 error "executing commands: $commands"
             fi
         fi
