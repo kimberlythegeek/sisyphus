@@ -59,7 +59,7 @@
                  FROM SocorroRecord AS sr
                  JOIN SiteTestRun AS str ON sr.id = str.socorro_id
                  WHERE (str.datetime >= 'REP0' AND str.datetime <= 'REP1') REP2 
-                 LIMIT 1000",
+                 LIMIT 10000",
 
          "host_type":"master_host"
       },
@@ -87,7 +87,7 @@
                  FROM SocorroRecord AS sr
                  JOIN SiteTestRun AS str ON sr.id = str.socorro_id
                  WHERE REP0 
-                 LIMIT 1000",
+                 LIMIT 10000",
 
          "host_type":"master_host"
       },
@@ -114,7 +114,7 @@
                              str.cpu_name,
                              str.buildtype
                     ORDER BY str.fatal_message DESC, c.signature ASC
-                    LIMIT 1000",
+                    LIMIT 10000",
 
             "host_type":"master_host"
       },
@@ -146,7 +146,7 @@
                              str.cpu_name,
                              str.buildtype
                     ORDER BY str.fatal_message DESC, c.signature ASC
-                    LIMIT 1000",
+                    LIMIT 10000",
 
             "host_type":"master_host"
       },
@@ -193,7 +193,7 @@
                WHERE stc.url IN (
                   SELECT url FROM REP2
                ) AND (str.datetime >= 'REP0' AND str.datetime <= 'REP1')
-               LIMIT 1000",
+               LIMIT 10000",
 
          "host_type":"master_host"
       },
@@ -220,7 +220,7 @@
                  WHERE (stc.datetime >= 'REP0' AND stc.datetime <= 'REP1') REP2
                  GROUP BY stc.url, c.branch, c.os_name, c.os_version, c.build_cpu_name
                  ORDER BY stc.datetime DESC
-                 LIMIT 1000",
+                 LIMIT 10000",
 
          "host_type":"master_host"
       },
@@ -248,7 +248,7 @@
                          a.cpu_name,
                          a.build_cpu_name
                 ORDER BY a.assertion ASC
-                LIMIT 1000",
+                LIMIT 10000",
 
          "host_type":"master_host"
 
@@ -282,7 +282,7 @@
                              a.cpu_name,
                              a.build_cpu_name
                     ORDER BY a.assertion ASC
-                    LIMIT 1000",
+                    LIMIT 10000",
 
             "host_type":"master_host"
       },
@@ -304,7 +304,7 @@
                  WHERE (sta.datetime >= 'REP0' AND sta.datetime <= 'REP1') REP2
                  GROUP BY sta.url, a.branch, a.os_name, a.os_version, a.build_cpu_name
                  ORDER BY sta.datetime DESC
-                 LIMIT 1000",
+                 LIMIT 10000",
 
          "host_type":"master_host"
       },
@@ -348,7 +348,7 @@
                WHERE sta.url IN (
                   SELECT url FROM REP2
                ) AND (sta.datetime >= 'REP0' AND sta.datetime <= 'REP1')
-               LIMIT 1000",
+               LIMIT 10000",
 
          "host_type":"master_host"
       },
@@ -376,7 +376,7 @@
                              utr.cpu_name,
                              utr.buildtype
                     ORDER BY utr.fatal_message DESC, c.signature ASC
-                    LIMIT 1000",
+                    LIMIT 10000",
 
             "host_type":"master_host"
       },
@@ -408,7 +408,7 @@
                              utr.cpu_name,
                              utr.buildtype
                     ORDER BY utr.fatal_message DESC, c.signature ASC
-                    LIMIT 1000",
+                    LIMIT 10000",
 
             "host_type":"master_host"
       },
@@ -436,7 +436,7 @@
                          a.build_cpu_name,
                          a.buildtype
                 ORDER BY a.assertion ASC
-                LIMIT 1000",
+                LIMIT 10000",
 
          "host_type":"master_host"
 
@@ -471,7 +471,7 @@
                              a.build_cpu_name,
                              a.buildtype
                     ORDER BY a.assertion ASC
-                    LIMIT 1000",
+                    LIMIT 10000",
 
             "host_type":"master_host"
       },
@@ -493,7 +493,7 @@
                  WHERE (uta.datetime >= 'REP0' AND uta.datetime <= 'REP1') REP2
                  GROUP BY uta.url, a.branch, a.os_name, a.os_version, a.build_cpu_name, a.buildtype
                  ORDER BY uta.datetime DESC
-                 LIMIT 1000",
+                 LIMIT 10000",
 
          "host_type":"master_host"
       },
@@ -533,7 +533,7 @@
                WHERE uta.url IN (
                   SELECT url FROM REP2
                ) AND (uta.datetime >= 'REP0' AND uta.datetime <= 'REP1')
-               LIMIT 1000",
+               LIMIT 10000",
 
          "host_type":"master_host"
       },
@@ -560,7 +560,7 @@
                          v.cpu_name,
                          v.build_cpu_name,
                          v.buildtype
-                LIMIT 1000",
+                LIMIT 10000",
 
          "host_type":"master_host"
 
@@ -593,7 +593,7 @@
                              v.cpu_name,
                              v.build_cpu_name,
                              v.buildtype
-                    LIMIT 1000",
+                    LIMIT 10000",
 
             "host_type":"master_host"
       },
@@ -614,7 +614,7 @@
                  WHERE (utv.datetime >= 'REP0' AND utv.datetime <= 'REP1') REP2
                  GROUP BY utv.url, v.branch, v.os_name, v.os_version, v.build_cpu_name, v.buildtype
                  ORDER BY utv.datetime DESC
-                 LIMIT 1000",
+                 LIMIT 10000",
 
          "host_type":"master_host"
       },
@@ -654,7 +654,7 @@
                WHERE utv.url IN (
                   SELECT url FROM REP2
                ) AND (utv.datetime >= 'REP0' AND utv.datetime <= 'REP1')
-               LIMIT 1000",
+               LIMIT 10000",
 
          "host_type":"master_host"
       }

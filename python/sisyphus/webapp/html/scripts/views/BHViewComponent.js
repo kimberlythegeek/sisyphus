@@ -1794,8 +1794,8 @@ var BHViewModel = new Class({
                               //Treat search string as regexes
                               oSearch:{ sSearch:"", bRegex:true },
                               xScrollInner:true,
-                              iDisplayLength:100,
-                              aLengthMenu:[[25, 50, 100, 500, 1000], [25, 50, 100, 500, 1000]],
+                              iDisplayLength:1000,
+                              aLengthMenu:[[250, 500, 1000, 5000, 10000], [250, 500, 1000, 5000, 10000]],
                               aaData:dataObject.data,
                               aoColumns:[],
 
