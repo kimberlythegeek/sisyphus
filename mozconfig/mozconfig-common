@@ -13,6 +13,9 @@ if [[ -n "$SYSCTL" ]]; then
         CPU=$($SYSCTL -a hw 2>&1 | grep kernel.sched_domain.cpu | sed 's|kernel.sched_domain.cpu\([0-9]*\).*|\1|' | sort -nr | head -1)
         # CPU counter is zero based.
         let CPU=CPU+1
+    elif $SYSCTL -a hw 2>&1 | grep hw.logicalcpu > /dev/null; then
+        # Darwin
+        CPU=$($SYSCTL -a hw 2>&1 | grep 'hw.logicalcpu:' | sed 's|hw.logicalcpu: *||')
     elif $SYSCTL -a hw 2>&1 | grep hw.availcpu > /dev/null; then
         # Darwin
         CPU=$($SYSCTL -a hw 2>&1 | grep 'hw.availcpu' | sed 's|hw.availcpu = *||')
