@@ -45,6 +45,8 @@ class CrashLoader(object):
                                    '172\.16\.[0-9]+\.[0-9]+|' +
                                    '10\.[0-9]+\.[0-9]+\.[0-9]+' +
                                    ')')
+    rePorts = re.compile(r'https?://[^/]+:([0-9]+)')
+
     def __init__(self):
         self.skipurls = []
         self.products = {}
@@ -183,7 +185,7 @@ class CrashLoader(object):
 
         return waiting_testruns
 
-    def load_socorro_crashdata(self, start_date, stop_date, include_hangs):
+    def load_socorro_crashdata(self, start_date, stop_date, include_hangs, include_ports=False):
 
         pending_socorro = {}
 
@@ -264,6 +266,11 @@ class CrashLoader(object):
                 if match:
                     continue # skip private networks
 
+                if not include_ports:
+                    match = self.rePorts.match(url)
+                    if match and match.group(1) != '80' and match.group(1) != '443':
+                        continue # skip ports
+
                 if signature.find('hang ') == 0 and not include_hangs:
                     # ignore hang signatures since their urls are
                     # duplicate in the matched crash signature.
@@ -337,7 +344,7 @@ class CrashLoader(object):
 
         return pending_socorro
 
-    def load_urls(self, urls, user_id, signature):
+    def load_urls(self, urls, user_id, signature, include_ports=False):
 
         pending_socorro = {}
 
@@ -349,6 +356,11 @@ class CrashLoader(object):
             match = self.rePrivateNetworks.match(url)
             if match:
                 continue # skip private networks
+
+            if not include_ports:
+                match = self.rePorts.match(url)
+                if match and match.group(1) != '80' and match.group(1) != '443':
+                    continue # skip ports
 
             try:
                 url = utils.encodeUrl(url)
@@ -585,6 +597,11 @@ Example:
                       default=False,
                       help='Include hang signatures. The default is to exclude them.')
 
+    parser.add_option('--include-ports', action='store_true',
+                      dest='include_ports',
+                      default=False,
+                      help='Include urls containing non 80, 443 ports. The default is to exclude them.')
+
     parser.add_option('--start-date', action='store', type='string',
                       dest='start_date', default=None,
                       help='Start date for crashes when loading urls from '
@@ -660,12 +677,14 @@ Example:
             url = url.rstrip('\n')[:1000] ### Should get the length from the model
             urls.append(url)
         urlsfilehandle.close()
-        pending_socorro = crashloader.load_urls(urls, user_id, options.signature)
+        pending_socorro = crashloader.load_urls(urls, user_id, options.signature,
+                                                include_ports=options.include_ports)
         priority = '1'
     else:
         pending_socorro = crashloader.load_socorro_crashdata(options.start_date,
                                                              options.stop_date,
-                                                             options.include_hangs)
+                                                             options.include_hangs,
+                                                             include_ports=options.include_ports)
         priority = '3'
     crashloader.create_socorro_rows(pending_socorro, waiting_testruns, priority)
 
