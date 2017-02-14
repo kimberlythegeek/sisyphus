@@ -13,7 +13,7 @@ import urllib
 import urllib2
 import urlparse
 
-import taskcluster.client
+import taskcluster
 from bs4 import BeautifulSoup
 
 
@@ -369,7 +369,7 @@ def parse_namespace(namespace):
 
 
 def get_artifacts(task_id, run_id):
-    queue = taskcluster.client.Queue()
+    queue = taskcluster.queue.Queue()
     response = queue.listArtifacts(task_id, run_id)
     while True:
         if 'artifacts' not in response:
@@ -394,7 +394,7 @@ def find_latest_task_id(repo, os_name, bits, build_type, build_type_extra, log=N
 
     namespace = 'gecko.v2.%s.latest.firefox' % repo
     payload = {}
-    index = taskcluster.client.Index()
+    index = taskcluster.index.Index()
     response = index.listTasks(namespace, payload)
 
     if log:
@@ -428,7 +428,7 @@ def find_build_by_task_id(task_id, re_build, log=None):
         if log:
             log('find_build_by_task: task_id is None')
         return None
-    queue = taskcluster.client.Queue()
+    queue = taskcluster.queue.Queue()
     status = queue.status(task_id)['status']
     if log:
         log('find_build_by_task_id: status: %s' % status)
