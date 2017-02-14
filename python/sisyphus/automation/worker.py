@@ -1443,12 +1443,10 @@ class Worker(object):
         if tinderbox_os_bits.endswith('64'):
             taskcluster_bits = '64'
 
-        tinderbox_asan = ''
+        tinderbox_extra = ''
         if buildspec['extra']:
-            if buildspec['extra'] != 'asan':
-                raise Exception('getTinderboxBuild: Unknown buildtype %s' % self.buildtype)
-            tinderbox_asan = '-asan'
-            build_file_pattern += '-asan'
+            tinderbox_extra = buildspec['extra']
+            build_file_pattern += '-' + buildspec['extra']
 
         build_file_pattern = '(' + build_file_pattern + '|target).' + build_file_ext
         build_regex = re.compile(build_file_pattern)
@@ -1479,7 +1477,7 @@ class Worker(object):
                 tinderbox_prefix,
                 tinderbox_repo_name,
                 tinderbox_os_bits,
-                tinderbox_asan,
+                tinderbox_extra,
                 tinderbox_debug)
 
             re_timestamp = re.compile('[0-9]+')
