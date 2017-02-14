@@ -11,7 +11,7 @@
 
 var gPageCount = 0;
 var gPageLimit = 1;
-var gPageWait  = 5 * 1000;
+var gPageWait  = 10 * 1000;
 
 function userOnStart()
 {
