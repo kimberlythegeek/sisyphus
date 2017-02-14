@@ -156,7 +156,15 @@ class Worker(object):
         # that other workers can determine which buildspecs
         # workers support when generating 0 priority jobs when
         # reproducing crashes.
-        self.buildspecs = ','.join(options.buildspecs)
+        branches_rows = models.Branch.objects.all()
+        buildspecs_set = set(options.buildspecs)
+        if not buildspecs_set:
+            buildspecs_set = set([row.buildtype for row in branches_rows])
+
+        self.buildspecs = ','.join(buildspecs_set)
+
+        if len(branches_rows) == 0:
+            raise Exception('Branch table is empty.')
 
         self.save(False)
 
@@ -170,16 +178,9 @@ class Worker(object):
         self.buildtype = None
         self.builddata = {}
 
-        branches_rows = models.Branch.objects.all()
-        if not self.buildspecs:
-            self.buildspecs = ','.join(set([row.buildtype for row in branches_rows]))
-
-        if len(branches_rows) == 0:
-            raise Exception('Branch table is empty.')
-
         for branch_row in branches_rows:
 
-            if self.buildspecs and branch_row.buildtype not in self.buildspecs:
+            if buildspecs_set and branch_row.buildtype not in buildspecs_set:
                 self.debugMessage('Branch buildtype %s not in buildspecs %s' % (
                     branch_row.buildtype, self.buildspecs))
                 continue
