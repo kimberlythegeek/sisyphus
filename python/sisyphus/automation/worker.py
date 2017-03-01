@@ -854,7 +854,10 @@ class Worker(object):
             # deleted hash table?              0xdb
             # Miscellaneous
             # deleted memory?                  0xdeadbeef, 0xbeefdead
-
+            #
+            # http://searchfox.org/mozilla-central/source/memory/jemalloc/moz.build#74
+            # jemalloc alloc 0xe4
+            # jemalloc free  0xe5
 
             if 'frames' in crash_data and len(crash_data['frames']) > 0:
                 frame = crash_data['frames'][0]
@@ -862,7 +865,7 @@ class Worker(object):
                     # Check the crash address using a partial match
                     # ignoring leading 0xf or 0x0 and only requiring 3
                     # successive matches of the underlying pattern.
-                    reAddressPartial = re.compile(r'0x((f|0)*((cc){3,}|(cd){3,}|(ab){3,}|(fd){3,}|(dd){3,}|(da){3,}|(db){3,}|(aa){3,}|(55){3,}|baadf00d|f00dbaad|feeefeee|deadbeef|beefdead))')
+                    reAddressPartial = re.compile(r'0x((f|0)*((cc){3,}|(cd){3,}|(ab){3,}|(fd){3,}|(dd){3,}|(da){3,}|(db){3,}|(aa){3,}|(55){3,}|(e5){3,}|(e4){3,}|baadf00d|f00dbaad|feeefeee|deadbeef|beefdead))')
                     address = frame['frame_address']
                     match = reAddressPartial.match(address)
                     if match and exploitability != 'high' and exploitability != 'medium':
