@@ -446,7 +446,8 @@ class Worker(object):
             # branches even for the same assertion.
             assertionfile = re.sub(
                 '(/work)?/mozilla/builds/[^/]+/mozilla/|'
-                '/builds/.*/build/(src/)?',
+                '/builds/.*/build/(src/)?|'
+                '/home/worker/workspace/build/src/',
                 '', assertionfile)
 
             assertion_rows = models.Assertion.objects.filter(
