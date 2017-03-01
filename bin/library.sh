@@ -515,6 +515,11 @@ if [[ -z "$LIBRARYSH" ]]; then
         error "Unknown OS $kernel_name" $LINENO
     fi
 
+    # set path to fileid for the platform.
+    if ! echo ${PATH} | grep -q $TEST_DIR/bin/$OSID-$TEST_PROCESSORTYPE; then
+        PATH=$TEST_DIR/bin/$OSID-$TEST_PROCESSORTYPE:$PATH
+    fi
+
     case $TEST_PROCESSORTYPE in
         *32)
             if [[ $TEST_MEMORY -gt 4 ]]; then
