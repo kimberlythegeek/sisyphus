@@ -742,9 +742,16 @@ class CrashTestWorker(worker.Worker):
             self.debugMessage("freeOrphanJobs: lock timed out")
         else:
             try:
-                sitetestrun_rows = models.SiteTestRun.objects.filter(state__exact = 'executing')
-                sitetestrun_rows = sitetestrun_rows.filter(worker__state__in = ('waiting', 'dead', 'zombie', 'disabled'))
-                sitetestrun_rows.update(worker = None, state = 'waiting')
+                # Retrieve the SiteTestRun rows individually and check
+                # the worker state separately to prevent table locks from
+                # causing a deadlock.
+                sitetestrun_rows = (models.SiteTestRun.objects.
+                                    filter(state__exact='executing').
+                                    filter(worker__isnull=False))
+                for sitetestrun_row in sitetestrun_rows:
+                    if sitetestrun_row.worker.state in ('waiting', 'dead', 'zombie', 'disabled'):
+                        sitetestrun_row.worker=None
+                        sitetestrun_row.save()
             except:
                 raise
             finally:
