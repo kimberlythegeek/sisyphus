@@ -53,8 +53,6 @@ try:
 except KeyError:
    CACHE_QUERIES = {}
 
-TEMPLATE_DEBUG = DEBUG
-
 ADMINS = (
   ('bclary', 'bob@bclary.com'),
 )
@@ -133,6 +131,9 @@ MIDDLEWARE_CLASSES = (
 )
 
 ROOT_URLCONF = 'sisyphus.webapp.urls'
+
+ALLOWED_HOSTS = ['sisyphus.bughunter.ateam.scl3.mozilla.com', 'sisyphus']
+TEMPLATE_DEBUG = DEBUG
 
 TEMPLATES = [
     {
