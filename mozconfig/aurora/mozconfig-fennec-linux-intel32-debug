@@ -5,9 +5,8 @@ mk_add_options MOZ_MAKE_FLAGS=-j${J}
 mk_add_options MOZ_CO_PROJECT=browser
 
 # Global options
-ac_add_options --with-macos-sdk=/Developer/SDKs/MacOSX10.5.sdk
 ac_add_options --enable-debug
-ac_add_options --disable-optimize
+ac_add_options --enable-marionette
 
 ac_add_options --enable-tests
 ac_add_options --enable-accessibility
@@ -23,5 +22,6 @@ ac_add_options --with-android-sdk="$HOME/opt/android-sdk-linux"
 
 # android options
 ac_add_options --enable-application=mobile/android
+ac_add_options --with-android-min-sdk=15
 ac_add_options --target=arm-linux-androideabi
 

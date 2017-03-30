@@ -23,4 +23,3 @@ export MOZ_DEBUG_SYMBOLS=1
 
 export LDFLAGS="-Wl,--no-keep-memory"
 ac_add_options --disable-elf-hack
-
