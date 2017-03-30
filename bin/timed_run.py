@@ -51,8 +51,6 @@ def forkexec(command, args):
     try:
         pid = os.fork()
         if pid == 0:  # Child
-            # increase the child's niceness so it doesn't starve the parent.
-            os.nice(4)
             os.execvp(command, args)
             flushbuffers()
         else:  # Parent
