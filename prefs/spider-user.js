@@ -47,3 +47,5 @@ user_pref("network.proxy.ssl_port", 3128);
 user_pref("network.proxy.type", 1)
 user_pref("browser.tabs.remote.autostart", true);
 user_pref("browser.tabs.remote.force-enable", true);
+user_pref("toolkit.telemetry.server", "");
+user_pref("toolkit.telemetry.unified", false);
