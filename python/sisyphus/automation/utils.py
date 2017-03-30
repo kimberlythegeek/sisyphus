@@ -452,3 +452,25 @@ def find_build_by_task_id(task_id, re_build, log=None):
         except StopIteration:
             pass
     return None
+
+
+def reloadProgram(program_info):
+        newargv = sys.argv
+        newargv.insert(0, sys.executable)
+        os.chdir(program_info.startdir)
+
+        # set all open file handlers to close on exec.
+        # use 64K as the limit to check as that is the max
+        # on Windows XP. The performance issue of doing this
+        # is negligible since it is only run during a program
+        # reload.
+        from fcntl import fcntl, F_GETFD, F_SETFD, FD_CLOEXEC
+        for fd in xrange(0x3, 0x10000):
+            try:
+                fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC)
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except:
+                pass
+
+        os.execvp(sys.executable, newargv)

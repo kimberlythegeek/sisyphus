@@ -722,15 +722,15 @@ class CrashTestWorker(worker.Worker):
                         self.logMessage("runTest: releaseLock('sisyphus.bughunter.sitetestrun') duration: %s" % lockDuration)
 
 
-    def reloadProgram(self):
+    def reloadProgram(self, db_available=True):
 
-        if self.testrun_row:
+        if db_available and self.testrun_row:
             self.testrun_row.state = 'waiting'
             self.testrun_row.worker = None
             self.testrun_row.save()
             self.testrun_row = None
 
-        worker.Worker.reloadProgram(self)
+        worker.Worker.reloadProgram(self, db_available=db_available)
 
     def freeOrphanJobs(self):
 
@@ -1062,32 +1062,41 @@ def main():
 
 
 if __name__ == "__main__":
+    restart = True
+    this_worker = None
+    db_available = True
+
     try:
-        this_worker = None
-        restart     = True
         main()
     except (KeyboardInterrupt, SystemExit):
         restart = False
+    except django.db.utils.OperationalError, e:
+        db_available = False
+        print '%s %s: Will attempt to restart in 300 seconds' % (datetime.datetime.now(), e)
+        time.sleep(300)
     except:
         exceptionType, exceptionValue, errorMessage = utils.formatException()
-        if str(exceptionValue) not in "0,NormalExit":
-            print ('main: exception %s: %s' % (str(exceptionValue), errorMessage))
+        exceptionValue = str(exceptionValue)
+        if exceptionValue not in "0,NormalExit":
+            print 'main: exception exceptionType: %s: exceptionValue: %s, errorMessage: %s' % (exceptionType, exceptionValue, errorMessage)
 
-        if str(exceptionValue) == 'CrashWorker.runTest.FatalError':
+        if exceptionValue == 'CrashWorker.runTest.FatalError':
             restart = False
 
     # kill any test processes still running.
-    if this_worker:
+    if db_available and this_worker:
         this_worker.killTest()
-
-    if this_worker is None:
-        sys.exit(2)
 
     if restart:
         # continue trying to log message until it succeeds.
-        this_worker.logMessage('Program restarting')
-        this_worker.reloadProgram()
-    else:
+        if not this_worker:
+            utils.reloadProgram(program_info)
+        else:
+            if db_available:
+                this_worker.logMessage('Program restarting')
+            this_worker.reloadProgram(db_available=db_available)
+
+    if db_available:
         this_worker.logMessage('Program terminating')
         this_worker.state = 'dead'
         this_worker.save()
