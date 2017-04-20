@@ -749,9 +749,16 @@ class CrashTestWorker(worker.Worker):
                                     filter(state__exact='executing').
                                     filter(worker__isnull=False))
                 for sitetestrun_row in sitetestrun_rows:
-                    if sitetestrun_row.worker.state in ('waiting', 'dead', 'zombie', 'disabled'):
-                        sitetestrun_row.worker=None
+                    try:
+                        if sitetestrun_row.worker.state in ('waiting', 'dead', 'zombie', 'disabled'):
+                            sitetestrun_row.worker = None
+                            sitetestrun_row.state = 'waiting'
+                            sitetestrun_row.save()
+                    except sisyphus.webapp.bughunter.models.Worker.DoesNotExist:
+                        sitetestrun_row.worker = None
+                        sitetestrun_row.state = 'waiting'
                         sitetestrun_row.save()
+
             except:
                 raise
             finally:
