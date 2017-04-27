@@ -538,7 +538,7 @@ def resubmit_urls(request):
     try:
         crashloader = CrashLoader()
 
-        while not utils.getLock('sisyphus.bughunter.sitetestrun', 300):
+        while not utils.getLock('sitetestrun', 300):
             continue
 
         waiting_testruns = {}
@@ -554,7 +554,7 @@ def resubmit_urls(request):
                                                      exceptionValue, errorMessage)
         sys.stderr.write(message)
     finally:
-        utils.releaseLock('sisyphus.bughunter.sitetestrun')
+        utils.releaseLock('sitetestrun')
 
     message_json = json.dumps( { 'message':message } )
     return HttpResponse(message_json, content_type=APP_JS)

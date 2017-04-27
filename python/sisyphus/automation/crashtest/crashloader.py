@@ -663,7 +663,7 @@ Example:
         if not options.start_date:
             options.start_date = (today - datetime.timedelta(days=1)).isoformat()
 
-    while not utils.getLock('sisyphus.bughunter.sitetestrun', 300):
+    while not utils.getLock('sitetestrun', 300):
         continue
 
     if options.duplicates:
@@ -689,7 +689,7 @@ Example:
     crashloader.create_socorro_rows(pending_socorro, waiting_testruns, priority)
 
     try:
-        lockDuration = utils.releaseLock('sisyphus.bughunter.sitetestrun')
+        lockDuration = utils.releaseLock('sitetestrun')
         print "Total lock time %s" % lockDuration
     except:
         exceptionType, exceptionValue, errorMessage = utils.formatException()

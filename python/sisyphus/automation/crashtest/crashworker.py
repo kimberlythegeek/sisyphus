@@ -4,6 +4,7 @@
 
 import datetime
 import os
+import random
 import re
 import signal
 import subprocess
@@ -704,7 +705,7 @@ class CrashTestWorker(worker.Worker):
         # A resource was forbidden. Rather than continuing to attempt
         # to load a forbidden url, remove all waiting jobs for it.
         if page_http_403:
-            if not utils.getLock('sisyphus.bughunter.sitetestrun', 300):
+            if not utils.getLock('sitetestrun', 300):
                 self.debugMessage("runTest: lock timed out attempting to remove forbidden urls")
             else:
                 try:
@@ -717,9 +718,9 @@ class CrashTestWorker(worker.Worker):
                 except:
                     raise
                 finally:
-                    lockDuration = utils.releaseLock('sisyphus.bughunter.sitetestrun')
+                    lockDuration = utils.releaseLock('sitetestrun')
                     if lockDuration > datetime.timedelta(seconds=5):
-                        self.logMessage("runTest: releaseLock('sisyphus.bughunter.sitetestrun') duration: %s" % lockDuration)
+                        self.logMessage("runTest: releaseLock('sitetestrun') duration: %s" % lockDuration)
 
 
     def reloadProgram(self, db_available=True):
@@ -738,7 +739,7 @@ class CrashTestWorker(worker.Worker):
         Reset the worker and state of any executing jobs whose worker's are not active.
         """
 
-        if not utils.getLock('sisyphus.bughunter.sitetestrun', 300):
+        if not utils.getLock('sitetestrun', 300):
             self.debugMessage("freeOrphanJobs: lock timed out")
         else:
             try:
@@ -762,9 +763,9 @@ class CrashTestWorker(worker.Worker):
             except:
                 raise
             finally:
-                lockDuration = utils.releaseLock('sisyphus.bughunter.sitetestrun')
+                lockDuration = utils.releaseLock('sitetestrun')
                 if lockDuration > datetime.timedelta(seconds=5):
-                    self.logMessage("freeOrphanJobs: releaseLock('sisyphus.bughunter.sitetestrun') duration: %s" % lockDuration)
+                    self.logMessage("freeOrphanJobs: releaseLock('sitetestrun') duration: %s" % lockDuration)
 
     def getJob(self):
         """
@@ -776,35 +777,54 @@ class CrashTestWorker(worker.Worker):
         locktimeout     = 300
 
         for priority in 0, 1, 3:
-            if not utils.getLock('sisyphus.bughunter.sitetestrun', locktimeout):
-                self.debugMessage("getJob: lock timed out")
-            else:
-                try:
-                    sitetestrun_row = models.SiteTestRun.objects.filter(
-                        priority = priority,
-                        state__exact = "waiting",
-                        os_name__exact = self.os_name,
-                        os_version__exact = self.os_version,
-                        cpu_name__exact = self.cpu_name,
-                        build_cpu_name__exact = self.build_cpu_name,
-                        buildtype__in = tuple(self.buildspecs.split(','))
-                    )[0]
-                    sitetestrun_row.worker = self.worker_row
-                    sitetestrun_row.state = 'executing'
-                    sitetestrun_row.save()
+            # Randomize the order we process buildspecs to reduce
+            # lock contentions.
+            buildspecs = self.buildspecs.split(',')
+            random.shuffle(buildspecs)
+            for buildspec in buildspecs:
+                lock_name = 'sitetestrun_%s_%s_%s_%s_%s_%s_%s' % (
+                    priority,
+                    "waiting",
+                    self.os_name,
+                    self.os_version,
+                    self.cpu_name,
+                    self.build_cpu_name,
+                    buildspec)
+                lock_name = re.sub('[^\w]+', '_', lock_name)
+
+                if not utils.getLock(lock_name, locktimeout):
+                    self.debugMessage("getJob: lock timed out %s" % lock_name)
+                else:
+                    try:
+                        sitetestrun_row = models.SiteTestRun.objects.filter(
+                            priority__exact = str(priority),
+                            state__exact = "waiting",
+                            os_name__exact = self.os_name,
+                            os_version__exact = self.os_version,
+                            cpu_name__exact = self.cpu_name,
+                            build_cpu_name__exact = self.build_cpu_name,
+                            buildtype__exact = buildspec
+                        )[0]
+                        sitetestrun_row.worker = self.worker_row
+                        sitetestrun_row.state = 'executing'
+                        sitetestrun_row.save()
+
+                    except IndexError:
+                        sitetestrun_row = None
+
+                    except models.SiteTestRun.DoesNotExist:
+                        sitetestrun_row = None
+
+                    finally:
+                        lockDuration = utils.releaseLock(lock_name)
+                        if lockDuration > datetime.timedelta(seconds=5):
+                            self.logMessage("getJobs: releaseLock(%s) duration: %s" % (lock_name, lockDuration))
+                        self.debugMessage('getJob: %s %s' % (sitetestrun_row, lockDuration))
+
+                if sitetestrun_row:
                     break
-
-                except IndexError:
-                    sitetestrun_row = None
-
-                except models.SiteTestRun.DoesNotExist:
-                    sitetestrun_row = None
-
-                finally:
-                    lockDuration = utils.releaseLock('sisyphus.bughunter.sitetestrun')
-                    if lockDuration > datetime.timedelta(seconds=5):
-                        self.logMessage("getJobs: releaseLock('sisyphus.bughunter.sitetestrun') duration: %s" % lockDuration)
-                    self.debugMessage('getJob: %s %s' % (sitetestrun_row, lockDuration))
+            if sitetestrun_row:
+                break
 
         return sitetestrun_row
 

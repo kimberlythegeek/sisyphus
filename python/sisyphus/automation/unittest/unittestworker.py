@@ -395,7 +395,7 @@ class UnitTestWorker(worker.Worker):
         unittestrun_row = None
         locktimeout     = 300
 
-        if not utils.getLock('sisyphus.bughunter.unittestrun', locktimeout):
+        if not utils.getLock('unittestrun', locktimeout):
             self.debugMessage("getJob: lock timed out")
         else:
             try:
@@ -416,9 +416,9 @@ class UnitTestWorker(worker.Worker):
                 unittestrun_row = None
 
             finally:
-                lockDuration = utils.releaseLock('sisyphus.bughunter.unittestrun')
+                lockDuration = utils.releaseLock('unittestrun')
                 if lockDuration > datetime.timedelta(seconds=5):
-                    self.logMessage("getJobs: releaseLock('sisyphus.bughunter.unittestrun') duration: %s" % lockDuration)
+                    self.logMessage("getJobs: releaseLock('unittestrun') duration: %s" % lockDuration)
 
         return unittestrun_row
 

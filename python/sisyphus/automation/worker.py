@@ -278,7 +278,7 @@ class Worker(object):
         """
 
         try:
-            if not utils.getLock('sisyphus.bughunter.worker', 300):
+            if not utils.getLock('worker', 300):
                 raise Exception('Can not obtain lock on worker table')
 
             if check:
@@ -311,9 +311,9 @@ class Worker(object):
             self.worker_row.save()
 
         finally:
-            lockDuration = utils.releaseLock('sisyphus.bughunter.worker')
+            lockDuration = utils.releaseLock('worker')
             if lockDuration > datetime.timedelta(seconds=5):
-                self.logMessage("Worker.save: releaseLock('sisyphus.bughunter.worker') duration: %s" % lockDuration)
+                self.logMessage("Worker.save: releaseLock('worker') duration: %s" % lockDuration)
 
     def delete(self):
         raise Exception("Can not delete worker's due to refererential integrity issues.")
@@ -968,7 +968,7 @@ class Worker(object):
         """ zombify any *other* worker of the same type who has not updated status in zombie_time hours"""
 
         try:
-            if not utils.getLock('sisyphus.bughunter.worker', 300):
+            if not utils.getLock('worker', 300):
                 self.logMessage('killZombies: failed to lock crash workers. better luck next time.')
                 return
 
@@ -987,9 +987,9 @@ class Worker(object):
                 self.logMessage("killZombies: worker %s zombied %d workers" % (self.hostname, zombie_count))
 
         finally:
-            lockDuration = utils.releaseLock('sisyphus.bughunter.worker')
+            lockDuration = utils.releaseLock('worker')
             if lockDuration > datetime.timedelta(seconds=5):
-                self.logMessage("killZombies: releaseLock('sisyphus.bughunter.worker') duration: %s" % lockDuration)
+                self.logMessage("killZombies: releaseLock('worker') duration: %s" % lockDuration)
 
 
     def getBuild(self):
@@ -1154,7 +1154,7 @@ class Worker(object):
         """
 
         try:
-            if not utils.getLock('sisyphus.bughunter.build', 300):
+            if not utils.getLock('build', 300):
                 raise Exception('Can not obtain lock on build table')
 
             if self.build_row:
@@ -1204,9 +1204,9 @@ class Worker(object):
                 return True # Available build from database is newer than the local build
 
         finally:
-            lockDuration = utils.releaseLock('sisyphus.bughunter.build')
+            lockDuration = utils.releaseLock('build')
             if lockDuration > datetime.timedelta(seconds=5):
-                self.logMessage("Worker.isNewBuildNeeded: releaseLock('sisyphus.bughunter.build') duration: %s" % lockDuration)
+                self.logMessage("Worker.isNewBuildNeeded: releaseLock('build') duration: %s" % lockDuration)
 
         return False
 
@@ -1292,7 +1292,7 @@ class Worker(object):
         executablepath  = ''
 
         try:
-            if not utils.getLock('sisyphus.bughunter.build', 300):
+            if not utils.getLock('build', 300):
                 raise Exception('Can not obtain lock on build table')
 
             self.state = "building"
@@ -1309,9 +1309,9 @@ class Worker(object):
             self.build_row.worker_id = self.worker_row.id
             self.saveBuild()
         finally:
-            lockDuration = utils.releaseLock('sisyphus.bughunter.build')
+            lockDuration = utils.releaseLock('build')
             if lockDuration > datetime.timedelta(seconds=5):
-                self.logMessage("getTinderboxProduct: releaseLock('sisyphus.bughunter.build') duration: %s" % lockDuration)
+                self.logMessage("getTinderboxProduct: releaseLock('build') duration: %s" % lockDuration)
 
         # kill any test processes still running.
         self.killTest()
@@ -1547,7 +1547,7 @@ class Worker(object):
         executablepath  = ''
 
         try:
-            if not utils.getLock('sisyphus.bughunter.build', 300):
+            if not utils.getLock('build', 300):
                 raise Exception('Can not obtain lock on build table')
 
             self.state = "building"
@@ -1564,9 +1564,9 @@ class Worker(object):
             self.build_row.worker_id = self.worker_row.id
             self.saveBuild()
         finally:
-            lockDuration = utils.releaseLock('sisyphus.bughunter.build')
+            lockDuration = utils.releaseLock('build')
             if lockDuration > datetime.timedelta(seconds=5):
-                self.logMessage("Worker.buildProduct: releaseLock('sisyphus.bughunter.build') duration: %s" % lockDuration)
+                self.logMessage("Worker.buildProduct: releaseLock('build') duration: %s" % lockDuration)
 
         # kill any test processes still running.
         self.killTest()
