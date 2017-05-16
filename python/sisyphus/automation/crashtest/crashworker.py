@@ -747,11 +747,13 @@ class CrashTestWorker(worker.Worker):
                 # the worker state separately to prevent table locks from
                 # causing a deadlock.
                 sitetestrun_rows = (models.SiteTestRun.objects.
-                                    filter(state__exact='executing').
-                                    filter(worker__isnull=False))
+                                    filter(state__exact='executing'))
                 for sitetestrun_row in sitetestrun_rows:
                     try:
-                        if sitetestrun_row.worker.state in ('waiting', 'dead', 'zombie', 'disabled'):
+                        if sitetestrun_row.worker == None:
+                            sitetestrun_row.state = 'waiting'
+                            sitetestrun_row.save()
+                        elif sitetestrun_row.worker.state in ('waiting', 'dead', 'zombie', 'disabled'):
                             sitetestrun_row.worker = None
                             sitetestrun_row.state = 'waiting'
                             sitetestrun_row.save()
