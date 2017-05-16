@@ -83,14 +83,39 @@ class SymbolFile:
     else:
       return ""
 
+def get_fileid():
+  """Attempts to determine if fileid is found on PATH.
+  Returns the fileid file name if found otherwise None."""
+  fileid = "fileid"
+  try:
+    subprocess.check_output([fileid], stderr=subprocess.STDOUT)
+    return fileid
+  except subprocess.CalledProcessError as e:
+    if 'usage: ' in e.output:
+      return fileid
+  except OSError:
+    try:
+      fileid = fileid + '.exe'
+      subprocess.check_output([fileid], stderr=subprocess.STDOUT)
+      return fileid
+    except subprocess.CalledProcessError as e:
+      if 'usage: ' in e.output:
+        return fileid
+    except OSError:
+      pass
+  return None
+
 def findIdForPath(path):
   """Finds the breakpad id for the object file at the given path."""
   # We should always be packaged with a "fileid" executable.
-  fileid_exe = os.path.join(here, 'fileid')
-  if not os.path.isfile(fileid_exe):
-    fileid_exe = fileid_exe + '.exe'
+  fileid_exe = get_fileid()
+  if not fileid_exe:
+    # fileid is not on the PATH, try the current working directory.
+    fileid_exe = os.path.join(here, 'fileid')
     if not os.path.isfile(fileid_exe):
-      raise Exception("Could not find fileid executable in %s" % here)
+      fileid_exe = fileid_exe + '.exe'
+      if not os.path.isfile(fileid_exe):
+        raise Exception("Could not find fileid executable in %s" % here)
 
   if not os.path.isfile(path):
     for suffix in ('.exe', '.dll'):
