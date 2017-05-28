@@ -64,3 +64,8 @@ user_pref("toolkit.startup.max_resumed_crashes", -1);
 user_pref("toolkit.telemetry.server", "");
 user_pref("toolkit.telemetry.unified", false);
 user_pref("xpinstall.signatures.required", false);
+// http://searchfox.org/mozilla-central/source/toolkit/xre/nsAppRunner.cpp#5007
+user_pref("extensions.e10sBlocksEnabling", false);
+user_pref("extensions.e10sBlockedByAddons", false);
+user_pref("extensions.e10sMultiBlockedByAddons", false);
+user_pref("extensions.e10s.rollout.policy", "");
