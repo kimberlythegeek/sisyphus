@@ -1430,6 +1430,13 @@ class Worker(object):
         if tinderbox_os_bits.endswith('64'):
             taskcluster_bits = '64'
 
+        # webrender/qr builds are normal builds now and use
+        # MOZ_WEBRENDER=1 to turn on the qr/webrender stuff.
+        # Set build_type_extra to '' for qr so we download
+        # normal build.
+        if 'qr' == buildspec['extra']:
+            buildspec['extra'] = ''
+
         tinderbox_extra = ''
         if buildspec['extra']:
             tinderbox_extra = buildspec['extra']
