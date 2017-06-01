@@ -761,7 +761,7 @@ class Worker(object):
                                                                                                             exceptionValue,
                                                                                                             errorMessage))
             exploitability = None
-            if exploitablePath:
+            if exploitablePath and not self.testrun_row.fatal_message:
                 try:
                     proc = subprocess.Popen(
                         [
