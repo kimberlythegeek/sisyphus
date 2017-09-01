@@ -108,7 +108,7 @@ class Worker(object):
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
             stdout,stderr = proc.communicate()
-            lines = stdout.split('\r\n')
+            lines = stdout.split('\n')
             self.os_version = re.search('.* Ver ([^ ]*) .*', lines[4]).group(1)
         else:
             raise Exception("invalid os_name: %s" % (self.os_name))
@@ -138,6 +138,12 @@ class Worker(object):
                 self.build_cpu_name = options.processor_type
         else:
             self.build_cpu_name = self.cpu_name
+
+        # Set PATH for fileid used in crash symbol processing
+        processor_type = 'intel32' if self.cpu_name == 'x86' else 'intel64'
+        fileid_path = os.path.join(sisyphus_dir, 'bin', "%s-%s" % (self.os_id, processor_type))
+        if fileid_path not in os.environ["PATH"]:
+            os.environ["PATH"] = "%s:%s" % (fileid_path, os.environ["PATH"])
 
         try:
             self.worker_row = models.Worker.objects.get(hostname = self.hostname,
@@ -336,26 +342,31 @@ class Worker(object):
 
     def reloadProgram(self, db_available=True):
 
-        sys.stdout.flush()
-        sys.stderr.flush()
-        process_dict = self.psTest()
-        if process_dict:
-            if self.debug:
+        try:
+            sys.stdout.flush()
+            sys.stderr.flush()
+            process_dict = self.psTest()
+            if process_dict:
+                if self.debug:
+                    for pid in process_dict:
+                        self.debugMessage('reloadProgram: test process still running during reloadProgram: %s' % pid)
+                self.killTest()
+
+            # double check that everything is killed.
+            process_dict = self.psTest()
+            if process_dict:
                 for pid in process_dict:
-                    self.debugMessage('reloadProgram: test process still running during reloadProgram: %s' % process_dict[pid])
-            self.killTest()
+                    self.logMessage('reloadProgram: test process still running during reloadProgram: %s' % pid)
+                self.killTest()
 
-        # double check that everything is killed.
-        process_dict = self.psTest()
-        if process_dict:
-            for pid in process_dict:
-                self.logMessage('reloadProgram: test process still running during reloadProgram: %s' % process_dict[pid])
-            self.killTest()
-
-        self.state = 'dead'
-        if db_available:
-            self.save()
-
+            self.state = 'dead'
+            if db_available:
+                self.save()
+        except Exception:
+            (etype, evalue, etraceback) = utils.formatException()
+            # Do not allow the logMessage failure due to oom etc
+            # prevent the reloading of the program.
+            self.logMessage("Exception: %s" % etraceback)
         utils.reloadProgram(program_info)
 
     def checkForUpdate(self):
@@ -658,7 +669,7 @@ class Worker(object):
             uploader.send()
 
 
-    def process_dump_files(self, profilename, page, symbolsPathList, uploadpath):
+    def process_dump_files(self, minidumps_dir, page, symbolsPathList, uploadpath):
         """
         process_dump_files looks for any minidumps that may have been written, parses them,
         then creates the necessary Crash, SiteTestCrash, SiteTestCrashDumpMetaData or
@@ -677,12 +688,14 @@ class Worker(object):
         if not exploitablePath or not os.path.exists(exploitablePath) or not os.path.exists(exploitablePath):
             exploitablePath = None
 
-        dumpFiles = glob.glob(os.path.join('/tmp', profilename, 'minidumps', '*.dmp'))
+        dumpFiles = glob.glob(os.path.join(minidumps_dir, '*.dmp'))
         self.debugMessage("dumpFiles: %s" % (dumpFiles))
         if len(dumpFiles) > 0:
-            self.debugMessage("process_dump_files: %s: %d dumpfiles found in /tmp/%s" % (page, len(dumpFiles), profilename))
+            self.debugMessage("process_dump_files: %s: %d dumpfiles found in %s" % (page, len(dumpFiles), minidumps_dir))
 
         icrashreport = 0
+
+        all_crash_reports = ''
 
         for dumpFile in dumpFiles:
             icrashreport += 1
@@ -735,8 +748,10 @@ class Worker(object):
                     stderr=subprocess.PIPE,
                     close_fds=True)
                 crash_report, stderr = proc.communicate()
+                all_crash_reports += '\n\n==== Crash Report ====\n\n' + crash_report
                 self.debugMessage("stackwalking: stdout: %s" % (crash_report))
-                self.debugMessage("stackwalking: stderr: %s" % (stderr))
+                if proc.returncode != 0:
+                    self.debugMessage("stackwalking: stderr: %s" % (stderr))
 
                 filehandle = open(crashReportFile, 'wb+')
                 filehandle.write(crash_report)
@@ -795,6 +810,7 @@ class Worker(object):
                     self.logMessage('process_dump_files: exception processing dump exploitability: %s, %s, %s' % (dumpFile,
                                                                                                                   exceptionValue,
                                                                                                                   errorMessage))
+                all_crash_reports += '\nexploitability: %s' % exploitability
 
             self.testrun_row.crashed = True
 
@@ -962,7 +978,7 @@ class Worker(object):
                         crash = testcrash_row
                         )
                     testcrashdumpmeta_row.save()
-
+        return all_crash_reports
 
     def killZombies(self):
         """ zombify any *other* worker of the same type who has not updated status in zombie_time hours"""
@@ -1102,8 +1118,9 @@ class Worker(object):
                             (self.product, self.branch, self.buildtype, stdout))
             return False
 
-        if buildspec['extra'] != 'asan':
+        if 'asan' not in buildspec['extra']:
             # asan builds don't have symbols
+            self.debugMessage('attempting to install symbols for %s %s %s %s' % (self.product, self.branch, self.buildtype, buildspec['extra']))
             symbolsfilename = os.path.basename(self.build_row.symbols_file)
             symbolsuri = build_uri_prefix + '/' + symbolsfilename
             if not utils.downloadFile(symbolsuri, '/tmp/' + symbolsfilename):
@@ -1285,6 +1302,21 @@ class Worker(object):
         self.logMessage('No builds found in %s.' % directory)
         return None
 
+    def get_paths(self):
+        buildspec = self.parse_buildspec(self.buildtype)
+        if buildspec['extra']:
+            branch = '%s-%s' % (self.branch, buildspec['extra'])
+        else:
+            branch = self.branch
+
+        (executablepath, symbolspath, preferencespath) = (
+            '/mozilla/builds/%s/mozilla/firefox-%s/dist/bin/firefox' % (
+                branch, buildspec['buildtype']),
+            '/mozilla/builds/%s/mozilla/firefox-%s/dist/crashreporter-symbols' % (
+                branch, buildspec['buildtype']),
+            '%s/prefs/bughunter-user.js' % sisyphus_dir)
+        return (executablepath, symbolspath, preferencespath)
+
     def getTinderboxProduct(self):
         buildchangeset  = None
         buildsuccess    = True
@@ -1318,72 +1350,11 @@ class Worker(object):
 
         self.logMessage("get build %s %s %s" % (self.product, self.branch, self.buildtype))
 
-        buildspec = self.parse_buildspec(self.buildtype)
-
-        args =  [
-            sisyphus_dir + "/bin/set-build-env.sh",
-            "-p", self.product,
-            "-b", self.branch,
-            "-T", buildspec['buildtype'],
-            "-c", "set",
-            ]
-        if buildspec['extra']:
-            args.extend(['-e', buildspec['extra']])
-
-        if self.cpu_name != self.build_cpu_name:
-            if self.build_cpu_name == "x86":
-                build_cpu_name = "intel32"
-            elif self.build_cpu_name == "x86_64":
-                build_cpu_name = "intel64"
-            else:
-                build_cpu_name = self.build_cpu_name
-            args.extend(["-X", build_cpu_name])
-
-        proc = subprocess.Popen(
-            args,
-            preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            close_fds=True)
-
-        try:
-            stdout = proc.communicate()[0]
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except:
-            exceptionType, exceptionValue, errorMessage = utils.formatException()
-            self.logMessage('getTinderboxProduct: exception: %s, %s' % (exceptionValue, errorMessage))
-
-            if errorMessage.find('filedescriptor out of range') != -1:
-                self.logMessage('filedescriptors %d out of range. Restarting.' %
-                                utils.openFileDescriptorCount())
-                # Closing file descriptors and trying again does not
-                # fix the issue on Windows. Just restart the program.
-                self.reloadProgram()
-
-        reFatalError = re.compile(r'FATAL ERROR')
-        reExecutablePath = re.compile(r'executablepath=(.*)', flags=re.I)
-        logs = stdout.split('\n')
-        for logline in logs:
-
-            if reFatalError.match(logline):
-                self.logMessage(logline)
-                buildsuccess = False
-                break
-
-            matchexecutablepath = reExecutablePath.match(logline)
-            if matchexecutablepath:
-                executablepath = matchexecutablepath.group(1)
-            if executablepath:
-                break
+        (executablepath, symbolspath, preferencespath) = self.get_paths()
 
         if not executablepath:
             self.logMessage('failed to get executablepath')
             buildsuccess = False
-
-        self.debugMessage('getTinderboxBuild: set-build-env: %s' % stdout)
-
-        if not buildsuccess:
             self.build_row.builddate      = builddate
             self.build_row.buildavailable = False # unavailable until packaged and uploaded.
             self.build_row.buildsuccess   = buildsuccess
@@ -1394,6 +1365,12 @@ class Worker(object):
             self.saveBuild()
             return
 
+        if not os.path.exists(executablepath):
+            bindir = os.path.dirname(executablepath)
+            if not os.path.exists(bindir):
+                os.makedirs(bindir)
+
+        #
         # Download build, get changeset.
         #
         build_file_pattern = self.product + '.*'
@@ -1430,12 +1407,13 @@ class Worker(object):
         if tinderbox_os_bits.endswith('64'):
             taskcluster_bits = '64'
 
-        # webrender/qr builds are normal builds now and use
-        # MOZ_WEBRENDER=1 to turn on the qr/webrender stuff.
-        # Set build_type_extra to '' for qr so we download
-        # normal build.
-        if 'qr' == buildspec['extra']:
-            buildspec['extra'] = ''
+        buildspec = self.parse_buildspec(self.buildtype)
+
+        # webrender/qr and stylo builds are normal builds now and use
+        # MOZ_WEBRENDER=1 to turn on the qr/webrender stuff and
+        # STYLO_FORCE_ENABLE=1 to turn on stylo.  Remove -qr and
+        # -stylo from build_type_extra so we download normal build.
+        buildspec['extra'] = buildspec['extra'].replace('qr-', '').replace('stylo-', '').replace('-qr', '').replace('-stylo', '').replace('qr', '').replace('stylo', '')
 
         tinderbox_extra = ''
         if buildspec['extra']:
@@ -1506,6 +1484,7 @@ class Worker(object):
                 uploader.add(fieldname, filename, build_path)
                 if buildspec['extra'] != 'asan':
                     # asan builds do not have separate symbols file
+                    self.debugMessage('attempting to get symbols for %s %s %s %s' % (self.product, self.branch, self.buildtype, buildspec['extra']))
                     symbols_url = build_url.replace(build_file_ext, 'crashreporter-symbols.zip')
                     fieldname = 'symbols_file'
                     filename = '%s.crashreporter-symbols.zip' % self.build_row.build_id
@@ -1975,7 +1954,10 @@ class Worker(object):
         # Linux as well. To kill the test reliably, use the external kill program
         # to kill all test processes.
         #
-        # First repeatedly attempt to kill the test processes by
+        # First, use pkill to kill the firefox process on non-Windows
+        # and use taskkill to kill the firefox process on Windows.
+        #
+        # Then repeatedly attempt to kill the test processes by
         # searching for them using ps, then killing them individually
         # using /bin/kill.  Then attempt to kill the test process and
         # the test process group directly using os.kill and os.killpg.
@@ -1983,6 +1965,21 @@ class Worker(object):
         # I've chosen this order since performing the waitpid on windows
         # can hang, thus preventing the worker from completing the kill
         # task.
+
+        if self.os_name == "Windows NT":
+            # Will kill any firefox process.
+            kill_args = ["taskkill", "/f", "/t", "/im", "firefox.exe"]
+        else:
+            # Will only kill firefox processes from custom builds.
+            kill_args = ["pkill", "-9", "-f", "dist/bin/firefox"]
+
+        self.logMessage("killTest: %s" % kill_args)
+        try:
+            subprocess.call(kill_args)
+        except Exception:
+            (etype, evalue, etraceback) = utils.formatException()
+            self.logMessage("killTest: %s" % etraceback)
+
 
         process_dict = self.psTest()
         pids = [pid for pid in process_dict]
@@ -1992,15 +1989,19 @@ class Worker(object):
                 # If we can not kill the test processes, raise an
                 # Exception('Worker.killTest.FatalError').
                 for pid in process_dict:
-                    self.logMessage("killTest: attempt %d: %s" % (attempt, process_dict[pid].rstrip()))
+                    self.logMessage("killTest: attempt %d: %s" % (attempt, pid))
 
                 if self.os_name != "Windows NT":
                     kill_args = ["/bin/kill", "-9"]
                 else:
-                    kill_args = ["/bin/kill", "-f", "-9"]
+                    kill_args = ["/bin/kill", "-9", "-f"]
 
                 kill_args.extend(pids)
-                subprocess.call(kill_args)
+                try:
+                    subprocess.call(kill_args)
+                except Exception, e:
+                    (etype, evalue, etraceback) = utils.formatException()
+                    self.logMessage("killTest: %s" % etraceback)
 
                 try:
                     time.sleep(5)
@@ -2066,7 +2067,7 @@ class Worker(object):
 
         if len(pids) > 0:
             for pid in process_dict:
-                self.logMessage("killTest: unable to kill %s" % process_dict[pid].rstrip())
+                self.logMessage("killTest: unable to kill %s" % pid)
             raise Exception('Worker.killTest.FatalError')
 
 

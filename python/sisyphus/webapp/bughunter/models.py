@@ -21,7 +21,7 @@ class Worker(AbstractWorker):
     datetime          = models.DateTimeField(auto_now=True)
     state             = models.CharField(max_length=10, db_index=True)
     worker_type       = models.CharField(max_length=16, db_index=True)
-    buildspecs        = models.CharField(max_length=128, null = False, blank = True)
+    buildspecs        = models.CharField(max_length=255, null = False, blank = True)
 
     def __unicode__(self):
         return self.hostname
@@ -387,7 +387,7 @@ class SocorroRecord(models.Model):
     branch            = models.CharField(max_length=16, db_index=True)
     os_name           = models.CharField(max_length=10,   null = True, blank = True, db_index=True)
     os_full_version   = models.CharField(max_length=100,  null = True, blank = True, db_index=True)
-    os_version        = models.CharField(max_length=6,    null = True, blank = True, db_index=True)
+    os_version        = models.CharField(max_length=10,    null = True, blank = True, db_index=True)
     cpu_info          = models.CharField(max_length=54,   null = True, blank = True, db_index=True)
     cpu_name          = models.CharField(max_length=16,   null = True, blank = True, db_index=True)
     address           = models.CharField(max_length=18,   null = True, blank = True)

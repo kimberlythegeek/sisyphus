@@ -69,3 +69,6 @@ user_pref("extensions.e10sBlocksEnabling", false);
 user_pref("extensions.e10sBlockedByAddons", false);
 user_pref("extensions.e10sMultiBlockedByAddons", false);
 user_pref("extensions.e10s.rollout.policy", "");
+user_pref("dom.disable_window_move_resize", false);
+user_pref("services.sync.prefs.sync.dom.disable_window_move_resize", false);
+user_pref("extensions.legacy.enabled", true);

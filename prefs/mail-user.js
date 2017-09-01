@@ -64,3 +64,4 @@ user_pref("extensions.e10sBlocksEnabling", false);
 user_pref("extensions.e10sBlockedByAddons", false);
 user_pref("extensions.e10sMultiBlockedByAddons", false);
 user_pref("extensions.e10s.rollout.policy", "");
+user_pref("extensions.legacy.enabled", true);

@@ -14,7 +14,6 @@ import urllib2
 import urlparse
 
 import taskcluster
-from bs4 import BeautifulSoup
 
 
 def makeUnicodeString(s):
@@ -32,7 +31,7 @@ def formatException():
 
     try:
         return etype, evalue, ''.join(traceback.format_exception(etype, evalue, etraceback))
-    except KeyboardInterrupt, SystemExit:
+    except (KeyboardInterrupt, SystemExit):
         raise
     except:
         return None, None, "Error in formatException"
@@ -48,7 +47,7 @@ def convertTimestamp(s):
     try:
         s = re.sub('\.[0-9]*$', '', s)
         return datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%S")
-    except KeyboardInterrupt, SystemExit:
+    except (KeyboardInterrupt, SystemExit):
         raise
     except:
         pass
@@ -159,6 +158,8 @@ def downloadFile(url, destination, credentials = None, timeout = None):
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
     stdout = proc.communicate()[0]
 
+    if proc.returncode != 0:
+        sys.stdout.write(stdout)
     return proc.returncode == 0
 
 def openFileDescriptorCount():
@@ -259,9 +260,6 @@ def get_django_user_id(username, email):
 
 # http://atlee.ca/software/poster/index.html
 import poster
-from poster.encode import multipart_encode
-from poster.streaminghttp import register_openers
-import urllib2
 
 # Register the streaming http handlers with urllib2
 opener = poster.streaminghttp.register_openers()
@@ -314,11 +312,11 @@ class FileUploader(object):
             self.dest_row.save()
             result = urllib2.urlopen(request)
             result.close()
-        except KeyboardInterrupt, SystemExit:
+        except (KeyboardInterrupt, SystemExit):
             raise
-        except urllib2.HTTPError, e:
+        except urllib2.HTTPError:
             raise
-        except urllib2.URLError, e:
+        except urllib2.URLError:
             raise
         finally:
             # have to reload the row to pick up the updated file paths

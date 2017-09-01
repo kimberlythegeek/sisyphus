@@ -83,46 +83,14 @@ class SymbolFile:
     else:
       return ""
 
-def get_fileid():
-  """Attempts to determine if fileid is found on PATH.
-  Returns the fileid file name if found otherwise None."""
-  fileid = "fileid"
-  try:
-    subprocess.check_output([fileid], stderr=subprocess.STDOUT)
-    return fileid
-  except subprocess.CalledProcessError as e:
-    if 'usage: ' in e.output:
-      return fileid
-  except OSError:
-    try:
-      fileid = fileid + '.exe'
-      subprocess.check_output([fileid], stderr=subprocess.STDOUT)
-      return fileid
-    except subprocess.CalledProcessError as e:
-      if 'usage: ' in e.output:
-        return fileid
-    except OSError:
-      pass
-  return None
-
 def findIdForPath(path):
   """Finds the breakpad id for the object file at the given path."""
-  # We should always be packaged with a "fileid" executable.
-  fileid_exe = get_fileid()
-  if not fileid_exe:
-    # fileid is not on the PATH, try the current working directory.
-    fileid_exe = os.path.join(here, 'fileid')
-    if not os.path.isfile(fileid_exe):
-      fileid_exe = fileid_exe + '.exe'
-      if not os.path.isfile(fileid_exe):
-        raise Exception("Could not find fileid executable in %s" % here)
-
   if not os.path.isfile(path):
     for suffix in ('.exe', '.dll'):
       if os.path.isfile(path + suffix):
         path = path + suffix
   try:
-    return subprocess.check_output([fileid_exe, path]).rstrip()
+    return subprocess.check_output(["fileid", path]).rstrip()
   except subprocess.CalledProcessError as e:
     raise Exception("Error getting fileid for %s: %s" %
                     (path, e.output))
@@ -170,7 +138,18 @@ def addressToSymbol(file, address, symbolsDir):
 # Matches lines produced by NS_FormatCodeAddress().
 line_re = re.compile("^(.*#\d+: )(.+)\[(.+) \+(0x[0-9A-Fa-f]+)\](.*)$")
 
+#fileidpath = None
+#lastSymbolsDir = None
+#
 def fixSymbols(line, symbolsDir):
+  #global fileidpath, lastSymbolsDir
+  #if symbolsDir != lastSymbolsDir:
+  #  lastSymbolsDir = symbolsDir
+  #  fileidpath = os.path.join(symbolsDir, "fileid")
+  #  if not os.path.exists(fileidpath):
+  #    fileidpath = None
+  #if not fileidpath:
+  #  return line
   result = line_re.match(line)
   if result is not None:
     (before, fn, file, address, after) = result.groups()
@@ -185,4 +164,4 @@ def fixSymbols(line, symbolsDir):
 if __name__ == "__main__":
   symbolsDir = sys.argv[1]
   for line in iter(sys.stdin.readline, ''):
-    print fixSymbols(line, symbolsDir),
+    print fixSymbols(line, symbolsDir)

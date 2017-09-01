@@ -1,9 +1,0 @@
---leak-check=summary
---trace-children=yes
---track-origins=yes
---smc-check=all-non-file
---read-var-info=yes
---gen-suppressions=all
---suppressions=/work/mozilla/builds/hg.mozilla.org/sisyphus/valgrind/linux-intel64.sup --suppressions=/work/mozilla/builds/nightly/mozilla/build/valgrind/x86_64-redhat-linux-gnu.sup --suppressions=/work/mozilla/builds/nightly/mozilla/build/valgrind/i686-redhat-linux-gnu.sup --suppressions=/work/mozilla/builds/hg.mozilla.org/sisyphus/valgrind/linux-intel64.sup
---suppressions=/work/mozilla/builds/nightly/mozilla/build/valgrind/x86_64-redhat-linux-gnu.sup --suppressions=/work/mozilla/builds/nightly/mozilla/build/valgrind/i686-redhat-linux-gnu.sup --suppressions=/work/mozilla/builds/hg.mozilla.org/sisyphus/valgrind/linux-intel64.sup
---suppressions=/work/mozilla/builds/nightly/mozilla/build/valgrind/i686-redhat-linux-gnu.sup 

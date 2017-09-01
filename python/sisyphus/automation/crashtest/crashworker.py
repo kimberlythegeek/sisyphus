@@ -6,12 +6,17 @@ import datetime
 import os
 import random
 import re
+import shutil
 import signal
 import subprocess
 import sys
 import time
 
 from optparse import OptionParser
+
+#from mem_top import mem_top
+#from pympler import tracker
+#tr = tracker.SummaryTracker()
 
 sisyphus_dir     = os.environ["SISYPHUS_DIR"]
 tempdir          = os.path.join(sisyphus_dir, 'python')
@@ -26,12 +31,16 @@ tempdir          = os.path.join(tempdir, 'webapp')
 if tempdir not in sys.path:
     sys.path.append(tempdir)
 
+tempdir = "%s/bin" % sisyphus_dir
+if tempdir not in sys.path:
+    sys.path.append(tempdir)
+
+
 os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
 
 import django
 django.setup()
 
-from django.db import connection
 import sisyphus.webapp.settings
 sisyphus_url      = os.environ["SISYPHUS_URL"]
 post_files_url    = sisyphus_url + '/post_files/'
@@ -39,12 +48,20 @@ post_files_url    = sisyphus_url + '/post_files/'
 from sisyphus.webapp.bughunter import models
 from sisyphus.automation import utils, worker, program_info
 
+import fix_stack_using_bpsyms
+
 os.environ["MOZ_CRASHREPORTER"]="1"
 os.environ["MOZ_CRASHREPORTER_NO_REPORT"]="1"
 os.environ["MOZ_KEEP_ALL_FLASH_MINIDUMPS"]="1"
 os.environ["XPCOM_DEBUG_BREAK"]="stack"
 os.environ["RUST_BACKTRACE"]="1"
-os.environ["userpreferences"]= sisyphus_dir + '/prefs/spider-user.js'
+os.environ["userpreferences"]= sisyphus_dir + '/prefs/bughunter-user.js'
+
+if "MINIDUMP_STACKWALK" not in os.environ or not os.environ["MINIDUMP_STACKWALK"]:
+    os.environ["MINIDUMP_STACKWALK"] = "/usr/local/bin/minidump_stackwalk"
+if not os.path.exists(os.environ["MINIDUMP_STACKWALK"]):
+    del os.environ["MINIDUMP_STACKWALK"]
+
 
 class CrashTestWorker(worker.Worker):
 
@@ -99,13 +116,6 @@ class CrashTestWorker(worker.Worker):
         self.page_timeout = options.page_timeout
         self.site_timeout = options.site_timeout
 
-        # self.invisible is the optional argument to the top-sites.sh test script
-        # to make Spider hide the content being loaded.
-        if options.invisible:
-            self.invisible = ' -i '
-        else:
-            self.invisible = ''
-
         # string containing a space delimited list of paths to third-party symbols
         # for use by minidump_stackwalk
         self.symbols_paths = options.symbols_paths.split(' ')
@@ -119,6 +129,7 @@ class CrashTestWorker(worker.Worker):
     def runTest(self, extra_test_args):
 
         self.debugMessage("testing firefox %s %s %s" % (self.branch, self.buildtype, self.testrun_row.socorro.url))
+        #self.debugMessage('runTest: \n%s\n' % '\n'.join(tr.format_diff()))
         self.hung_process = False
         self.state        = "testing"
         self.save()
@@ -147,13 +158,6 @@ class CrashTestWorker(worker.Worker):
         self.testrun_row.extra_test_args = extra_test_args
         self.testrun_row.save()
 
-        page               = "startup"
-        executablepath     = ""
-        profilename        = ""
-        page_http_403      = False # page returned 403 Forbidden
-        reFatalError       = re.compile(r'FATAL ERROR')
-        reExecutablePath   = re.compile(r'^environment: TEST_EXECUTABLEPATH=(.*)')
-        reProfileName      = re.compile(r'^environment: TEST_PROFILENAME=(.*)')
         reAssertionFail    = re.compile(r'(Assertion failure: .*), at .*')
         reMOZ_CRASH        = re.compile(r'(Hit MOZ_CRASH[(][^)]*[)]) at .*')
         reABORT            = re.compile(r'###\!\!\! (ABORT: .*)')
@@ -161,9 +165,6 @@ class CrashTestWorker(worker.Worker):
         reABORT3           = re.compile(r'###\!\!\! (ABORT: .*) file (.*), line [0-9]+.*')
         reASSERTION        = re.compile(r'###\!\!\! ASSERTION: (.*), file (.*), line [0-9]+.*')
         reValgrindLeader   = re.compile(r'^==[0-9]+==')
-        reSpiderBegin      = re.compile(r'^Spider: Begin loading (.*)')
-        reSpider           = re.compile(r'^Spider:')
-        reUrlExitStatus    = re.compile(r'^(http.*): EXIT STATUS: (.*) [(].*[)].*')
         # AddressSanitizer patterns
         # reAsanStart pid - group 1, message - group 2
         reAsanStart        = re.compile(r'^==(\d+)==ERROR: (AddressSanitizer: .*)')
@@ -176,24 +177,6 @@ class CrashTestWorker(worker.Worker):
         reAsanSummary      = re.compile(r'SUMMARY: AddressSanitizer: ([^ ]*)')
         reAsan             = re.compile(r'AddressSanitizer')
         reAsanBlank        = re.compile(r' *$')
-
-        # Spider: HTTP Response: originalURI: http://bclary.com/build/style URI: http://bclary.com/build/style referer: http://bclary.com/ status: 200 status text: ok content-type: text/css succeeded: true
-        reHTTP    = re.compile(r'^Spider: HTTP Response: originalURI:')
-        reHTTP403 = re.compile(r'^Spider: HTTP Response: originalURI: (.*) URI: (.*) referer: (.*) status: 403 status text: (.*) content-type: (.*) succeeded: (.*)')
-
-        environment = dict(os.environ)
-
-        # set up environment.
-        if self.os_name == "Mac OS X":
-            # Set up debug malloc error handling for Mac OS X.
-            # http://developer.apple.com/mac/library/releasenotes/DeveloperTools/RN-MallocOptions/index.html#//apple_ref/doc/uid/TP40001026-DontLinkElementID_1
-            # XXX: kludge.
-            # we want to enable malloc scribble on Mac OS X, but don't want it
-            # active for the shell scripts and other commands used to run the
-            # tests as the extra output from the command line tools breaks the
-            # scripts. Set an environment variable that can be checked by the
-            # test script in order to turn on malloc scribble on Mac OS X.
-            environment["EnableMallocScribble"] = "1"
 
         # buffers to hold assertions and valgrind messages until
         # a test result is seen in the output.
@@ -211,26 +194,126 @@ class CrashTestWorker(worker.Worker):
             branch = '%s-%s' % (self.branch, buildspec['extra'])
         else:
             branch = self.branch
-        args = [
-            "./bin/tester.sh",
-            "-t",
-            "tests/mozilla.org/top-sites/test.sh -u " +
-            url +
-            self.invisible + " -H -D 1 -h " + self.userhook,
-            self.product,
-            branch,
-            buildspec['buildtype'],
-        ]
+
+        profile_dir = '/tmp/firefox-%s' % branch
+        if os.path.exists(profile_dir):
+            shutil.rmtree(profile_dir)
+        os.mkdir(profile_dir)
+        minidumps_savepath = os.path.join(profile_dir, 'minidumps_save')
+        os.mkdir(minidumps_savepath)
+
+        (executablepath, symbolspath, preferencespath) = self.get_paths()
+        symbolspath_save = symbolspath
+
+        test_date = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+        logfilename = "%s/results/%s,%s,%s,%s,%s.log" % (
+            sisyphus_dir, test_date, self.branch, self.buildtype, self.os_id, self.hostname)
+        baselogfilename = os.path.basename(logfilename)
+        loguploadpath = 'logs/' + baselogfilename[:16].replace('-', '/') # CCYY/MM/DD/HH/MM
+        dmpuploadpath = 'minidumps/' + baselogfilename[:16].replace('-', '/') # CCYY/MM/DD/HH/MM
+
+        geckologfilename = "%s/results/gecko.log" % sisyphus_dir
+        # Create the file in case the Popen raises and exception
+        # and prevents the runner from creating it.
+        geckologfile = open(geckologfilename, "a")
+        geckologfile.write('\n')
+        geckologfile.close()
+
+        args = []
+        runnerpath = "%s/python/sisyphus/automation/runner.py" % sisyphus_dir
+        stackwalk_binarypath = os.environ["MINIDUMP_STACKWALK"]
+
+        if self.os_name == "Windows NT":
+            # On Windows we must execute runner.py via the Windows
+            # command shell and the Windows version of Python.
+            args.extend(["cmd", "/c", "python"])
+            # Create Windows compatible paths for use in runner.py
+            runnerpath = subprocess.check_output(["cygpath", "-w", runnerpath]).strip()
+            profilepath = subprocess.check_output(["cygpath", "-w", profile_dir]).strip()
+            executablepath = subprocess.check_output(["cygpath", "-w", executablepath]).strip()
+            preferencespath = subprocess.check_output(["cygpath", "-w", preferencespath]).strip()
+            stackwalk_binarypath = subprocess.check_output(["cygpath", "-w", stackwalk_binarypath]).strip()
+            symbolspath = subprocess.check_output(["cygpath", "-w", symbolspath]).strip()
+            minidumps_savepath = subprocess.check_output(["cygpath", "-w", minidumps_savepath]).strip()
+            geckologfilepath = subprocess.check_output(["cygpath", "-w", geckologfilename]).strip()
+        else:
+            profilepath = profile_dir
+            geckologfilepath = geckologfilename
+            args.extend(["python"])
+
+        args.extend([
+            runnerpath,
+            "--profile",
+            profilepath,
+            "--binary",
+            executablepath,
+            "--preference-file",
+            preferencespath,
+            "--page-load-timeout",
+            "%s" % self.page_timeout,
+            "--wait",
+            "1",
+            "--gecko-log",
+            geckologfilepath,
+            "--stackwalk-binary",
+            stackwalk_binarypath,
+            "--symbols-path",
+            symbolspath,
+        ])
+
+        timed_run_args = [
+            "python",
+            sisyphus_dir + "/bin/timed_run.py",
+            "300",
+            "-",
+        ] + args
+
+        # set up environment.
+        environment = dict(os.environ)
+
+        environment["URL"] = url
+        environment["MINIDUMP_STACKWALK"] = stackwalk_binarypath
+        environment['MINIDUMP_SAVE_PATH'] = minidumps_savepath
+
+        environment["MOZ_NO_REMOTE"] = '1'
+        environment["NO_EM_REMOTE"] = '1'
+        environment["MOZ_GDB_SLEEP"] = '1'
+        environment["MOZ_CRASHREPORTER"] = '1'
+        environment["MOZ_CRASHREPORTER_NO_REPORT"] = '1'
+        environment['GNOME_DISABLE_CRASH_DIALOG'] = '1'
+        environment['XRE_NO_WINDOWS_CRASH_DIALOG'] = '1'
+        environment["MOZ_KEEP_ALL_FLASH_MINIDUMPS"]="1"
+        environment["XPCOM_DEBUG_BREAK"]="stack"
+        environment["RUST_BACKTRACE"]="1"
+
+        # Set WebRTC logging in case it is not set yet
+        environment['MOZ_LOG'] = 'signaling:3,mtransport:4,DataChannel:4,jsep:4,MediaPipelineFactory:4'
+        environment['R_LOG_LEVEL'] = '6'
+        environment['R_LOG_DESTINATION'] = 'stderr'
+        environment['R_LOG_VERBOSE'] = '1'
+
+        if '-asan' in self.buildtype:
+            environment['ASAN_OPTIONS'] = 'abort_on_error=1:strip_path_prefix=/builds/slave/m-cen-l64-asan-d-0000000000000/'
+            environment['ASAN_SYMBOLIZER_PATH'] = '%s/llvm-symbolizer' % os.path.dirname(executablepath)
+        if '-stylo' in self.buildtype:
+            environment['STYLO_FORCE_ENABLED'] = '1'
+            environment['STYLO_THREADS'] = '4'
+        if '-qr' in self.buildtype:
+            environment['MOZ_WEBRENDER'] = '1'
+
+        if self.os_name == "Mac OS X":
+            # Set up debug malloc error handling for Mac OS X.
+            # http://developer.apple.com/mac/library/releasenotes/DeveloperTools/RN-MallocOptions/index.html#//apple_ref/doc/uid/TP40001026-DontLinkElementID_1
+            # XXX: kludge.
+            # we want to enable malloc scribble on Mac OS X, but don't want it
+            # active for the shell scripts and other commands used to run the
+            # tests as the extra output from the command line tools breaks the
+            # scripts. Set an environment variable that can be checked by the
+            # test script in order to turn on malloc scribble on Mac OS X.
+            environment["EnableMallocScribble"] = "1"
 
         self.debugMessage('Running test: %s' % args)
-
-        proc = subprocess.Popen(
-            args,
-            preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            close_fds=True,
-            env=environment)
+        #self.debugMessage('runTest before runner: \n%s\n' % '\n'.join(tr.format_diff()))
 
         try:
             # When a stuck plugin-container process or other process
@@ -243,10 +326,18 @@ class CrashTestWorker(worker.Worker):
                 self.hung_process = True
                 self.killTest(proc.pid)
 
+            proc = subprocess.Popen(
+                timed_run_args,
+                preexec_fn=lambda : os.setpgid(0,0), # make the process its own process group
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                close_fds=True,
+                env=environment)
+
             default_alarm_handler = signal.getsignal(signal.SIGALRM)
             try:
                 signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(self.site_timeout + 30)
+                signal.alarm(self.site_timeout + 60)
                 stdout = proc.communicate()[0]
             except OSError, oserror:
                 if oserror.errno != 10:
@@ -294,17 +385,34 @@ class CrashTestWorker(worker.Worker):
                         # Exit if we can't restart the program.
                         sys.exit(2)
 
-        match = re.search('log: (.*\.log) ', stdout)
-        if match:
-            logfilename = match.group(1)
+        #self.debugMessage('runTest after runner: \n%s\n' % '\n'.join(tr.format_diff()))
 
-            logfile = open(logfilename, "r")
+        logfile = open(logfilename, "w")
+        logfile.write("\n==== Marionette Log ====\n\n")
+        logfile.write("%s\n\n" % args)
+        logfile.write(stdout)
+        logfile.write("\n==== Gecko Log ====\n\n")
 
-            while 1:
-                line = logfile.readline()
-                if not line:
-                    break
+        try:
+            #args = []
+            #if self.os_name == "Windows NT":
+            #    args.extend(["cmd", "/c", "python"])
+            #else:
+            #    args.extend(["python"])
 
+            #args.extend([
+            #    fix_stack_path,
+            #    symbolspath
+            #    ])
+
+            geckologfile = open(geckologfilename, "r")
+            for line in iter(geckologfile.readline, ''):
+                if self.os_name == "Windows NT":
+                    # Convert backslashes on Windows into slashes which
+                    # makes the path compatible with cygwin.
+                    line = re.sub(r'\\', '/', line)
+                line = fix_stack_using_bpsyms.fixSymbols(line, symbolspath_save)
+                logfile.write(line)
                 # decode to unicode
                 line = utils.makeUnicodeString(line)
 
@@ -355,57 +463,6 @@ class CrashTestWorker(worker.Worker):
                             asan_list[-1]['completed'] = True
                             asan_list[-1]['text'] += line
 
-                match = reFatalError.match(line)
-                if match:
-                    fatal_error = True
-                    self.logMessage("runTest: %s: %s" % (url, line))
-
-                if not executablepath:
-                    match = reExecutablePath.match(line)
-                    if match:
-                        executablepath = match.group(1)
-                        continue
-
-                if not profilename:
-                    match = reProfileName.match(line)
-                    if match:
-                        profilename = match.group(1)
-                        continue
-
-                # record the steps Spider took
-                match = reSpider.match(line)
-                if match:
-                    # Exclude the HTTP responses as they are too big.
-                    match = reHTTP.match(line)
-                    if not match:
-                        self.testrun_row.steps += line
-
-                # Dump assertions and valgrind messages whenever we see a
-                # new page being loaded.
-                match = reSpiderBegin.match(line)
-                if match:
-                    self.process_assertions(assertion_dict, page, "crashtest", extra_test_args)
-                    valgrind_list = self.parse_valgrind(valgrind_text)
-                    self.process_valgrind(valgrind_list, page, "crashtest", extra_test_args)
-
-                    assertion_dict   = {}
-                    valgrind_text    = ""
-                    valgrind_list    = None
-                    if match:
-                        page = match.group(1).strip()
-                        try:
-                            page = utils.encodeUrl(page)
-                        except Exception, e:
-                            exceptionType, exceptionValue, errorMessage = utils.formatException()
-                            self.logMessage('runTest: %s, exception: %s, %s: page: %s' % (url, exceptionValue, errorMessage, page))
-                            page = None
-                    continue
-
-                match = reHTTP403.match(line)
-                if match:
-                    page_http_403 = True
-                    continue
-
                 # Collect the first occurrence of a fatal message
                 match = reAssertionFail.search(line)
                 if match and not self.testrun_row.fatal_message:
@@ -450,55 +507,60 @@ class CrashTestWorker(worker.Worker):
                     valgrind_text += line
                     continue
 
-                match = reUrlExitStatus.match(line)
-                if match:
-                    self.testrun_row.exitstatus       = match.group(2)
-                    if re.search('(CRASHED|ABNORMAL)', self.testrun_row.exitstatus):
-                        self.testrun_row.crashed = True
-                    else:
-                        self.testrun_row.crashed = False
-
+        except Exception:
+            (etype, evalue, etraceback) = utils.formatException()
+            self.logMessage("Exception: %s" % etraceback)
+        finally:
+            # Reset the parsedSymbolFiles between crashes, otherwise
+            # it grows without bound.
+            fix_stack_using_bpsyms.parsedSymbolFiles = {}
+            # process any assertion or valgrind messages.
+            #self.debugMessage('runTest after log processing: \n%s\n' % '\n'.join(tr.format_diff()))
+            self.process_assertions(assertion_dict, url, "crashtest", extra_test_args)
+            valgrind_list = self.parse_valgrind(valgrind_text)
+            self.process_valgrind(valgrind_list, url, "crashtest", extra_test_args)
+            geckologfile.close()
+            try:
+                os.unlink(geckologfilename)
+            except Exception, e:
+                self.logMessage("%s: Unable to remove %s" % (e, geckologfilename))
+            symbolsPathList = [symbolspath]
+            symbolsPathList.extend(self.symbols_paths)
+            crash_reports = self.process_dump_files(minidumps_savepath,
+                                                    url,
+                                                    symbolsPathList,
+                                                    dmpuploadpath)
+            if crash_reports:
+                self.logMessage("crashed firefox %s %s %s" % (self.branch, self.buildtype, self.testrun_row.socorro.url))
             logfile.close()
 
-            if self.testrun_row.fatal_message:
-                # remove any trailing commas or colons and convert any raw hex addresses to 0x
-                # so that fatal_messages can be combined regardless of the runtime values of
-                # the addresses.
-                self.testrun_row.fatal_message = self.testrun_row.fatal_message.rstrip(',:')
-                self.testrun_row.fatal_message = re.sub('0x[0-9a-fA-F]+', '0x', self.testrun_row.fatal_message)
+        if self.testrun_row.fatal_message:
+            # remove any trailing commas or colons and convert any raw hex addresses to 0x
+            # so that fatal_messages can be combined regardless of the runtime values of
+            # the addresses.
+            self.testrun_row.fatal_message = self.testrun_row.fatal_message.rstrip(',:')
+            self.testrun_row.fatal_message = re.sub('(0x[0-9a-fA-F]+| T[0-9]+)', '0x', self.testrun_row.fatal_message)
 
-            baselogfilename = os.path.basename(logfilename)
-            loguploadpath = 'logs/' + baselogfilename[:16].replace('-', '/') # CCYY/MM/DD/HH/MM
-            dmpuploadpath = 'minidumps/' + baselogfilename[:16].replace('-', '/') # CCYY/MM/DD/HH/MM
-            uploader = utils.FileUploader(post_files_url,
-                                          self.model_test_run.__name__, self.testrun_row, self.testrun_row.id,
-                                          loguploadpath)
-            if fatal_error:
-                # Fatal error occurred in the test framework. Return the job
-                # to the waiting pool and terminate. The log containing the
-                # fatal error messages will remain in the worker's results directory.
-                uploader.add('log', baselogfilename, logfilename, True, False)
-                self.testrun_row = uploader.send()
-                self.testrun_row.state = 'waiting'
-                self.testrun_row.worker = None
-                self.testrun_row.save()
-                self.testrun_row = None
-                self.save()
-                raise Exception("CrashWorker.runTest.FatalError")
+        self.process_asan(asan_list, url, dmpuploadpath)
 
-            uploader.add('log', baselogfilename, logfilename, True)
+        uploader = utils.FileUploader(post_files_url,
+                                      self.model_test_run.__name__, self.testrun_row, self.testrun_row.id,
+                                      loguploadpath)
+        if fatal_error:
+            # Fatal error occurred in the test framework. Return the job
+            # to the waiting pool and terminate. The log containing the
+            # fatal error messages will remain in the worker's results directory.
+            uploader.add('log', baselogfilename, logfilename, True, False)
             self.testrun_row = uploader.send()
+            self.testrun_row.state = 'waiting'
+            self.testrun_row.worker = None
+            self.testrun_row.save()
+            self.testrun_row = None
+            self.save()
+            raise Exception("CrashWorker.runTest.FatalError")
 
-            self.process_asan(asan_list, page, dmpuploadpath)
-
-            symbolsPath = os.path.join(executablepath, 'crashreporter-symbols')
-
-            symbolsPathList = [symbolsPath]
-            symbolsPathList.extend(self.symbols_paths)
-            self.process_dump_files(profilename, page,
-                                    symbolsPathList,
-                                    dmpuploadpath)
-
+        uploader.add('log', baselogfilename, logfilename, True)
+        self.testrun_row = uploader.send()
 
         test_process_dict = self.psTest()
         if test_process_dict:
@@ -634,7 +696,7 @@ class CrashTestWorker(worker.Worker):
 
                         new_socorro_row = models.SocorroRecord(
                             signature           = old_test_run.socorro.signature,
-                            url                 = page,
+                            url                 = url,
                             uuid                = '',
                             client_crash_date   = None,
                             date_processed      = None,
@@ -696,31 +758,6 @@ class CrashTestWorker(worker.Worker):
             except:
                 exceptionType, exceptionValue, errorMessage = utils.formatException()
                 self.logMessage('runTest: unable to duplicate signature %s for reproduction: %s' % (self.testrun_row, errorMessage))
-
-        # process any remaining assertion or valgrind messages.
-        self.process_assertions(assertion_dict, page, "crashtest", extra_test_args)
-        valgrind_list = self.parse_valgrind(valgrind_text)
-        self.process_valgrind(valgrind_list, page, "crashtest", extra_test_args)
-
-        # A resource was forbidden. Rather than continuing to attempt
-        # to load a forbidden url, remove all waiting jobs for it.
-        if page_http_403:
-            if not utils.getLock('sitetestrun', 300):
-                self.debugMessage("runTest: lock timed out attempting to remove forbidden urls")
-            else:
-                try:
-                    cursor = connection.cursor()
-                    cursor.execute("""DELETE SiteTestRun FROM SocorroRecord, SiteTestRun WHERE
-                                   SiteTestRun.socorro_id = SocorroRecord.id AND
-                                   SiteTestRun.state = 'waiting' AND
-                                   SocorroRecord.url = %s""",
-                                   [url])
-                except:
-                    raise
-                finally:
-                    lockDuration = utils.releaseLock('sitetestrun')
-                    if lockDuration > datetime.timedelta(seconds=5):
-                        self.logMessage("runTest: releaseLock('sitetestrun') duration: %s" % lockDuration)
 
 
     def reloadProgram(self, db_available=True):
@@ -843,6 +880,9 @@ class CrashTestWorker(worker.Worker):
         last_zombie_time  = datetime.datetime.now() - 2*zombie_interval
 
         while True:
+
+            #self.debugMessage(mem_top())
+            #self.debugMessage('doWork: \n%s\n' % '\n'.join(tr.format_diff()))
 
             if datetime.datetime.now() - last_checkup_time > checkup_interval:
                 self.checkForUpdate()
@@ -978,12 +1018,6 @@ def main():
                       help='Time in seconds before a site load times out. ' +
                       'Defaults to 300 seconds',
                       default=300)
-
-    parser.add_option('--invisible', action='store_true',
-                      dest='invisible',
-                      help='Flag to start Spider with browser content set to invisible. ' +
-                      'Defaults to False.',
-                      default=False)
 
     parser.add_option('--build', action='store_true',
                       dest='build',

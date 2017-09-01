@@ -504,7 +504,7 @@ if [[ -z "$LIBRARYSH" ]]; then
                 TEST_PROCESSORTYPE=amd
             fi
 
-            if python -c 'import platform; print platform.platform();' | grep -q 'WOW|64bit'; then
+            if python -c 'import platform; print platform.platform();' | egrep -q 'WOW|64bit'; then
                 TEST_PROCESSORTYPE=${TEST_PROCESSORTYPE}64
             else
                 TEST_PROCESSORTYPE=${TEST_PROCESSORTYPE}32

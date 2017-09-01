@@ -310,14 +310,21 @@ for step in step1; do # dummy loop for handling exits
                 error "executing commands: $commands"
             fi
         else
+            # Need to remove the traps set in library.sh since the called
+            # functions will be removed here.
+            trap INT
+            trap ERR
+            trap EXIT
             # msys+mozilla's configure barf on some of the functions exported
             # from the library.sh script in the subconfigure. Remove them from
             # the environment prior to calling the msys command.
             for f in $(set | grep -F ' ()' | sed 's| ()||'); do
+                echo "unset $f"
                 unset -f $f
             done
             unset SCRIPT
             commandstr="cmd /c $(cygpath -m $cmdbat) 'cd $BUILDTREE/mozilla; $commands'"
+            echo "commandstr: $commandstr"
             if  ! bash --noprofile --login -i -c "$commandstr" 2>&1; then
                 error "executing commands: $commands"
             fi
