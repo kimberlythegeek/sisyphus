@@ -275,22 +275,22 @@ class CrashTestWorker(worker.Worker):
         environment["MINIDUMP_STACKWALK"] = stackwalk_binarypath
         environment['MINIDUMP_SAVE_PATH'] = minidumps_savepath
 
-        environment["MOZ_NO_REMOTE"] = '1'
-        environment["NO_EM_REMOTE"] = '1'
-        environment["MOZ_GDB_SLEEP"] = '1'
         environment["MOZ_CRASHREPORTER"] = '1'
         environment["MOZ_CRASHREPORTER_NO_REPORT"] = '1'
-        environment['GNOME_DISABLE_CRASH_DIALOG'] = '1'
-        environment['XRE_NO_WINDOWS_CRASH_DIALOG'] = '1'
+        environment["MOZ_GDB_SLEEP"] = '1'
         environment["MOZ_KEEP_ALL_FLASH_MINIDUMPS"]="1"
-        environment["XPCOM_DEBUG_BREAK"]="stack"
+        environment["MOZ_LOG"]="timestamp,sync,all:3"
+        environment["MOZ_NO_REMOTE"] = '1'
+        environment["NO_EM_REMOTE"] = '1'
+        environment["NSPR_LOG_MODULES"]="timestamp,sync,all:3"
         environment["RUST_BACKTRACE"]="1"
-
-        # Set WebRTC logging in case it is not set yet
-        environment['MOZ_LOG'] = 'signaling:3,mtransport:4,DataChannel:4,jsep:4,MediaPipelineFactory:4'
-        environment['R_LOG_LEVEL'] = '6'
+        environment["RUST_LOG"]="info"
+        environment["XPCOM_DEBUG_BREAK"]="stack"
+        environment['GNOME_DISABLE_CRASH_DIALOG'] = '1'
         environment['R_LOG_DESTINATION'] = 'stderr'
+        environment['R_LOG_LEVEL'] = '6'
         environment['R_LOG_VERBOSE'] = '1'
+        environment['XRE_NO_WINDOWS_CRASH_DIALOG'] = '1'
 
         if '-asan' in self.buildtype:
             environment['ASAN_OPTIONS'] = 'abort_on_error=1:strip_path_prefix=/builds/slave/m-cen-l64-asan-d-0000000000000/'

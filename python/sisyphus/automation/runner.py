@@ -216,6 +216,65 @@ def run_firefox(args):
     try:
         client.timeout.page_load = args.page_load_timeout
         client.timeout.script = args.script_timeout
+        # Register the dialog closer for the browser. If the download
+        # dialog appears, it will be closed and the browser window
+        # will be closed. This forces marionette to return from
+        # navigate and works around Bug 1366035. This version does
+        # not dismiss normal Alerts which can be handled by Marionette's Alert.
+        dialog_closer_script = """
+var gDialogCloser;
+var gDialogCloserObserver;
+var gDialogCloserSubjects = [];
+
+registerDialogCloser = function () {
+  gDialogCloser = Components.classes['@mozilla.org/embedcomp/window-watcher;1'].getService(Components.interfaces.nsIWindowWatcher);
+  gDialogCloserObserver = {observe: dialogCloser_observe};
+  gDialogCloser.registerNotification(gDialogCloserObserver);
+}
+
+unregisterDialogCloser = function () {
+  if (!gDialogCloserObserver || !gDialogCloser)
+  {
+    return;
+  }
+
+  gDialogCloser.unregisterNotification(gDialogCloserObserver);
+  gDialogCloserObserver = null;
+  gDialogCloser = null;
+}
+
+dialogCloser_observe = function (subject, topic, data) {
+  if (subject instanceof ChromeWindow && topic == 'domwindowopened' )
+  {
+    gDialogCloserSubjects.push(subject);
+    subject.setTimeout(closeDialog, 5000)
+  }
+}
+
+closeDialog = function () {
+  var subject;
+  while ( (subject = gDialogCloserSubjects.pop()) != null)
+  {
+      if (subject.document instanceof XULDocument) {
+          var uri = subject.document.documentURI;
+          //if (uri.startsWith('chrome://') && uri.endsWith('ialog.xul')) {
+          //    subject.close();
+          //} else
+          if (uri == 'chrome://mozapps/content/downloads/unknownContentType.xul') {
+              dump('Sisyphus Runner: Closing Window due to download dialog\\n');
+              subject.close();
+              window.close();
+          }
+      }
+  }
+}
+
+registerDialogCloser();
+"""
+        client.set_context(client.CONTEXT_CHROME)
+        client.execute_script(dialog_closer_script,
+                              new_sandbox=False, script_timeout=client.timeout.script)
+        client.set_context(client.CONTEXT_CONTENT)
         try:
             logger.info('New Page: %s' % args.url)
             client.navigate(args.url)
@@ -264,7 +323,7 @@ def run_firefox(args):
             if 'Please start a session' not in e.message:
                 raise # If the error is not that the app had disconnected/terminated.
     except errors.MarionetteException, e:
-        logger.debug('time_out_alarm_fired %s', references['time_out_alarm_fired'])
+        logger.exception('time_out_alarm_fired %s', references['time_out_alarm_fired'])
         if 'Please start a session' in e.message:
             pass # Typically terminated firefox with marionette calls pending.
     finally:
@@ -273,5 +332,7 @@ def run_firefox(args):
             signal.signal(signal.SIGALRM, default_alarm_handler)
 
 if __name__ == '__main__':
+    logging.basicConfig()
+    logger = logging.getLogger('sisyphus')
     args = runner_options()
     run_firefox(args)
