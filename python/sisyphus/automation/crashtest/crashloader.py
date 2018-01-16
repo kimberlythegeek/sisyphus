@@ -185,7 +185,10 @@ class CrashLoader(object):
 
         return waiting_testruns
 
-    def load_socorro_crashdata(self, start_date, stop_date, include_hangs, include_ports=False):
+    def load_socorro_crashdata(self, start_date, stop_date, include_hangs, include_ports=False, ignorable_signatures=None):
+
+        if not ignorable_signatures:
+            ignorable_signatures = []
 
         pending_socorro = {}
 
@@ -232,6 +235,18 @@ class CrashLoader(object):
 
             for crash in crashes:
                 signature         = crash['signature']
+
+                # We do not attempt regular expression matching since the
+                # signature can contain arbitrary regexp characters and
+                # dealing with the escaping is too much effort.
+                ignore_signature = False
+                for ignorable_signature in ignorable_signatures:
+                    if signature.startswith(ignorable_signature):
+                        ignore_signature = True
+                        break
+                if ignore_signature:
+                    continue
+
                 url               = crash['url'] if 'url' in crash else ''
                 if not url:
                     continue
@@ -651,6 +666,11 @@ Example:
                       default=None,
                       help='Signature to use when loading urls from a  file.')
 
+    parser.add_option('--ignore-signature', action='append',
+                      dest='ignorable_signatures',
+                      default=[],
+                      help='Signatures to ignore when loading urls from socorro. Repeat for each signature.')
+
     (options, args) = parser.parse_args()
 
     crashloader = CrashLoader()
@@ -695,7 +715,8 @@ Example:
         pending_socorro = crashloader.load_socorro_crashdata(options.start_date,
                                                              options.stop_date,
                                                              options.include_hangs,
-                                                             include_ports=options.include_ports)
+                                                             include_ports=options.include_ports,
+                                                             ignorable_signatures=options.ignorable_signatures)
         priority = '3'
     crashloader.create_socorro_rows(pending_socorro, waiting_testruns, priority, options.all_branches)
 
