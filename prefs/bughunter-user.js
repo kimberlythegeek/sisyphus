@@ -75,3 +75,6 @@ user_pref("browser.default_homepage", "about:blank");
 user_pref("startup.homepage_override_url", "about:blank");
 user_pref("startup.homepage_welcome_url", "about:blank");
 user_pref("browser.startup.page", 0); // use blank
+user_pref("datareporting.policy.dataSubmissionEnabled", false);
+user_pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
+user_pref("datareporting.policy.firstRunURL", "");
