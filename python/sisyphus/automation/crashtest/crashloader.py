@@ -250,16 +250,15 @@ class CrashLoader(object):
                 url               = crash['url'] if 'url' in crash else ''
                 if not url:
                     continue
-                url               = url[:1000] # XXX Should get this from the model
-                product           = crash['product']
-                version           = crash['version']
+                product           = crash['product'][0:8]
+                version           = crash['version'][0:16]
                 build             = crash['build_id']
                 branch            = crash['release_channel']
-                os_name           = crash['platform']
-                os_version        = crash['platform_version']
-                os_full_version   = os_version
-                cpu_info          = crash['cpu_info']
-                cpu_name          = crash['cpu_arch']
+                os_name           = crash['platform'][0:10]
+                os_version        = crash['platform_version'][0:10]
+                os_full_version   = os_version[0:100]
+                cpu_info          = crash['cpu_info'][0:54]
+                cpu_name          = crash['cpu_arch'][0:16]
 
                 # Firefox -> firefox
                 product    = product.lower()
@@ -333,7 +332,7 @@ class CrashLoader(object):
 
                 socorro_row = models.SocorroRecord(
                     signature               = utils.crash_report_field2string(signature),
-                    url                     = url,
+                    url                     = url[0:1000],
                     product                 = product,
                     version                 = version,
                     build                   = build,
@@ -378,7 +377,7 @@ class CrashLoader(object):
                     continue # skip ports
 
             try:
-                url = utils.encodeUrl(url)
+                url = utils.encodeUrl(url)[:1000]
             except Exception:
                 exceptionType, exceptionValue, errorMessage = utils.formatException()
                 print '%s, %s: url: %s' % (exceptionValue, errorMessage, url)
@@ -705,7 +704,7 @@ Example:
         urls = []
         urlsfilehandle = open(options.urlsfile, 'r')
         for url in urlsfilehandle:
-            url = url.rstrip('\n')[:1000] ### Should get the length from the model
+            url = url.rstrip('\n') ### Should get the length from the model
             urls.append(url)
         urlsfilehandle.close()
         pending_socorro = crashloader.load_urls(urls, user_id, options.signature,

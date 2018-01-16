@@ -433,9 +433,11 @@ class Worker(object):
 
     def process_assertions(self, assertion_dict, page, test, extra_test_args):
 
+        page = page[0:1000]
+
         for key in assertion_dict:
-            assertionmessage = assertion_dict[key]["message"]
-            assertionfile    = assertion_dict[key]["file"]
+            assertionmessage = assertion_dict[key]["message"][0:256]
+            assertionfile    = assertion_dict[key]["file"][0:256]
             assertionstack   = assertion_dict[key]["stack"]
             assertioncount   = assertion_dict[key]["count"]
 
@@ -479,7 +481,7 @@ class Worker(object):
                 assertion_row.save()
 
             testassertion_row = self.model_test_assertion(
-                url                 = page,
+                url                 = page[:1000],
                 stack               = assertionstack,
                 count               = assertioncount,
                 testrun             = self.testrun_row,
@@ -601,7 +603,7 @@ class Worker(object):
                 valgrind_row.save()
 
             testvalgrind_row = self.model_test_valgrind(
-                url                 = page,
+                url                 = page[:1000],
                 stack               = valgrind_stack,
                 count               = valgrind_count,
                 testrun             = self.testrun_row,
@@ -650,7 +652,7 @@ class Worker(object):
                 crash_row.save()
 
             testcrash_row = self.model_test_crash(
-                url            = page,
+                url            = page[:1000],
                 exploitability = 'none' if asan_dict['reason'] == 'SEGV' else 'medium',
                 reason         = asan_dict['reason'],
                 address        = None,
@@ -948,7 +950,7 @@ class Worker(object):
                 address = 'Unknown'
 
             testcrash_row = self.model_test_crash(
-                url            = page,
+                url            = page[:1000],
                 exploitability = exploitability,
                 reason         = reason,
                 address        = address,

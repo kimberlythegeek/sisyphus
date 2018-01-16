@@ -143,7 +143,7 @@ class CrashTestWorker(worker.Worker):
         socorro_row = self.testrun_row.socorro
 
         try:
-            url = utils.encodeUrl(socorro_row.url)
+            url = utils.encodeUrl(socorro_row.url)[:1000]
         except Exception, e:
             exceptionType, exceptionValue, errorMessage = utils.formatException()
             self.logMessage('runTest: exception: %s, %s: url: %s' % (exceptionValue, errorMessage, url))
@@ -549,6 +549,7 @@ class CrashTestWorker(worker.Worker):
             # the addresses.
             self.testrun_row.fatal_message = self.testrun_row.fatal_message.rstrip(',:')
             self.testrun_row.fatal_message = re.sub('(0x[0-9a-fA-F]+| T[0-9]+)', '0x', self.testrun_row.fatal_message)
+            self.testrun_row.fatal_message = self.testrun_row.fatal_message[0:256]
 
         self.process_asan(asan_list, url, dmpuploadpath)
 
@@ -705,7 +706,7 @@ class CrashTestWorker(worker.Worker):
 
                         new_socorro_row = models.SocorroRecord(
                             signature           = old_test_run.socorro.signature,
-                            url                 = url,
+                            url                 = url[:1000],
                             uuid                = '',
                             client_crash_date   = None,
                             date_processed      = None,
