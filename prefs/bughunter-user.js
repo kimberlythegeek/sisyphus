@@ -20,7 +20,7 @@ user_pref("browser.warnOnQuit", false);
 //user_pref("capability.principal.codebase.p0.id", "http://test.mozilla.com");
 //user_pref("capability.principal.codebase.p1.granted", "UniversalPreferencesWrite UniversalXPConnect UniversalBrowserWrite UniversalPreferencesRead UniversalBrowserRead");
 //user_pref("capability.principal.codebase.p1.id", "http://test.bclary.com");
-user_pref("dom.allow_scripts_to_close_windows", true);
+// bug 1399734 user_pref("dom.allow_scripts_to_close_windows", true);
 user_pref("dom.disable_beforeunload", true);
 user_pref("dom.disable_open_during_load", false);
 user_pref("dom.max_chrome_script_run_time", 1800);
