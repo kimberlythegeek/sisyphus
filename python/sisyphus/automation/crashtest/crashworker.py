@@ -886,7 +886,7 @@ class CrashTestWorker(worker.Worker):
         checkup_interval  = datetime.timedelta(minutes=5)
         last_checkup_time = datetime.datetime.now() - 2*checkup_interval
 
-        zombie_interval   = datetime.timedelta(hours=self.zombie_time)
+        zombie_interval   = datetime.timedelta(minutes=self.zombie_time)
         last_zombie_time  = datetime.datetime.now() - 2*zombie_interval
 
         while True:
@@ -911,7 +911,7 @@ class CrashTestWorker(worker.Worker):
                                                                           'executing',
                                                                           'testing',
                                                                           'completed')).count()
-                zombie_interval  = datetime.timedelta(hours = worker_count * self.zombie_time)
+                zombie_interval  = datetime.timedelta(minutes = worker_count * self.zombie_time)
 
             sys.stdout.flush()
             time.sleep(waittime)

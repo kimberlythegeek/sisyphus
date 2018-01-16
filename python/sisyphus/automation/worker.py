@@ -74,9 +74,9 @@ class Worker(object):
         # This assumption won't hold for valgrinded unittests, or for
         # deep scan tests. XXX: FIXME.
         if self.isBuilder:
-            self.zombie_time = 3
+            self.zombie_time = 180
         else:
-            self.zombie_time = 1
+            self.zombie_time = 30
 
         uname           = os.uname()
         self.os_name    = uname[0]
@@ -996,7 +996,7 @@ class Worker(object):
                 self.logMessage('killZombies: failed to lock crash workers. better luck next time.')
                 return
 
-            zombie_timestamp = datetime.datetime.now() - datetime.timedelta(hours=self.zombie_time)
+            zombie_timestamp = datetime.datetime.now() - datetime.timedelta(minutes=self.zombie_time)
             worker_rows      = models.Worker.objects.filter(worker_type__exact = self.worker_type)
             worker_rows      = models.Worker.objects.filter(datetime__lt = zombie_timestamp)
             worker_rows      = worker_rows.filter(state__in = ('waiting',
