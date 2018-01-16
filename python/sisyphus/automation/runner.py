@@ -3,13 +3,16 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import argparse
+import glob
 import json
 import logging
 import os
+import platform
 import random
 import re
 import signal
 import sys
+import tempfile
 import time
 import urlparse
 
@@ -139,6 +142,14 @@ def run_firefox(args):
     streamformatter = logging.Formatter('%(asctime)s %(name)15s %(levelname)-8s %(message)s')
     streamhandler.setFormatter(streamformatter)
     logger.addHandler(streamhandler)
+
+    # On Windows, make sure we point to the same temp directory as cygwin.
+    if platform.system() == 'Windows':
+        tempfile.tempdir = 'C:\\cygwin\\tmp'
+    # Clean up tmpaddons
+    tmpaddons = glob.glob(os.path.join(tempfile.gettempdir(), 'tmpaddon*'))
+    for tmpaddon in tmpaddons:
+        os.unlink(tmpaddon)
 
     # Work around Windows issues with shell metacharacters in url.
     if not args.url:

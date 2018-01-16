@@ -159,7 +159,7 @@ class CrashTestWorker(worker.Worker):
         self.testrun_row.save()
 
         reAssertionFail    = re.compile(r'(Assertion failure: .*), at .*')
-        reMOZ_CRASH        = re.compile(r'(Hit MOZ_CRASH[(][^)]*[)]) at .*')
+        reMOZ_CRASH        = re.compile(r'(Hit MOZ_CRASH.*) at .*')
         reABORT            = re.compile(r'###\!\!\! (ABORT: .*)')
         reABORT2           = re.compile(r'###\!\!\! (ABORT: .*), file (.*), line [0-9]+.*')
         reABORT3           = re.compile(r'###\!\!\! (ABORT: .*) file (.*), line [0-9]+.*')
