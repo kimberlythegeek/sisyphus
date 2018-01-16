@@ -177,6 +177,7 @@ class CrashTestWorker(worker.Worker):
         reAsanSummary      = re.compile(r'SUMMARY: AddressSanitizer: ([^ ]*)')
         reAsan             = re.compile(r'AddressSanitizer')
         reAsanBlank        = re.compile(r' *$')
+        rePanic            = re.compile(r"(thread '[^']+' panicked at '.*'),.*")
 
         # buffers to hold assertions and valgrind messages until
         # a test result is seen in the output.
@@ -470,6 +471,11 @@ class CrashTestWorker(worker.Worker):
                     continue
 
                 match = reMOZ_CRASH.search(line)
+                if match and not self.testrun_row.fatal_message:
+                    self.testrun_row.fatal_message = match.group(1)
+                    continue
+
+                match = rePanic.search(line)
                 if match and not self.testrun_row.fatal_message:
                     self.testrun_row.fatal_message = match.group(1)
                     continue
