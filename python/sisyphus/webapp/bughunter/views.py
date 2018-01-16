@@ -546,7 +546,7 @@ def resubmit_urls(request):
                                                 raw_data['comments'])
         priority = '1'
         crashloader.create_socorro_rows(pending_socorro, waiting_testruns,
-                                        priority)
+                                        priority, True)
         message = 'Uploaded %s urls' % len(urls)
     except Exception, e:
         exceptionType, exceptionValue, errorMessage  = utils.formatException()

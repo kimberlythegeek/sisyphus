@@ -427,7 +427,7 @@ class CrashLoader(object):
                                     pending_socorro[key] = socorro_row
         return pending_socorro
 
-    def create_socorro_rows(self, pending_socorro, waiting_testruns, priority):
+    def create_socorro_rows(self, pending_socorro, waiting_testruns, priority, all_branches):
 
         socorro_keys = [socorro_key for socorro_key in pending_socorro]
 
@@ -448,8 +448,8 @@ class CrashLoader(object):
             os_name       = socorro_row.os_name
             os_version    = socorro_row.os_version
             cpu_name      = socorro_row.cpu_name
-            branch        = socorro_row.branch
-            major_version = self.branches[product][branch]
+            socorro_branch = socorro_row.branch
+            major_version = self.branches[product][socorro_branch]
 
             operating_systems = {}
             if os_name in self.operating_systems:
@@ -490,7 +490,13 @@ class CrashLoader(object):
                     for cpu_name in operating_systems[os_name][os_version]:
                         for build_cpu_name in operating_systems[os_name][os_version][cpu_name]:
                             buildspecs = self.operating_systems[os_name][os_version][cpu_name][build_cpu_name]
-                            for branch in self.buildtypes[product]:
+                            if all_branches:
+                                branches = [branch for branch in self.buildtypes[product]]
+                            elif socorro_branch in self.buildtypes[product]:
+                                branches = [socorro_branch]
+                            else:
+                                branches = []
+                            for branch in branches:
                                 for buildtype in self.buildtypes[product][branch]:
 
                                     if buildtype not in buildspecs:
@@ -612,6 +618,11 @@ Example:
                       help='Stop date for crashes when loading urls from '
                       'socorro. The default is today.')
 
+    parser.add_option('--all-branches', action='store_true',
+                      dest='all_branches',
+                      default=False,
+                      help='Create socorro record for each supported branch rather than the branch from the original crash.')
+
     parser.add_option('--username', action='store', type='string',
                       dest='username',
                       default=None,
@@ -686,7 +697,7 @@ Example:
                                                              options.include_hangs,
                                                              include_ports=options.include_ports)
         priority = '3'
-    crashloader.create_socorro_rows(pending_socorro, waiting_testruns, priority)
+    crashloader.create_socorro_rows(pending_socorro, waiting_testruns, priority, options.all_branches)
 
     try:
         lockDuration = utils.releaseLock('sitetestrun')
