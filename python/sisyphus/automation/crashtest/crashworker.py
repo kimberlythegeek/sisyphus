@@ -428,7 +428,10 @@ class CrashTestWorker(worker.Worker):
                         'frames_collected': False,
                         'completed': False,
                         })
-                    self.testrun_row.fatal_message = match.group(2)
+                    if not self.testrun_row.fatal_message:
+                        self.testrun_row.fatal_message = match.group(2)
+                    else:
+                        self.testrun_row.fatal_message += ' | ' + match.group(2)
                     continue
                 if asan_list and not asan_list[-1]['completed']:
                     match = reAsanFrame.match(line)
