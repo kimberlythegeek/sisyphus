@@ -85,9 +85,15 @@ class Worker(object):
         self.cpu_name   = uname[-1]
 
         if self.os_name.find("Linux") != -1:
+            if os.path.exists('/etc/fedora-release'):
+                distro = 'f'
+            else:
+                distro = 'u'
+
             self.os_name = "Linux"
             self.os_id   = 'linux'
-            self.os_version = re.search('([0-9]+\.[0-9]+\.[0-9]+).*', self.os_version).group(1)
+            self.os_version = re.search('([0-9]+\.[0-9]+\.[0-9]+).*',
+                                        self.os_version).group(1) + '.' + distro
             os.environ["MOZ_X_SYNC"]="1"
         elif self.os_name.find("Darwin") != -1:
             self.os_name = "Mac OS X"
