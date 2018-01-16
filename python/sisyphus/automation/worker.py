@@ -372,7 +372,7 @@ class Worker(object):
             (etype, evalue, etraceback) = utils.formatException()
             # Do not allow the logMessage failure due to oom etc
             # prevent the reloading of the program.
-            self.logMessage("Exception: %s" % etraceback)
+            print "Exception: %s" % etraceback
         utils.reloadProgram(program_info)
 
     def checkForUpdate(self):

@@ -975,24 +975,12 @@ class CrashTestWorker(worker.Worker):
                 self.logMessage("doWork: error in runTest. %s signature: %s, url: %s, exception: %s" %
                                 (exceptionValue, self.testrun_row.socorro.signature, self.testrun_row.socorro.url, errorMessage))
 
-                if exceptionType == OSError:
-                    if (e.errno == 12 or
-                        e.errno == 23 or
-                        e.errno == 24):
-                        # Either out of memory or too many open files. We
-                        # can not reliably recover so just reload the
-                        # program and start over.
-                        try:
-                            self.logMessage('runTest: %s, OSError.errno=%d. Restarting.' %
-                                            (self.testrun_row.socorro.url, e.errno))
-                        except:
-                            # Just ignore the error if we can't log the problem.
-                            pass
-                        try:
-                            self.reloadProgram()
-                        except:
-                            # Exit if we can't restart the program.
-                            sys.exit(2)
+                try:
+                    self.reloadProgram()
+                except:
+                    pass
+                # Exit if we can't restart the program.
+                sys.exit(2)
             finally:
                 if self.testrun_row:
                     self.testrun_row.state = 'waiting'
