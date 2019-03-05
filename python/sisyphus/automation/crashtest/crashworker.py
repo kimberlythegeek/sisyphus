@@ -56,6 +56,7 @@ os.environ["MOZ_CRASHREPORTER_NO_REPORT"]="1"
 os.environ["MOZ_KEEP_ALL_FLASH_MINIDUMPS"]="1"
 os.environ["XPCOM_DEBUG_BREAK"]="stack"
 os.environ["RUST_BACKTRACE"]="1"
+os.environ["MOZ_IGNORE_NSS_SHUTDOWN_LEAKS"]="1"
 os.environ["userpreferences"]= sisyphus_dir + '/prefs/bughunter-user.js'
 
 if "MINIDUMP_STACKWALK" not in os.environ or not os.environ["MINIDUMP_STACKWALK"]:
