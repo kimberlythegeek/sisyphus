@@ -347,7 +347,7 @@ registerDialogCloser();
     #    if 'Please start a session' in e.message:
     #        pass # Typically terminated firefox with marionette calls pending.
     except Exception:
-        logger.exception()
+        logger.exception('runner.py: ')
     finally:
         if hasattr(signal, 'SIGALRM'):
             signal.alarm(0)
