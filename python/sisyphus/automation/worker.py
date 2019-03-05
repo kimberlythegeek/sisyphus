@@ -1205,6 +1205,15 @@ class Worker(object):
                 if self.build_row.builddate.day != datetime.date.today().day:
                     return True # Uploaded build is too old
 
+                hour = datetime.datetime.now().hour
+                build_age = self.build_row.builddate - datetime.datetime.now()
+
+                if hour >= 6 and build_age > datetime.timedelta(hours=12):
+                    return True
+
+                if hour >= 18 and build_age > datetime.timedelta(hours=12):
+                    return True
+
                 if self.build_row.state == "building":
                     # someone else is building it.
                     if datetime.datetime.now() - self.build_row.datetime > build_checkup_interval:
