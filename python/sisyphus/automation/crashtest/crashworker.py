@@ -282,10 +282,9 @@ class CrashTestWorker(worker.Worker):
         environment["MOZ_CRASHREPORTER_NO_REPORT"] = '1'
         environment["MOZ_GDB_SLEEP"] = '1'
         environment["MOZ_KEEP_ALL_FLASH_MINIDUMPS"]="1"
-        environment["MOZ_LOG"]="timestamp,sync,all:3"
+        environment["MOZ_LOG"]="timestamp,nsHttp:1,Timeout:1"
         environment["MOZ_NO_REMOTE"] = '1'
         environment["NO_EM_REMOTE"] = '1'
-        environment["NSPR_LOG_MODULES"]="timestamp,sync,all:3"
         environment["RUST_BACKTRACE"]="1"
         environment["RUST_LOG"]="info"
         environment["XPCOM_DEBUG_BREAK"]="stack"
