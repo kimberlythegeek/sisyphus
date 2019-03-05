@@ -306,6 +306,8 @@ registerDialogCloser();
                     logger.info('content script result: %s', result)
                 except errors.ScriptTimeoutException, e:
                     logger.warning('content script: %s', e)
+                except Exception, e:
+                    logger.error('content script: %s', e)
         for chrome_script_url in args.chrome_scripts:
             chrome_script = get_remote_text(chrome_script_url)
             if chrome_script:
@@ -316,12 +318,17 @@ registerDialogCloser();
                         logger.info('chrome script result: %s\n', result)
                     except errors.ScriptTimeoutException, e:
                         logger.warning('chrome script: %s', e)
+                    except Exception, e:
+                        logger.error('chrome script: %s', e)
         time.sleep(float(args.wait))
         while True:
             try:
                 logger.info('alert: %s', Alert(client).text)
                 Alert(client).dismiss()
             except errors.NoAlertPresentException:
+                break
+            except Exception, e:
+                logger.error('alert: %s', e)
                 break
         client.quit(in_app=True)
     except (errors.TimeoutException, errors.UnknownException, IOError), e:
@@ -330,13 +337,17 @@ registerDialogCloser();
             client.quit(in_app=True)
             if client.session:
                 os.kill(client.session['moz:processID'], 9)
-        except errors.MarionetteException, e:
-            if 'Please start a session' not in e.message:
-                raise # If the error is not that the app had disconnected/terminated.
-    except errors.MarionetteException, e:
-        logger.exception('time_out_alarm_fired %s', references['time_out_alarm_fired'])
-        if 'Please start a session' in e.message:
-            pass # Typically terminated firefox with marionette calls pending.
+        #except errors.MarionetteException, e:
+        #    if 'Please start a session' not in e.message:
+        #        raise # If the error is not that the app had disconnected/terminated.
+        except Exception, e:
+            logger.error('client session: %s', e)
+    #except errors.MarionetteException, e:
+    #    logger.exception('time_out_alarm_fired %s', references['time_out_alarm_fired'])
+    #    if 'Please start a session' in e.message:
+    #        pass # Typically terminated firefox with marionette calls pending.
+    except Exception:
+        logger.exception()
     finally:
         if hasattr(signal, 'SIGALRM'):
             signal.alarm(0)
