@@ -200,6 +200,8 @@ else:
     AUTH_LDAP_GROUP_TYPE = GroupOfNamesType()
     #AUTH_LDAP_REQUIRE_GROUP = os.environ['SISYPHUS_LDAP_RESTRICTED_GROUP']
 
+    AUTH_LDAP_START_TLS = True
+
 # Import local settings to add to/override the above
 try:
     from local_settings import *
