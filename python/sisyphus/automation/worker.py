@@ -2057,6 +2057,8 @@ class Worker(object):
                     pass # No such process
                 elif oserror.errno == 10:
                     pass # No child process
+                elif oserror.errno == 13:
+                    pass # Permission errors
                 elif oserror.errno == 32:
                     pass # Broken pipe
                 else:
