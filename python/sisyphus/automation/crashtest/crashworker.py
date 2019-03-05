@@ -412,7 +412,11 @@ class CrashTestWorker(worker.Worker):
                     # Convert backslashes on Windows into slashes which
                     # makes the path compatible with cygwin.
                     line = re.sub(r'\\', '/', line)
-                line = fix_stack_using_bpsyms.fixSymbols(line, symbolspath_save)
+                try:
+                    line = fix_stack_using_bpsyms.fixSymbols(line, symbolspath_save)
+                except:
+                    (etype, evalue, etraceback) = utils.formatException()
+                    self.debugMessage("Exception: %s" % etraceback)
                 logfile.write(line)
                 # decode to unicode
                 line = utils.makeUnicodeString(line)
