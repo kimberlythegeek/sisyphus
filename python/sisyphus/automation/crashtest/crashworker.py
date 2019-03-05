@@ -10,6 +10,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 
 from optparse import OptionParser
@@ -213,12 +214,12 @@ class CrashTestWorker(worker.Worker):
         loguploadpath = 'logs/' + baselogfilename[:16].replace('-', '/') # CCYY/MM/DD/HH/MM
         dmpuploadpath = 'minidumps/' + baselogfilename[:16].replace('-', '/') # CCYY/MM/DD/HH/MM
 
-        geckologfilename = "%s/results/gecko.log" % sisyphus_dir
         # Create the file in case the Popen raises and exception
         # and prevents the runner from creating it.
-        geckologfile = open(geckologfilename, "a")
+        geckologfile = tempfile.NamedTemporaryFile(mode='a+', delete=False)
         geckologfile.write('\n')
         geckologfile.close()
+        geckologfilename = geckologfile.name
 
         args = []
         runnerpath = "%s/python/sisyphus/automation/runner.py" % sisyphus_dir
