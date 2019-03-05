@@ -1995,7 +1995,7 @@ class Worker(object):
             subprocess.call(kill_args)
         except Exception:
             (etype, evalue, etraceback) = utils.formatException()
-            self.logMessage("killTest: %s" % etraceback)
+            self.debugMessage("killTest: %s" % etraceback)
 
 
         process_dict = self.psTest()
@@ -2016,7 +2016,7 @@ class Worker(object):
                 kill_args.extend(pids)
                 try:
                     subprocess.call(kill_args)
-                except Exception, e:
+                except Exception:
                     (etype, evalue, etraceback) = utils.formatException()
                     self.logMessage("killTest: %s" % etraceback)
 

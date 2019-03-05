@@ -330,7 +330,10 @@ registerDialogCloser();
             except Exception, e:
                 logger.error('alert: %s', e)
                 break
-        client.quit(in_app=True)
+        try:
+            client.quit(in_app=True)
+        except:
+            pass
     except (errors.TimeoutException, errors.UnknownException, IOError), e:
         logger.warning("ABNORMAL: %s", e)
         try:

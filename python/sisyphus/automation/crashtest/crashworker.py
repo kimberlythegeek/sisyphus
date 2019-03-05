@@ -353,8 +353,17 @@ class CrashTestWorker(worker.Worker):
                 line = proc.stdout.readline()
                 while line:
                     stdout += line
-                    line = proc.stdout.readline()
-
+                    try:
+                        line = proc.stdout.readline()
+                    except OSError, e:
+                        if e.errno == 11:
+                            # Resource temporarily unavailable
+                            # try once more but don't raise the error.
+                            try:
+                                line = proc.stdout.readline()
+                            except Exception:
+                                (etype, evalue, etraceback) = utils.formatException()
+                                self.debugMessage("runTest: %s" % etraceback)
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception, e:
@@ -979,7 +988,7 @@ class CrashTestWorker(worker.Worker):
                 self.save()
             except (KeyboardInterrupt, SystemExit):
                 raise
-            except Exception, e:
+            except Exception:
                 exceptionType, exceptionValue, errorMessage = utils.formatException()
                 if str(exceptionValue) == 'CrashWorker.runTest.FatalError':
                     raise
