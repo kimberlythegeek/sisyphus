@@ -185,7 +185,7 @@ class CrashLoader(object):
 
         return waiting_testruns
 
-    def load_socorro_crashdata(self, start_date, stop_date, include_hangs, include_ports=False, ignorable_signatures=None):
+    def load_socorro_crashdata(self, start_date, stop_date, include_hangs, include_ports=False, ignorable_signatures=None, exploitable=False):
 
         if not ignorable_signatures:
             ignorable_signatures = []
@@ -221,6 +221,8 @@ class CrashLoader(object):
                 '_results_offset': results_offset,
                 '_results_number': results_number
             }
+            if exploitable:
+                payload['exploitability'] = ['high', 'medium']
 
             response = requests.get(url, headers=headers, params=payload)
 
@@ -612,6 +614,11 @@ Example:
                       default=None,
                       help='File containing url patterns to skip when uploading.')
 
+    parser.add_option('--exploitable', action='store_true',
+                      dest='exploitable',
+                      default=False,
+                      help='Include exploitable high, medium, low crashes only.')
+
     parser.add_option('--include-hangs', action='store_true',
                       dest='include_hangs',
                       default=False,
@@ -715,7 +722,8 @@ Example:
                                                              options.stop_date,
                                                              options.include_hangs,
                                                              include_ports=options.include_ports,
-                                                             ignorable_signatures=options.ignorable_signatures)
+                                                             ignorable_signatures=options.ignorable_signatures,
+                                                             exploitable=options.exploitable)
         priority = '3'
     crashloader.create_socorro_rows(pending_socorro, waiting_testruns, priority, options.all_branches)
 
