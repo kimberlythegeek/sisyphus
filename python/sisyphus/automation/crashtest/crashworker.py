@@ -340,7 +340,9 @@ class CrashTestWorker(worker.Worker):
             try:
                 signal.signal(signal.SIGALRM, timeout_handler)
                 signal.alarm(self.site_timeout + 60)
-                stdout = proc.communicate()[0]
+                stdout = ''
+                while proc.poll() is None:
+                    stdout += proc.stdout.readline()
             except OSError, oserror:
                 if oserror.errno != 10:
                     raise
@@ -348,6 +350,10 @@ class CrashTestWorker(worker.Worker):
             finally:
                 signal.alarm(0)
                 signal.signal(signal.SIGALRM, default_alarm_handler)
+                line = proc.stdout.readline()
+                while line:
+                    stdout += line
+                    line = proc.stdout.readline()
 
         except (KeyboardInterrupt, SystemExit):
             raise
