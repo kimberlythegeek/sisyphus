@@ -134,19 +134,22 @@ def worker_summary(request):
                                              datetime__gt=last_hour_timestamp)
     for build_row in build_rows:
         worker_key = build_row.os_name + ' ' + build_row.os_version + ' ' + build_row.cpu_name
-        worker_data[worker_key]['builder']['jobs'] += 1
+        if worker_key in worker_data:
+            worker_data[worker_key]['builder']['jobs'] += 1
 
     sitetestrun_rows = models.SiteTestRun.objects.filter(state = 'completed',
                                                          datetime__gt=last_hour_timestamp)
     for sitetestrun_row in sitetestrun_rows:
         worker_key = sitetestrun_row.os_name + ' ' + sitetestrun_row.os_version + ' ' + sitetestrun_row.cpu_name
-        worker_data[worker_key]['crashtest']['jobs'] += 1
+        if worker_key in worker_data:
+            worker_data[worker_key]['crashtest']['jobs'] += 1
 
     unittestrun_rows = models.UnitTestRun.objects.filter(state = 'completed',
                                                          datetime__gt=last_hour_timestamp)
     for unittestrun_row in unittestrun_rows:
         worker_key = unittestrun_row.os_name + ' ' + unittestrun_row.os_version + ' ' + unittestrun_row.cpu_name
-        worker_data[worker_key]['unittest']['jobs'] += 1
+        if worker_key in worker_data:
+            worker_data[worker_key]['unittest']['jobs'] += 1
 
     worker_data_list = []
     for worker_key in worker_data:
