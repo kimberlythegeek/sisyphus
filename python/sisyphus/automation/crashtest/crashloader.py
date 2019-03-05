@@ -185,7 +185,7 @@ class CrashLoader(object):
 
         return waiting_testruns
 
-    def load_socorro_crashdata(self, start_date, stop_date, include_hangs, include_ports=False, ignorable_signatures=None, exploitable=False):
+    def load_socorro_crashdata(self, start_date, stop_date, include_hangs, include_ports=False, ignorable_signatures=None, exploitable=False, platform=None):
 
         if not ignorable_signatures:
             ignorable_signatures = []
@@ -223,6 +223,8 @@ class CrashLoader(object):
             }
             if exploitable:
                 payload['exploitability'] = ['high', 'medium']
+            if platform:
+                payload['platform'] = platform
 
             response = requests.get(url, headers=headers, params=payload)
 
@@ -677,6 +679,11 @@ Example:
                       default=[],
                       help='Signatures to ignore when loading urls from socorro. Repeat for each signature.')
 
+    parser.add_option('--platform', action='store', type='string',
+                      dest='platform',
+                      default=None,
+                      help='Name of platform: Windows NT, Linux.')
+
     (options, args) = parser.parse_args()
 
     crashloader = CrashLoader()
@@ -723,7 +730,8 @@ Example:
                                                              options.include_hangs,
                                                              include_ports=options.include_ports,
                                                              ignorable_signatures=options.ignorable_signatures,
-                                                             exploitable=options.exploitable)
+                                                             exploitable=options.exploitable,
+                                                             platform=options.platform)
         priority = '3'
     crashloader.create_socorro_rows(pending_socorro, waiting_testruns, priority, options.all_branches)
 
