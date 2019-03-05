@@ -1499,7 +1499,7 @@ def _set_dates_for_placeholders(nfields):
     time_difference = end_date - start_date
 
     ##Maximum date range allowed in days##
-    max_difference = datetime.timedelta(days=60)
+    max_difference = datetime.timedelta(days=365)
 
     ####
     # if the maximum date range is exceeded, use the start date
