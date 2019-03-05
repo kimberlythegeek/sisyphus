@@ -20,7 +20,7 @@ ac_add_options --host=x86_64-pc-mingw32
 mk_add_options MOZ_MAKE_FLAGS=-j${J}
 ac_add_options --enable-application=browser
 ac_add_options --enable-debug
-ac_add_options --disable-optimize
+#ac_add_options --disable-optimize
 # do not strip symbols in packaged builds
 ac_add_options --disable-install-strip
 

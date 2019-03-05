@@ -1,6 +1,6 @@
 . $TEST_DIR/mozconfig/mozconfig-common
 
-mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/fennec-debug
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/fennec-debug-arm
 mk_add_options MOZ_MAKE_FLAGS=-j${J}
 mk_add_options MOZ_CO_PROJECT=browser
 
@@ -15,11 +15,11 @@ ac_add_options --enable-accessibility
 export MOZ_DEBUG_SYMBOLS=1
 
 
-# Add the correct paths here:
-ac_add_options --with-android-ndk="$HOME/opt/android-ndk"
-ac_add_options --with-android-sdk="$HOME/opt/android-sdk-linux"
-
 # android options
 ac_add_options --enable-application=mobile/android
-ac_add_options --with-android-min-sdk=15
 ac_add_options --target=arm-linux-androideabi
+
+# With the following Android SDK and NDK:
+ac_add_options --with-android-sdk="$HOME/.mozbuild/android-sdk-linux"
+ac_add_options --with-android-ndk="$HOME/.mozbuild/android-ndk-r17b"
+
