@@ -254,7 +254,7 @@ class CrashTestWorker(worker.Worker):
             "--page-load-timeout",
             "%s" % self.page_timeout,
             "--wait",
-            "1",
+            "5",
             "--gecko-log",
             geckologfilepath,
             "--stackwalk-binary",
