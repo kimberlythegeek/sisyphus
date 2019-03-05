@@ -132,7 +132,7 @@ MIDDLEWARE_CLASSES = (
 
 ROOT_URLCONF = 'sisyphus.webapp.urls'
 
-ALLOWED_HOSTS = ['sisyphus.bughunter.ateam.scl3.mozilla.com', 'sisyphus']
+ALLOWED_HOSTS = ['sisyphus.bughunter.mdc2.mozilla.com', 'sisyphus']
 TEMPLATE_DEBUG = DEBUG
 
 TEMPLATES = [
