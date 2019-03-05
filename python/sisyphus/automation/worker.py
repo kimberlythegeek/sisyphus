@@ -893,7 +893,7 @@ class Worker(object):
 
             # replace each pure address frame by 0x to prevent random pure addresses from
             # polluting the signature and preventing matches.
-            crashsignature = ' '.join([re.sub('@0x[0-9a-fA-F]+', '', sig) for sig in crash_data["signature_list"]])
+            crashsignature = ' '.join([re.sub('@0x[0-9a-fA-F]+', '', sig.rstrip()) for sig in crash_data["signature_list"]])
 
             self.debugMessage('process_dump_files: signature: %s, exploitability: %s' % (crashsignature, exploitability))
 
