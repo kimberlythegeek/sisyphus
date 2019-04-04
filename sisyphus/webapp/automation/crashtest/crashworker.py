@@ -19,7 +19,7 @@ from optparse import OptionParser
 #from pympler import tracker
 #tr = tracker.SummaryTracker()
 
-sisyphus_dir     = os.environ["SISYPHUS_DIR"]
+_dir     = os.environ["SISYPHUS_DIR"]
 tempdir          = os.path.join(sisyphus_dir, 'python')
 if tempdir not in sys.path:
     sys.path.append(tempdir)
@@ -37,17 +37,17 @@ if tempdir not in sys.path:
     sys.path.append(tempdir)
 
 
-os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 
 import django
 django.setup()
 
-import sisyphus.webapp.settings
+import settings
 sisyphus_url      = os.environ["SISYPHUS_URL"]
 post_files_url    = sisyphus_url + '/post_files/'
 
-from sisyphus.webapp.bughunter import models
-from sisyphus.automation import utils, worker, program_info
+from bughunter import models
+from automation import utils, worker, program_info
 
 import fix_stack_using_bpsyms
 
@@ -113,7 +113,7 @@ class CrashTestWorker(worker.Worker):
 
         # self.userhook is the url of the userhook script to be executed
         # for each page load.
-        self.userhook = sisyphus.webapp.settings.SISYPHUS_URL + '/media/userhooks/' + options.userhook
+        self.userhook = settings.SISYPHUS_URL + '/media/userhooks/' + options.userhook
 
         self.page_timeout = options.page_timeout
         self.site_timeout = options.site_timeout
@@ -223,7 +223,7 @@ class CrashTestWorker(worker.Worker):
         geckologfilename = geckologfile.name
 
         args = []
-        runnerpath = "%s/python/sisyphus/automation/runner.py" % sisyphus_dir
+        runnerpath = "%s/sisyphus/webapp/automation/runner.py" % sisyphus_dir
         stackwalk_binarypath = os.environ["MINIDUMP_STACKWALK"]
 
         if self.os_name == "Windows NT":
@@ -824,7 +824,7 @@ class CrashTestWorker(worker.Worker):
                             sitetestrun_row.worker = None
                             sitetestrun_row.state = 'waiting'
                             sitetestrun_row.save()
-                    except sisyphus.webapp.bughunter.models.Worker.DoesNotExist:
+                    except bughunter.models.Worker.DoesNotExist:
                         sitetestrun_row.worker = None
                         sitetestrun_row.state = 'waiting'
                         sitetestrun_row.save()

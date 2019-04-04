@@ -1,8 +1,9 @@
 django==1.8.17
-MySQL-python
+mysqlclient==1.3.12
 parsedatetime
 taskcluster
 poster
 django_auth_ldap==1.2.6
 git+https://github.com/jeads/datasource
 python-dotenv
+django_extensions

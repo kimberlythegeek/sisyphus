@@ -24,9 +24,9 @@ from django.utils.encoding import iri_to_uri, smart_str, smart_unicode, force_un
 from django.utils.http import urlquote
 from django.views.decorators.csrf import csrf_exempt
 
-from sisyphus.automation import utils
-from sisyphus.automation.crashtest.crashloader import CrashLoader
-from sisyphus.webapp.bughunter import models
+from automation import utils
+from automation.crashtest.crashloader import CrashLoader
+from bughunter import models
 
 
 ###
@@ -1572,6 +1572,3 @@ NAMED_FIELDS = set( ['signature',
                      'message'] )
 
 VIEW_PAGES = set([ 'bhview', 'get_help' ])
-
-
-

@@ -24,14 +24,14 @@ if __name__ == '__main__':
     if tempdir not in sys.path:
         sys.path.append(tempdir)
 
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 
     import django
     django.setup()
 
 from django.db import connection
-from sisyphus.automation import utils
-from sisyphus.webapp.bughunter import models
+from automation import utils
+from bughunter import models
 
 
 class CrashLoader(object):
@@ -326,7 +326,7 @@ class CrashLoader(object):
                 branch = self.versions[product][major_version]
 
                 # We currently do not have AMD processors so we will map them
-                # to Intel processors. This also takes care of the case where 
+                # to Intel processors. This also takes care of the case where
                 # we misreport Intel 64 bit processors as AMD.
                 match = re.match(r'.*amd(32|64)', cpu_name)
                 if match:

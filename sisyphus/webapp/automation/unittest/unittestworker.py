@@ -24,7 +24,7 @@ tempdir          = os.path.join(tempdir, 'webapp')
 if tempdir not in sys.path:
     sys.path.append(tempdir)
 
-os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 
 import django
 django.setup()
@@ -32,8 +32,8 @@ django.setup()
 sisyphus_url      = os.environ["SISYPHUS_URL"]
 post_files_url    = sisyphus_url + '/post_files/'
 
-from sisyphus.webapp.bughunter import models
-from sisyphus.automation import utils, worker, program_info
+from webapp.bughunter import models
+from automation import utils, worker, program_info
 
 os.environ["XPCOM_DEBUG_BREAK"]="stack"
 
@@ -114,7 +114,7 @@ class UnitTestWorker(worker.Worker):
         # xpctest
         # TEST_PASS | testid | message
         # TEST-KNOWN-FAIL | testid | message # this may not be valid.
-        #       action: process previously collected messages 
+        #       action: process previously collected messages
         #               for this testid.
         # TEST-UNEXPECTED-FAIL | testid | message
         #               includes overall test run message not related to xpctests.

@@ -7,7 +7,7 @@ from django.template import Template, Context
 from django.core.management.base import BaseCommand, CommandError
 
 from datasource.bases.BaseHub import BaseHub
-from sisyphus.webapp.bughunter.filters.templatetags import bh_unorderedlist
+from bughunter.filters.templatetags import bh_unorderedlist
 
 class Command(BaseCommand):
 
@@ -56,7 +56,7 @@ class Command(BaseCommand):
 
       #Uncomment to see datastructure for debugging
       #pp = pprint.PrettyPrinter(indent=3)
-      #self.stdout.write( pp.pformat(data_views) ) 
+      #self.stdout.write( pp.pformat(data_views) )
 
       menu_file_obj = open("%s%s" % (settings.ROOT, "/html/nav/nav_menu.html"), 'w+')
       try:
@@ -74,6 +74,6 @@ class Command(BaseCommand):
 
       nav_lookup_file_obj = open("%s%s" % (settings.ROOT, "/templates/bughunter.navlookup.html"), 'w+')
       try:
-         nav_lookup_file_obj.write(templateString) 
+         nav_lookup_file_obj.write(templateString)
       finally:
          nav_lookup_file_obj.close()

@@ -33,16 +33,16 @@ tempdir          = os.path.join(tempdir, 'webapp')
 if tempdir not in sys.path:
     sys.path.append(tempdir)
 
-os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 
-import sisyphus.webapp.settings
+import settings
 sisyphus_url      = os.environ["SISYPHUS_URL"]
 post_files_url    = sisyphus_url + '/post_files/'
 
-from sisyphus.webapp.bughunter import models
+from bughunter import models
 
-from sisyphus.automation import utils, program_info, crashreports
-import sisyphus.automation.bugzilla
+from automation import utils, program_info, crashreports
+import automation.bugzilla
 
 class Worker(object):
 
@@ -1088,7 +1088,7 @@ class Worker(object):
         else:
             raise Exception('installBuild: unsupported operating system: %s' % self.os_name)
 
-        build_uri_prefix = sisyphus.webapp.settings.SISYPHUS_URL + '/media/builds/'
+        build_uri_prefix = settings.SISYPHUS_URL + '/media/builds/'
         producturi = build_uri_prefix + '/' + productfilename
 
         if not utils.downloadFile(producturi, '/tmp/' + productfilename):
@@ -2088,5 +2088,3 @@ class Worker(object):
             for pid in process_dict:
                 self.logMessage("killTest: unable to kill %s" % pid)
             raise Exception('Worker.killTest.FatalError')
-
-

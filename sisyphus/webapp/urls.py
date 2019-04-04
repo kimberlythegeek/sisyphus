@@ -1,16 +1,11 @@
-from django.conf.urls import patterns, url, include
+from django.conf.urls import url
 
 # Uncomment the next two lines to enable the admin:
-from django.contrib import admin
+from django.contrib import admin, admindocs
 admin.autodiscover()
 
-urlpatterns = patterns('',
-
-    (r'^djangoadmin/doc/', include('django.contrib.admindocs.urls')),
-
-    # Uncomment the next line to enable the admin:
-    (r'^djangoadmin/', include(admin.site.urls)),
-
-    (r'^bughunter/', include('sisyphus.webapp.bughunter.urls')),
-
-)
+urlpatterns = [
+    url(r'^djangoadmin/doc/', admindocs.urls),
+    url(r'^djangoadmin/', admin.site.urls),
+    url(r'^bughunter/', urls)
+]

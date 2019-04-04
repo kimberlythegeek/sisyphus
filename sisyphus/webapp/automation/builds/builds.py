@@ -19,8 +19,8 @@ tempdir          = os.path.join(tempdir, 'webapp')
 if tempdir not in sys.path:
     sys.path.append(tempdir)
 
-os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
-from sisyphus.webapp.bughunter.models import Branch
+os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
+from bughunter.models import Branch
 
 def ordered_ffversion(versionstring):
     versionstring = re.sub('[a-z].*$', '', versionstring)

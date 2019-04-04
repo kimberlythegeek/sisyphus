@@ -30,15 +30,15 @@ tempdir          = os.path.join(tempdir, 'webapp')
 if tempdir not in sys.path:
     sys.path.append(tempdir)
 
-os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 
-from sisyphus.webapp.bughunter import models
-from sisyphus.automation import utils, program_info
-import sisyphus.automation.worker
+from webapp.bughunter import models
+from automation import utils, program_info
+import automation.worker
 
 options          = None
 
-class UserWorker(sisyphus.automation.worker.Worker):
+class UserWorker(automation.worker.Worker):
 
     def save(self):
         pass
@@ -201,5 +201,3 @@ def main():
 if __name__ == "__main__":
     main()
     print 'Program terminating'
-
-

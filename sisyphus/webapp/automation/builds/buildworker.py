@@ -23,19 +23,19 @@ tempdir          = os.path.join(tempdir, 'webapp')
 if tempdir not in sys.path:
     sys.path.append(tempdir)
 
-os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 
-from sisyphus.webapp.bughunter import models
-from sisyphus.automation import utils, program_info
-import sisyphus.automation.worker
+from bughunter import models
+from automation import utils, program_info
+import automation.worker
 
 options          = None
 
-class BuildWorker(sisyphus.automation.worker.Worker):
+class BuildWorker(automation.worker.Worker):
 
     def __init__(self, options):
         options.build = True
-        sisyphus.automation.worker.Worker.__init__(self, "builder", options)
+        automation.worker.Worker.__init__(self, "builder", options)
 
     def doWork(self):
 
@@ -209,5 +209,3 @@ if __name__ == "__main__":
     # everything that references the worker as a foreign key.
     this_worker.state = 'dead'
     this_worker.save()
-
-

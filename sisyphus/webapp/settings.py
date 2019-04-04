@@ -6,8 +6,6 @@ from datasource.bases.BaseHub import BaseHub
 from datasource.hubs.MySQL import MySQL
 from dotenv import load_dotenv
 
-import sys
-print sys.path
 from bughunter.filters.templatetags import bh_unorderedlist
 
 # Set Database connectivity via environment
@@ -135,7 +133,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
 )
 
-ROOT_URLCONF = 'sisyphus.webapp.urls'
+ROOT_URLCONF = 'urls'
 
 ALLOWED_HOSTS = ['sisyphus.bughunter.mdc2.mozilla.com', 'sisyphus', 'localhost']
 TEMPLATE_DEBUG = DEBUG
@@ -162,6 +160,7 @@ INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.admindocs',
     'django.contrib.staticfiles',
+    'django_extensions',
 
     ##Bughunter related apps##
     'bughunter',

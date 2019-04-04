@@ -22,10 +22,10 @@ tempdir          = os.path.join(tempdir, 'webapp')
 if tempdir not in sys.path:
     sys.path.append(tempdir)
 
-os.environ['DJANGO_SETTINGS_MODULE'] = 'sisyphus.webapp.settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 
-import sisyphus.webapp.settings
-from sisyphus.webapp.bughunter import models
+import settings
+from bughunter import models
 
 def main():
 
