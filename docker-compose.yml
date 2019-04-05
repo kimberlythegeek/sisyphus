@@ -1,4 +1,3 @@
-# Pastebin eG0adukV
 version: '3'
 
 services:
@@ -6,17 +5,18 @@ services:
     image: mariadb:10.3.11
     restart: always
     env_file:
-      - .env
+      - docker/config/local_dev.env
   web:
     container_name: bughunter
     env_file:
-      - .env
+      - docker/config/local_dev.env
+      - docker/config/my.env
     build:
       context: .
-      dockerfile: Dockerfile
-    command: bash -c "python webapp/manage.py migrate && python webapp/manage.py runserver 0.0.0.0:8000"
+      dockerfile: ./docker/Dockerfile
+    command: ["docker/run_webapp.sh"]
     volumes:
-      - .:/bughunter
+      - .:/app
     depends_on:
       - db
     ports:

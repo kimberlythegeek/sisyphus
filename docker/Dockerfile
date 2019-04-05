@@ -1,6 +1,7 @@
-# Pastebin YHMV1zA8
 From python:2.7.15
 ENV PYTHONUNBUFFERED 1
+
+WORKDIR /app/
 
 RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y \
@@ -11,10 +12,5 @@ RUN apt-get install -y \
   libldap2-dev \
   libssl-dev
 
-RUN mkdir /config
-ADD /requirements.txt /config/
-
-ADD sisyphus /sisyphus
-WORKDIR /sisyphus
-
-RUN pip install -U -r /config/requirements.txt
+COPY requirements.txt .
+RUN pip install -U -r requirements.txt
