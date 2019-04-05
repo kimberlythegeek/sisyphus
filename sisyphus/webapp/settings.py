@@ -1,5 +1,6 @@
 # Django settings for sisyphus.webapp project.
 
+import sys
 import os
 import json
 from datasource.bases.BaseHub import BaseHub
