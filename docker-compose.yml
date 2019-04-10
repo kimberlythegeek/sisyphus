@@ -7,7 +7,7 @@ services:
     env_file:
       - docker/config/local_dev.env
   web:
-    container_name: bughunter
+    container_name: tantalus
     env_file:
       - docker/config/local_dev.env
       - docker/config/my.env
