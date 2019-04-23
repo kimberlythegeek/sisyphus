@@ -5,7 +5,7 @@
 
 To run a local development environment, you must have [Docker](https://www.docker.com/get-started) installed and its daemon running.
 
-Currently, to access Tantalus, you need an LDAP account, as well as access to the bughunter LDAP group. (Soon to be changed to the tantalus LDAP group)
+Currently to access Tantalus you need an LDAP account as well as access to the bughunter LDAP group.
 
 You also need to be connected to [Mozilla's VPN](https://mana.mozilla.org/wiki/display/SD/VPN).
 
@@ -14,13 +14,13 @@ You also need to be connected to [Mozilla's VPN](https://mana.mozilla.org/wiki/d
 To run the web app and database containers, type the following command into your terminal:
 
 ```bash
-docker-compose build && docker-compose up
+docker-compose up
 ```
 
 To restart the containers, simply add the `docker-compose down` command:
 
 ```bash
-docker-compose down && docker-compose build && docker-compose up
+docker-compose down && docker-compose up
 ```
 
 The web app will be accessible at [http://localhost:8000/bughunter](http://localhost:8000/bughunter)
