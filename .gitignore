@@ -1,2 +1,4 @@
 *.pyc
+*.swp
 debug.log
+my.env
