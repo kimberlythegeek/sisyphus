@@ -1,0 +1,11 @@
+product=${product:-firefox}
+branch=${branch:-beta}
+buildtype=nightly
+downloadurl="http://stage.mozilla.org/pub/mozilla.org/firefox/nightly/40.0b7-candidates/build1/win32/en-US/Firefox%20Setup%2040.0b7.exe"
+profilename=${profilename:-firefox-beta-profile}
+profiledirectory=${profiledirectory:-/tmp/firefox-beta-profile}
+executablepath=$HOME/bin/beta
+userpreferences=${userpreferences:-$TEST_DIR/prefs/bughunter-user.js}
+extensiondir=${extensiondir:-$TEST_DIR/xpi}
+TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-https://hg.mozilla.org/releases/mozilla-beta}
+TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}

@@ -1,0 +1,6 @@
+product=${product:-js}
+branch=${branch:-beta}
+buildtype=${buildtype:-debug}
+jsshellsourcepath=${jsshellsourcepath:-~/mozilla/builds/beta/mozilla/js/src}
+TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-https://hg.mozilla.org/releases/mozilla-beta}
+TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}

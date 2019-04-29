@@ -1,0 +1,11 @@
+product=${product:-firefox}
+branch=${branch:-inbound}
+buildtype=inbound
+downloadurl=http://stage.mozilla.org/pub/mozilla.org/firefox/inbound/latest-mozilla-central/firefox-28.0a1.en-US.linux-i686.tar.bz2
+profilename=${profilename:-firefox-inbound-profile}
+profiledirectory=${profiledirectory:-/tmp/firefox-inbound-profile}
+executablepath=$HOME/bin/inbound
+userpreferences=${userpreferences:-$TEST_DIR/prefs/bughunter-user.js}
+extensiondir=${extensiondir:-$TEST_DIR/xpi}
+TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-https://hg.mozilla.org/integration/mozilla-inbound}
+TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}
