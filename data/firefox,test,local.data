@@ -1,0 +1,9 @@
+product=firefox
+branch=1.9.2
+profilename=firefox-1.9.2-profile
+profiledirectory=/tmp/firefox-1.9.2-profile
+executablepath=/Applications/Namoroka.app/Contents/MacOS/
+userpreferences=${TEST_DIR}/prefs/bughunter-user.js
+extensiondir=${TEST_DIR}/xpi
+buildtype=nightly
+TEST_MOZILLA_HG=https://hg.mozilla.org/releases/mozilla-1.9.2

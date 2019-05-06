@@ -1,4 +1,7 @@
 *.pyc
 *.swp
 debug.log
-my.env
+logs
+builds
+.hg*
+minidumps

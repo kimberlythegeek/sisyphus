@@ -1,0 +1,53 @@
+<!DOCTYPE HTML>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Log for {{ worker_row.hostname }}/{{ worker_row.worker_type }} - Bughunter</title>
+  </head>
+  <body>
+    <h1>Log for {{ worker_row.hostname }}/{{ worker_row.worker_type }} - Bughunter</h1>
+
+    <table summary = "Bughunter Workers">
+      <thead>
+        <tr>
+          <th>hostname</th>
+          <th>Type</th>
+          <th>State</th>
+          <th>Last Update</th>
+          <th>Operating System</th>
+          <th>Version</th>
+          <th>CPU</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ worker_row.hostname }}</td>
+          <td>{{ worker_row.worker_type }}</td>
+          <td>{{ worker_row.state }}</td>
+          <td>{{ worker_row.datetime }}</td>
+          <td>{{ worker_row.os_name }}</td>
+          <td>{{ worker_row.os_version }}</td>
+          <td>{{ worker_row.cpu_name }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <table>
+      <caption>Log</caption>
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Message</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for logentry in log_rows %}
+        <tr>
+          <td>{{ logentry.datetime }}</td>
+          <td><pre>{{ logentry.message }}</pre></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <div><a href="/bughunter/admin/workers/">Return to workers</a></div>
+      <div><a href="/bughunter/">Return to home</a></div>
+    </body>
+  </html>

@@ -1,0 +1,258 @@
+[
+   "Site Tests", 
+   [  
+      "Collections",
+      [ { "name":"crash_explorer_st",
+          "default":1,
+          "read_name":"Crash Explorer",
+          "collection":[ { "bhview":"crashes_st", "parent":"" }, 
+                         { "bhview":"crash_detail_st", "parent":"crashes_st" },
+                         { "bhview":"crash_urls_st", "parent":"crashes_st" } ]
+        },
+        { "name":"assertion_explorer_st",
+          "read_name":"Assertion Explorer",
+          "collection":[ { "bhview":"assertions_st", "parent":"" }, 
+                         { "bhview":"assertion_detail_st", "parent":"assertions_st" },
+                         { "bhview":"assertion_urls_st", "parent":"assertions_st" } ]
+        }
+      ],
+
+      "Crashes", 
+      [ { "name":"crashes_st",
+           "read_name":"Site Crashes",
+           "signals":{ "signature":"1", 
+                       "url":"1",
+                       "fatal_message":"1",
+                       "address":"1", 
+                       "pluginfilename":"1", 
+                       "pluginversion":"1", 
+                       "exploitability":"1" },
+           "control_panel":"crashes.html",
+           "default_load":1,
+           "data_adapter":"crashes",
+           "charts":[ { "name":"table", "read_name":"Table" }, 
+                      { "name":"platform_tree", "read_name":"Platform Tree" } ]
+         },
+   
+         { "name":"crash_urls_st",
+           "read_name":"Site Crash URL Summary",
+           "signals":{ "url":"1", 
+                       "signature":"1", 
+                       "fatal_message":"1",
+                       "address":"1", 
+                       "pluginfilename":"1", 
+                       "pluginversion":"1", 
+                       "exploitability":"1" },
+           "control_panel":"named_fields.html",
+           "data_adapter":"urls",
+           "charts":[ { "name":"table", "read_name":"Table" } ]
+         },
+
+         { "name":"crash_detail_st",
+           "read_name":"Site Related Crashes",
+           "signals":{ "url":"1", 
+                       "signature":"1", 
+                       "fatal_message":"1", 
+                       "socorro_id":"1", 
+                       "address":"1", 
+                       "pluginfilename":"1", 
+                       "pluginversion":"1", 
+                       "exploitability":"1" },
+           "control_panel":"named_fields.html",
+           "data_adapter":"named_fields",
+           "hidden_columns":{ "changeset":"19", "bug_list":"20", "steps":"21", "exitstatus":"22", "priority":"23", "socorro_id": "24" },
+           "charts":[ { "name":"table", "read_name":"Table" } ]
+         }
+      ],
+
+      "Assertions",
+      [ { "name":"assertions_st",
+           "read_name":"Site Assertions",
+           "signals":{ "url":"1", "assertion":"1", "location":"1" },
+           "control_panel":"assertions.html",
+           "default_load":1,
+           "data_adapter":"crashes",
+           "charts":[ { "name":"table", "read_name":"Table" }, 
+                      { "name":"platform_tree", "read_name":"Platform Tree" } ]
+         },
+
+        { "name":"assertion_urls_st",
+          "read_name":"Site Assertion URL Summary",
+          "signals":{ "assertion":"1", 
+                      "url":"1" },
+          "control_panel":"assertion_urls.html",
+          "data_adapter":"urls",
+          "charts":[ { "name":"table", "read_name":"Table" } ]
+         },
+
+         { "name":"assertion_detail_st",
+           "read_name":"Site Related Assertions",
+           "signals":{ "assertion":"1", 
+                       "location":"1",
+                       "socorro_id":"1", 
+                       "url":"1"},
+           "control_panel":"assertion_urls.html",
+           "data_adapter":"named_fields",
+           "hidden_columns":{ "changeset":"14", "bug_list":"15", "steps":"16", "exitstatus":"17", "priority":"18" },
+           "charts":[ { "name":"table", "read_name":"Table" } ]
+         }
+
+      ]
+   ], 
+
+  "Unit Tests",
+  [
+      "Collections",
+      [ { "name":"assertion_explorer_ut",
+          "read_name":"Assertion Explorer",
+          "collection":[ { "bhview":"assertions_ut", "parent":"" }, 
+                         { "bhview":"assertion_detail_ut", "parent":"assertions_ut" },
+                         { "bhview":"assertion_urls_ut", "parent":"assertions_ut" } ]
+        },
+        { "name":"valgrind_explorer_ut",
+          "read_name":"Valgrind Explorer",
+          "collection":[ { "bhview":"valgrinds_ut", "parent":"" }, 
+                         { "bhview":"valgrind_detail_ut", "parent":"valgrinds_ut" },
+                         { "bhview":"valgrind_urls_ut", "parent":"valgrinds_ut" } ]
+        }
+      ],
+      "Assertions",
+      [ { "name":"assertions_ut",
+           "read_name":"Unit Assertions",
+           "default_load":1,
+           "signals":{ "assertion":"1", "location":"1" },
+           "control_panel":"assertions.html",
+           "data_adapter":"crashes",
+           "charts":[ { "name":"table", "read_name":"Table" }, 
+                      { "name":"platform_tree", "read_name":"Platform Tree" } ]
+         },
+
+        { "name":"assertion_urls_ut",
+          "read_name":"Unit Assertion URL Summary",
+          "signals":{ "assertion":"1", 
+                      "url":"1" },
+          "control_panel":"assertion_urls.html",
+          "data_adapter":"urls",
+          "charts":[ { "name":"table", "read_name":"Table" } ]
+         },
+
+         { "name":"assertion_detail_ut",
+           "read_name":"Unit Related Assertions",
+           "signals":{ "assertion":"1", 
+                       "location":"1",
+                       "unittest_id":"1", 
+                       "url":"1"},
+           "control_panel":"assertion_urls.html",
+           "data_adapter":"named_fields",
+           "hidden_columns":{ "changeset":"14", "exitstatus":"15" },
+           "charts":[ { "name":"table", "read_name":"Table" } ]
+         }
+
+      ],
+
+      "Valgrinds",
+      [ { "name":"valgrinds_ut",
+           "read_name":"Unit Valgrinds",
+           "default_load":1,
+           "signals":{ "signature":"1", "message":"1" },
+           "control_panel":"valgrinds.html",
+           "data_adapter":"crashes",
+           "charts":[ { "name":"table", "read_name":"Table" }, 
+                      { "name":"platform_tree", "read_name":"Platform Tree" } ]
+         },
+
+         { "name":"valgrind_urls_ut",
+           "read_name":"Unit Valgrind URL Summary",
+           "signals":{ "signature":"1", 
+                      "message":"1",
+                      "url":"1" },
+           "control_panel":"valgrind_urls.html",
+           "data_adapter":"urls",
+           "charts":[ { "name":"table", "read_name":"Table" } ]
+          },
+
+          { "name":"valgrind_detail_ut",
+            "read_name":"Unit Related Valgrinds",
+            "signals":{ "signature":"1", 
+                        "message":"1",
+                        "testrun_id":"1", 
+                        "url":"1"},
+            "control_panel":"valgrind_urls.html",
+            "data_adapter":"named_fields",
+            "hidden_columns":{ "changeset":"14", "exitstatus":"15" },
+            "charts":[ { "name":"table", "read_name":"Table" } ]
+         }
+     ]
+  ],
+  "User Data",
+  [
+      "Collections",
+      [
+        { "name":"resubmission_crashes_and_assertions",
+          "read_name":"URL Resubmission Crashes & Assertions",
+          "collection":[ { "bhview":"resubmission_urls_ud", "parent":"" }, 
+                         { "bhview":"crashes_st", "parent":"resubmission_urls_ud" },
+                         { "bhview":"assertions_st", "parent":"resubmission_urls_ud" } ]
+        },
+        { "name":"resubmission_crash_explorer",
+          "read_name":"URL Resubmission Crash Explorer",
+          "collection":[ { "bhview":"resubmission_urls_ud", "parent":"" }, 
+                         { "bhview":"crashes_st", "parent":"resubmission_urls_ud" },
+                         { "bhview":"crash_detail_st", "parent":"crashes_st" },
+                         { "bhview":"crash_urls_st", "parent":"crashes_st" } ]
+        },
+        { "name":"resubmission_assertion_explorer",
+          "read_name":"URL Resubmission Assertion Explorer",
+          "collection":[ { "bhview":"resubmission_urls_ud", "parent":"" }, 
+                         { "bhview":"assertions_st", "parent":"resubmission_urls_ud" }, 
+                         { "bhview":"assertion_detail_st", "parent":"assertions_st" },
+                         { "bhview":"assertion_urls_st", "parent":"assertions_st" } ]
+        }
+      ],
+      { "name":"resubmission_urls_ud",
+        "read_name":"My URL Resubmissions",
+        "signals":{ "signature":"1", "url":"1", "socorro_id":"1" },
+        "data_adapter":"resubmission_urls",
+        "default_load":1,
+        "control_panel":"resubmission_urls.html",
+        "charts":[ { "name":"table", "read_name":"Table" } ]
+      },
+      { "name":"all_resubmission_urls_ud",
+        "read_name":"All URL Resubmissions",
+        "signals":{ "signature":"1", "url":"1", "socorro_id":"1" },
+        "default_load":1,
+        "data_adapter":"all_resubmission_urls",
+        "control_panel":"resubmission_urls.html",
+        "charts":[ { "name":"table", "read_name":"Table" } ]
+      }
+  ],
+  "Admin",
+  [ { "name":"workers_summary",
+      "read_name":"Worker Summary",
+      "page_target":"/HASHadmin/workersummary",
+      "charts":[ { "name":"table", "read_name":"Table" } ]
+    },
+
+    { "name":"worker_list",
+      "read_name":"Worker List",
+      "page_target":"/HASHadmin/workers",
+      "charts":[ { "name":"table", "read_name":"Table" } ]
+    },
+
+    { "name":"worker_logs",
+      "read_name":"Worker Log",
+      "page_target":"/HASHadmin/logs",
+      "charts":[ { "name":"table", "read_name":"Table" } ]
+    }
+   ],
+
+   "Crash Tables",
+   [ { "name":"socorro_record",
+       "read_name":"Socorro Record",
+       "signals":{ "signature":"1", "url":"1", "socorro_id":"1" },
+       "data_adapter":"named_fields",
+       "control_panel":"socorro.html",
+       "charts":[ { "name":"table", "read_name":"Table" } ]
+     }
+   ]
+]

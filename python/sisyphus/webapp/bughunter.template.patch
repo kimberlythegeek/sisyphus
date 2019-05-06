@@ -1,0 +1,40 @@
+diff --git a/python/sisyphus/webapp/settings.py b/python/sisyphus/webapp/settings.py
+--- a/python/sisyphus/webapp/settings.py
++++ b/python/sisyphus/webapp/settings.py
+@@ -48,18 +48,16 @@ try:
+       file_obj = open(filepath) 
+       try:
+          CACHE_QUERIES = json.loads(file_obj.read())
+       finally:
+          file_obj.close()
+ except KeyError:
+    CACHE_QUERIES = {}
+ 
+-TEMPLATE_DEBUG = DEBUG
+-
+ ADMINS = (
+   ('bclary', 'bob@bclary.com'),
+ )
+ 
+ MANAGERS = ADMINS
+ 
+ DATABASES = {
+     'default': {
+@@ -139,16 +137,17 @@ TEMPLATES = [
+         'BACKEND': 'django.template.backends.django.DjangoTemplates',
+         'APP_DIRS': True,
+         'OPTIONS': {
+             'context_processors': [
+                 'django.contrib.auth.context_processors.auth',
+                 'django.contrib.messages.context_processors.messages',]
+             },
+         'DIRS': [path('templates')],
++        'TEMPLATE_DEBUG': DEBUG,
+     },
+ ]
+ 
+ INSTALLED_APPS = (
+     'django.contrib.auth',
+     'django.contrib.contenttypes',
+     'django.contrib.sessions',
+     'django.contrib.sites',

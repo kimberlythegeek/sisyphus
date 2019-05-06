@@ -1,0 +1,10 @@
+product=${product:-firefox}
+branch=${branch:-release}
+buildtype=${buildtype:-opt}
+profilename=${profilename:-firefox-release-profile}
+profiledirectory=${profiledirectory:-/tmp/firefox-release-profile}
+executablepath=${executablepath:-/mozilla/builds/release/mozilla/firefox-opt/dist}
+userpreferences=${userpreferences:-$TEST_DIR/prefs/bughunter-user.js}
+extensiondir=${extensiondir:-$TEST_DIR/xpi}
+TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-https://hg.mozilla.org/releases/mozilla-release}
+TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}

@@ -1,0 +1,21 @@
+--- worker.py
++++ worker.py
+@@ -756,17 +771,17 @@ class Worker(object):
+             except (KeyboardInterrupt, SystemExit):
+                 raise
+             except:
+                 exceptionType, exceptionValue, errorMessage = utils.formatException()
+                 self.logMessage('process_dump_files: exception processing dump crash report: %s, %s, %s' % (dumpFile,
+                                                                                                             exceptionValue,
+                                                                                                             errorMessage))
+             exploitability = None
+-            if exploitablePath:
++            if exploitablePath and not self.testrun_row.fatal_message:
+                 try:
+                     proc = subprocess.Popen(
+                         [
+                             "python",
+                             sisyphus_dir + "/bin/timed_run.py",
+                             "300",
+                             "-",
+                             exploitablePath,

@@ -1,0 +1,16 @@
+. $TEST_DIR/mozconfig/mozconfig-common
+
+# android options
+ac_add_options --enable-application=mobile/android
+#ac_add_options --with-android-min-sdk=15
+ac_add_options --target=i686-linux-android
+
+ac_add_options --enable-tests
+
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/fennec-opt-x86
+mk_add_options MOZ_MAKE_FLAGS=-j${J}
+
+# With the following Android SDK and NDK:
+ac_add_options --with-android-sdk="$HOME/.mozbuild/android-sdk-linux"
+ac_add_options --with-android-ndk="$HOME/.mozbuild/android-ndk-r17b"
+

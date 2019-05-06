@@ -1,0 +1,10 @@
+product=${product:-fennec}
+branch=${branch:-inbound}
+buildtype=${buildtype:-opt}
+profilename=${profilename:-fennec-inbound-profile}
+profiledirectory=${profiledirectory:-/tmp/fennec-inbound-profile}
+executablepath=${executablepath:-/mozilla/builds/inbound/mozilla/fennec-opt/dist}
+userpreferences=${userpreferences:-$TEST_DIR/prefs/bughunter-user.js}
+extensiondir=${extensiondir:-$TEST_DIR/xpi}
+TEST_MOZILLA_HG=${TEST_MOZILLA_HG:-https://hg.mozilla.org/integration/mozilla-inbound}
+TEST_MOZILLA_HG_REV=${TEST_MOZILLA_HG_REV:-default}

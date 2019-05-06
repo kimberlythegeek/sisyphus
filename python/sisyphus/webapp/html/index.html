@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>Worker List - Bughunter</title>
+    <link rel="stylesheet" href="style/anytimec.css" type="text/css"/>
+    <link rel="stylesheet" href="style/Aristo/jquery-ui-1.8.7.custom.css" type="text/css"/>
+    <link rel="stylesheet" href="style/main.css" type="text/css"/>
+<!--    <link rel="stylesheet" href="style/smoothness/jquery-ui-1.8.13.custom.css" type="text/css"/> -->
+    <link rel="stylesheet" href="style/datatables.css" type="text/css"/>
+    <script src="scripts/json2.js"></script>
+    <script src="scripts/jquery-1.6.3.min.js"></script>
+    <script src="scripts/jquery-ui-1.8.13.custom.min.js"></script>
+    <script src="scripts/anytimec.js"></script>
+    <script src="scripts/ICanHaz.min.js"></script>
+    <script src="scripts/underscore-min.js"></script>
+    <script src="scripts/jquery.dataTables.min.js"></script>
+    <script src="scripts/backbone-min.js"></script>
+    <script src="scripts/bughunter/utils.js"></script>
+    <script src="scripts/bughunter/models.js"></script>
+    <script src="scripts/bughunter/views.js"></script>
+    <script src="scripts/bughunter/app.js"></script>
+    <script>
+      $(document).ready(function () {
+        window.auth = new BughunterAuth();
+        window.app = new BughunterAppRouter();
+      });
+    </script>
+</head>
+<body>
+
+<!-- ICanHaz templates -->
+
+<script id="login" type="text/html">
+  <div id="loginmain" class="ui-widget ui-widget-content ui-corner-all">
+    <div class="errormsgs"></div>
+    <p><b>log in to bughunter</b></p>
+    <form id="loginform" name="loginform">
+      <p>username: <input type="text" size="30" id="username"/></p>
+      <p>password: <input type="password" size="30" id="password"/></p>
+      <input type="submit" value="log in"/>
+    </form>
+  </div>
+</script>
+
+<script id="toolbar" type="text/html">
+  <div class="toolbar ui-widget ui-widget-header ui-corner-all">
+    <div id="userinfo">
+      logged in as {{username}} [<a href="#logout">log out</a>]
+    </div>
+    <div id="menu" class="fg-buttonset">
+      <form style="margin-top: 1em;display:inline">
+        <div id="menubar">
+	  <input type="radio" id="menuworkers" name="menuradio" value="workers" /><label for="menuworkers">List</label>
+         <input type="radio" id="menuworkersummary" name="menuradio" value="workersummary" /><label for="menuworkersummary">Summary</label>
+         <input type="radio" id="menulogs" name="menuradio" value="logs" /><label for="menulogs">Logs</label>
+        </div>
+      </form>
+    </div>
+    <div class="title"></div>
+    <div style="clear: right"></div>
+  </div>
+</script>
+
+<script id="standardtable" type="text/html">
+  <div id="main" class="ui-widget ui-widget-content ui-corner-all">
+    <table cellpadding="0" class="display">
+    </table>
+  </div>
+</script>
+
+<script id="workersummary" type="text/html">
+  <div id="main" class="ui-widget ui-widget-content ui-corner-all">
+    <table cellpadding="0" class="display">
+      <thead>
+	<tr>
+          <th rowspan="2">Platform</th>
+          <th rowspan="2" class="center">Builders</th>
+          <th colspan="2" class="ui-state-default">Crash Testers</th>
+          <th colspan="2" class="ui-state-default">Unit Testers</th>
+	</tr>
+	<tr>
+          <th class="center">Active</th>
+          <th class="center">Throughput</th>
+          <th class="center">Active</th>
+          <th class="center">Throughput</th>
+	</tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+  </div>
+</script>
+
+<script id="newonlycontrols" type="text/html">
+  <div>
+    <input type="checkbox" name="newonly" id="newonly" /> New {{ entitytype }} only
+  </div>
+</script>
+
+<script id="datecontrols" type="text/html">
+  <div class="datecontrols ui-widget ui-widget-content ui-corner-all">
+    <form id="datecontrolsform" name="datecontrolsform">
+      <div>
+        Start: <input type="text" size="15" id="logstart" pattern="[\d]{4}-[\d]{2}-[\d]{2}( [\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter start date in the form <YYYY>-<MM>-<DD>[ <HH>:<MM>[:<SS>], or blank for beginning of logs"> PT&nbsp;&nbsp;
+        End: <input type="text" size="15" id="logend" pattern="[\d]{4}-[\d]{2}-[\d]{2}( [\d]{2}:[\d]{2}(:[\d]{2})?)?" title="Enter end date in the form <YYYY>-<MM>-<DD>[ <HH>:<MM>[:<SS>], or blank for end of logs"> PT
+        <div class="extracontrols">
+        </div>
+      </div>
+      <div class="datecontrolssubmit">
+        <input type="submit" value="refresh" id="refreshlog" class="ui-state-default ui-corner-all ui-button-text-only" />
+      </div>
+    </form>
+  </div>
+</script>
+
+<script id="loading" type="text/html">
+  <div class="ui-widget ui-widget-content ui-corner-all workerdetails">
+    <div class="loading">Loading...</div>
+  </div>
+</script>
+
+<script id="workerdetails" type="text/html">
+  <div class="ui-widget ui-widget-content ui-corner-all workerdetails">
+    <table>
+      <tr>
+        <th class="text_right">Hostname</th><td><a href="{{hash}}">{{ hostname }}</a></td><th class="text_right">Type</th><td>{{ worker_type }}</td>
+      </tr>
+      <tr>
+        <th class="text_right">OS</th><td>{{ os_name }} {{ os_version }}</td><th class="text_right">CPU</th><td>{{ cpu_name }}</td>
+      </tr>
+      <tr>
+        <th class="text_right">State</th><td>{{ state }}</td><th class="text_right">Last update (PT)</th><td>{{ datetime }}</td>
+      </tr>
+    </table>
+  </div>
+</script>
+
+<script id="workerlogstable" type="text/html">
+  <table class="logs display displaylinks">
+    <col style="width: 18em;">
+    <col>
+  </table>
+</script>
+
+<script id="combinedworkerlogstable" type="text/html">
+  <table class="logs display displaylinks">
+    <col>
+    <col>
+    <col>
+  </table>
+</script>
+
+<script id="workerlogs" type="text/html">
+  <div class="workerlogs ui-widget ui-widget-content ui-corner-all">
+    <button id="clearlog" class="ui-state-default ui-corner-all ui-button-text-only hidden">clear</button>
+    <div class="loading">Loading logs...</div>
+    <div class="hidden nologs">No logs in specified period.</div>
+  </div>
+</script>
+
+<script id="workerlogentry" type="text/html">
+  <tr class="{{rowclass}}">
+    <td class="logdate" width="15%">{{ datetime }}</td><td class="logmessage"><div><pre>{{{message}}}</pre></div></td>
+  </tr>
+</script>
+
+<script id="workercombinedlogentry" type="text/html">
+  <tr class="{{rowclass}}">
+    <td class="logdate">{{ datetime }}</td><td class="logmachine"><a href="#admin/worker/{{worker_id}}/{{start}}/{{end}}">{{ hostname }}</a></td><td class="logmessage"><div><pre>{{{message}}}</pre></div></td>
+  </tr>
+</script>
+
+<div id="header">
+</div>
+
+<div id="content">
+</div>
+
+</body>
+</html>

@@ -1,0 +1,420 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!--<html xmlns="http://www.w3.org/1999/xhtml">-->
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>Bughunter Help</title>
+    <link rel="stylesheet" href="/css/Aristo/jquery-ui-1.8.7.custom.css" type="text/css"/>
+    <link rel="stylesheet" href="/css/bughunter.css" type="text/css"/>
+    <script type="text/javascript" src="/scripts/jquery-1.6.3.min.js"></script>
+    <script type="text/javascript" src="/scripts/mootools-core-1.4.0.js"></script>
+    <script type="text/javascript" src="/scripts/views/HelpPage.js"></script>
+</head>
+<body>
+   <div id="bh_help_spinner" class="bh-spinner ui-widget"></div>
+   <div id="bh_help_content" class="hidden">
+      <div class="ui-widget ui-corner-all bh-vis-detail-panel">
+         <h2>Help Contents</h2>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#view_navigation">View Navigation</a></li>
+            <li><a href="#control_panel">Control Panel</a></li>
+            <li><a href="#parent_child">Parent/Child Relationships</a></li>
+            <li><a href="#visualization">Visualization</a></li>
+            <li><a href="#button_controls">Button Controls</a></li>
+            <li><a href="#signals">Signals</a></li>
+            <li><a href="#table_filters">Table Filters</a></li>
+            <li><a href="#context_menu">Table Context Menu</a></li>
+            <li><a href="#url_resubmission">URL Resubmission</a></li>
+            <li>
+               <a href="#data_descriptions">Data</a>
+               <ul>
+                  <li><a href="#site_test_data">Site Test Data</a>
+                     <ul>
+                        <li>
+                           <a href="#site_crashes_overview">Site Crashes Overview</a>
+                           <ul>
+                              <li><a href="#crashes_st">Site Crashes</a></li>
+                              <li><a href="#crash_urls_st">Site Crashes URL Summary</a></li>
+                              <li><a href="#crash_detail_st">Site Related Crashes</a></li>
+                           </ul>
+                        </li>
+
+                        <li>
+                           <a href="#site_assertions_overview">Site Assertions</a>
+                           <ul>
+                              <li><a href="#assertions_st">Site Assertions</a></li>
+                              <li><a href="#assertion_urls_st">Site Assertion URL Summary</a></li>
+                              <li><a href="#assertion_detail_st">Site Related Assertions</a></li>
+                           </ul>
+                        </li>
+                     </ul>
+                  </li>
+                  <li><a href="#unit_test_data">Unit Test Data</a>
+                     <ul>
+                        <li>
+                           <a href="#unit_assertions_overview">Unit Assertions</a>
+                           <ul>
+                              <li><a href="#assertions_ut">Unit Assertions</a></li>
+                              <li><a href="#assertion_urls_ut">Unit Assertion URL Summary</a></li>
+                              <li><a href="#assertion_detail_ut">Unit Related Assertions</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="#unit_valgrind_data">Unit Valgrinds</a>
+                           <ul>
+                              <li><a href="#valgrinds_ut">Unit Valgrinds</a></li>
+                              <li><a href="#valgrind_urls_ut">Unit Valgrind URL Summary</a></li>
+                              <li><a href="#valgrind_detail_ut">Unit Valgrind Assertions</a></li>
+                           </ul>
+                        </li>
+                     </ul>
+                  </li>
+                  <li><a href="#user_data">User Data</a>
+                     <ul>
+                        <li><a href="#resubmission_urls_ud">My URL Resubmissions</a></li>
+                        <li><a href="#all_resubmission_urls_ud">All URL Resubmissions</a></li>
+                     </ul>
+                  </li>
+                  <li><a href="#crash_table_data">Crash Tables</a>
+                     <ul>
+                        <li><a href="#socorro_record">Socorro Record</a></li>
+                     </ul>
+                  </li>
+               </ul>
+            </li>
+         </ul>
+      </div>
+      <div class="ui-corner-all bh-vis-detail-panel">
+         <a name="overview"></a>
+         <h3>Overview</h3>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Bughunter consists of a backend where worker machines perform tests and submit the results to a database and a frontend user interface where the results can be viewed in a web browser and used to file bug reports. The purpose of bughunter is to help users find and file bugs on crashes, assertions and valgrind warnings.</p>
+            <p>Bughunter performs two types of tests and organizes the results accordingly:</p>
+            <h4>Site Tests</h4>
+            <p>Site Tests involve testing the behaviour of the browser when loading web pages from various web sites. Currently, Site Tests consist of attempting to reproduce crashes by loading the urls reported to Socorro.</p>
+            <h4>UnitTest Tests</h4>
+            <p>UnitTest Tests involve running the UnitTests on Linux and Mac OS X under Valgrind's memcheck in order to discover any memory related problems as well as to record assertions encountered during the Unit Tests.</p>
+            <p>Bughunter's user interface enables a user to browse this data by connecting datasets together.  You can find detailed info about the application architecture <a class="bh-help-link" href="https://wiki.mozilla.org/Auto-tools/Projects/BugHunter" target="_blank">here</a>. The application presents data in data views.  Data views can be presented in multiple panes within a single browser page or displayed in separate pages depending on what works best for a user's display.  Data views can be connected to each other when they share a data type or identifier allowing a user to explore deep relationships in the data.</p>
+         </div>
+         <a name="view_navigation"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">View Navigation</h3>
+            <div class="css-left bh-help-sprite bh-nav-help"></div>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Each data view has a navigation menu displayed in the top left panel. When a new navigation position is chosen the associated view will initialize accordingly.  If a data collection is selected the browser page will be cleared of all open views and replaced with the view collection that was selected.</p>
+         </div>
+         <a name="control_panel"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Control Panel</h3>
+            <div class="css-left bh-help-sprite bh-controlpanel-help"></div>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>The control panel is composed of a form with fields that pertain to the view displayed.  The form values can be modified and the view reloaded by selecting the load button at the bottom of the control panel.  The control panel form values are only applied to the associated view, with the exception of the date range.</p><p>The date range is passed on as signal data to any child view, so you can control the date range of a set of child views by making a single modification in the parent's control panel.</p><p>To look for similiarity in a particular field, first edit the field to contain the target text then insert a '%' at the beginning, end, or both beginning and end of the field data.</p>
+         </div>
+         <a name="parent_child"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Parent/Child Relationships</h3>
+            <div class="css-left bh-help-sprite bh-parentchild-help"></div>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Data views in bughunter have a parent/child relationship that is indicated in the top panel of each view.  A view's parent can send signals to its child views when the user selects links or graphical representations of data that can send signals.  The parent/child relationship of any view is identified by a data view number "View:Some Number" that refers to the data view selected and its parent "Parent:Some Page Name, Some View Name".  Anytime a new view is opened from an existing view, that view becomes the parent.  Parents can send signals to child views that exist on different browser tabs or pages and there is no limit to the number of child views a parent can have.</p>
+         </div>
+         <a name="visualization"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Visualization</h3>
+            <div class="css-left bh-help-sprite bh-visualization-help"></div>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>View data can be visualized in tabular or graphical form.  Different visualizations of the data from a view can be accessed using the Visualization menu, some views will only have a tabular presentation.</p>
+         </div>
+         <a name="button_controls"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Button Controls</h3>
+            <div class="css-left bh-help-sprite bh-bcontrols-help"></div>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Each view has a set of button controls displayed in the top panel.  The following is a description of each button from left to right.</p>
+            <p><span class="css-left ui-icon ui-icon-circle-minus"></span><strong>Decrease View Panel Size:</strong> Decrease the display size of a view's data table.  This may or may not apply to a graphical representation.</p>
+            <p><span class="css-left ui-icon ui-icon-circle-plus"></span><strong>Increase View Panel Size:</strong> Increase the display size of a view's data table.  This may or may not apply to a graphical representation.</p>
+            <p><span class="css-left ui-icon ui-icon-newwin"></span><strong>Open New View:</strong> This button opens a modal window that presents the user with options for opening new child views.  The child views opened will be parented to the view from which they were opened.</p>
+            <p><span class="css-left ui-icon ui-icon-help"></span><strong>Help:</strong> Clearly you understand this button...</p>
+            <p><span class="css-left ui-icon ui-icon-refresh"></span><strong>Refresh:</strong> Reload the data from its original source in the view.</p>
+            <p><span class="css-left ui-icon ui-icon-extlink"></span><strong>Move To New Window:</strong> Move the view data to a new browser tab or window.</p>
+            <p><span class="css-left ui-icon ui-icon-closethick"></span><strong>Close:</strong> Close the view.</p>
+         </div>
+         <a name="signals"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Signals</h3>
+            <div class="css-left bh-help-sprite bh-signals-help"></div>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Signals can be sent from a parent view to its children by selecting links displayed in tabular data or graphical representations of data that can send signals.  When a signal is sent, it's displayed in the parent view in the middle panel and prefixed with "Sent:", when a signal is received by a child view it's displayed in the parent view in the middle panel and prefixed with "Received:".  A date range is always displayed in the signal display panel and is prefixed with "Range:".  The date range can be set by opening the control panel and modifying the date range displayed.</p>
+         </div>
+         <a name="table_filters"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Table Filters</h3>
+            <div class="css-left bh-help-sprite bh-tablefilters-help"></div>
+            <div class="css-left bh-help-sprite bh-tablesearch-help"></div>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Directly above each tabular display of data is a set of controls that operate on the table.  The controls are described below from left to right.</p>
+            <p><strong>Show Entries:</strong> This option menu can be used to changed the number of rows displayed on a single page.  When the number of rows exceeds the page display limit a set of paging links are displayed in the lower right of the table.</p>
+            <p><strong>Column Filter:</strong> This option menu can be used to change which columns are displayed.  When opened, all of the columns available in a table are displayed along with a checkbox that can be used to toggle the display of a column.</p>
+            <p><strong>Search Filter:</strong> The search filter will filter all of the data contained within a data table by any string or regular expression entered into the input box.</p>
+         </div>
+         <a name="context_menu"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Context Menu</h3>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>A context menu is available for cells in the table that contain links.  Options are presented above the standard browser options that are specific to bughunter.  Not all of the options described are available for all data types.</p>
+            <p><strong>Search Bugzilla:</strong> This option provides a relevent set of bugzilla field searches.  If no data in the cell is selected the search will include all of the contents of the cell.  The data used in the query can be limited by selecting a subset of the cell data.</p>
+            <p><strong>Search crash-stats:</strong> This option executes a search on the crash-stats database. If no data in the cell is selected the search will include all of the contents of the cell.  The data used in the query can be limited by selecting a subset of the cell data. </p>
+            <p><strong>Select Cell Data:</strong> When selected this option will automatically select all of the text in a data cell for convenient copy/paste operations.</p>
+            <p><strong>Copy Cell Data:</strong> When selected this option will copy the contents of a given cell to the clipboard.  This feature requires the user to enable the ability in firefox.  You can allow access by entering 'about:config' in the location bar in the browser and setting 'signed.applets.codebase_principal_support=true' or installing the AllowClipboard addon and enabling clipboard access for bughunter.</p>
+            <p><strong>Open URL In Window:</strong> This is only applicable to links that have a URL for content.  When selected, this will open the url in a new browser window.  USE CAUTION: These urls may contain very disturbing content and might crash your browser: shut the door, cover your eyes, and prepare for the worst...</p>
+            <p><strong>Resubmit URL:</strong> This option is only available when the cell contents contain a URL associated with a crash report.  When selected a modal window will open allowing the user to supply a custom signature with the URL to be resubmitted. When URLs are resubmitted they are processed through the bughunter queue, retesting the URL across all source code and platform combinations available in bughunter.</p>
+            <p><strong>Resubmit All URLs:</strong> Same as <strong>Resubmit URL</strong> but all of the URLs from the selected data view will be loaded into the modal for resubmission.</p>
+         </div>
+         <a name="url_resubmission"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">URL Resubmission</h3>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>URLs can be resubmitted to the bughunter job queue from two different areas: the right click <a class="bh-help-link" href="#context_menu">context menu</a>, which enables the user to resubmit URLs already found in bughunter and the control panel of the <a class="bh-help-link" href="#resubmission_urls_ud">My URL Resubmissions</a> and <a class="bh-help-link" href="#all_resubmission_urls_ud">All URL Resubmissions</a> data views.  The control panel option provides a textarea for adding a custom signature and a list of user supplied URLs to be resubmitted.  The custom signature can be any text the user would like to associate with the resubmission, this can help keep track of the intention of the resubmission.  The field can be used as a signal with the <a class="bh-help-link" href="#socorro_record">Socorro Record</a> data view.  These URLs can be any site the user wishes to test across all source code and platform combinations available in bughunter.</p>
+         </div>
+         <a name="site_test_data"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Site Test Data</h3>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Site test data consists of the Crashes, Assertions, and potentially Valgrind warnings generated during Site Testing.</p>
+         </div>
+
+         <!-- Site Crash Data -->
+         <a name="site_crashes_overview"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Site Crashes Overview</h3>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Site crash data is organized into three different types of data representations: Crashes, URL summary, and Related Crashes.  These datasets enable a user to explore crash data within a time range.</p>
+         </div>
+         <a name="crashes_st"></a>
+         <h3>Site Crashes</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p><strong>signature:</strong> When a crash occurs, a minidump file is created by <a class="bh-help-link" href="http://kb.mozillazine.org/Breakpad" target="_blank">breakpad</a>. The minidump file is uploaded to the database server and the path to the raw file is saved in the minidump field.  This minidump file is processed by a stack walking program that creates a crash report which is also uploaded to the crashreport field.  The crash signature is created by taking the stack frames from the stack in the crash report and munging it to produce a signature which can be used to group similar crashes. Extraneous addresses, numbers, and non-alpha characters have been removed to improve reproducibility.</p>
+            <p><strong>fatal message:</strong> The warning/error message generated by a fatal assertion such as an Assertion failure or ABORT.</p>
+            {% include "help/aggregated_count_columns.html" %}
+         </div>
+         <a name="crash_urls_st"></a>
+         <h3>Site Crash URL Summary</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p><strong>url:</strong> The url where the crash occurred.</p>
+            {% include "help/aggregated_count_columns.html" %}
+         </div>
+         <a name="crash_detail_st"></a>
+         <h3>Site Related Crashes</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p><strong>signature:</strong> When a crash occurs, a minidump file is created by <a class="bh-help-link" href="http://kb.mozillazine.org/Breakpad" target="_blank">breakpad</a>. The minidump file is uploaded to the database server and the path to the raw file is saved in the minidump field.  This minidump file is processed by a stack walking program that creates a crash report which is also uploaded to the crashreport field.  The crash signature is created by taking the stack frames from the stack in the crash report and munging it to produce a signature which can be used to group similar crashes. Extraneous addresses, numbers, and non-alpha characters have been removed to improve reproducibility.</p>
+            <p><strong>fatal message:</strong> The warning/error message generated by a fatal assertion such as an Assertion failure or ABORT.</p>
+            {% include "help/product_columns.html" %}
+            <p><strong>url:</strong> The url where the crash occurred.</p>
+            <p><strong>datetime:</strong> The date and time the crash occurred.</p>
+            <p><strong>reason:</strong> The Crash Reason from the Crash Report.</p>
+            <p><strong>address:</strong> The Crash Address from the Crash Report.</p>
+            <p><strong>crashreport:</strong> A link to the Crash Reported produced by Breakpad from the minidump.</p>
+            <p><strong>crashtype:</strong> Whether the crashing process was the main browser process or the plugin container process.</p>
+            <p><strong>pluginfilename:</strong>Name of the plugin associated with the crash.</p>
+            <p><strong>pluginversion:</strong>Version of the plugin associated with the crash.</p>
+            <p><strong>exploitability:</strong> This field is populated by a program that processes a minidump file to determine its probable exploitability, this is currently only available for windows.</p>
+            <p><strong>log:</strong>The output to stdout and stderr during the test.</p>
+            <p><strong>changeset:</strong> The mercurial changeset of the build used during testing.</p>
+            <p><strong>bug list:</strong> The bug list from the associated Socorro Report.</p>
+            <p><strong>steps:</strong> The steps performed during the test. This may include which urls were loaded and any other actions that may be needed to reproduce the crash. </p>
+            <p><strong>exitstatus:</strong> The exit status of the product program run.</p>
+            <p><strong>priority:</strong> Priority is an internal field that is used by the system to prioritize jobs. It can be useful to determine if this crash occurred while testing a url uploaded from Socorro (priority 3), while attempting to reproduce a crash (priority 0) or while testing a url which was manually uploaded by a user (priority 1).</p>
+            <p><strong>socorro id:</strong> The socorro id is the primary key for the uploaded Socorro Record which was being tested. It can be used to look up the Site Test Runs associated with a Socorro Record for look up the specific Socorro Record assocated with a Site Test Run.</p>
+         </div>
+
+         <!-- Site Assertion Data -->
+         <a name="site_assertions_overview"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Site Assertions Overview</h3>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Site assertion data is organized into three different types of data representations: Assertions, URL summary, and Related Assertions.  These datasets enable a user to explore assertion data within a time range.</p>
+         </div>
+         <a name="assertions_st"></a>
+         <h3>Site Assertions</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            {% include "help/assertion_location.html" %}
+            {% include "help/occurrence_count.html" %}
+            {% include "help/aggregated_count_columns.html" %}
+         </div>
+         <a name="assertion_urls_st"></a>
+         <h3>Site Assertion URL Summary</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p><strong>url:</strong> The url where the assertion occurred.</p>
+            {% include "help/occurrence_count.html" %}
+            {% include "help/aggregated_count_columns.html" %}
+         </div>
+         <a name="assertion_detail_st"></a>
+         <h3>Site Related Assertions</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            {% include "help/assertion_location.html" %}
+            {% include "help/product_columns.html" %}
+            <p><strong>url:</strong> The url where the assertion occurred.</p>
+            {% include "help/datetime_column.html" %}
+            <p><strong>stack:</strong> The stack where the assertion occurred. This is currently not captured though it is available in the log file for the test run.</p>
+            <p><strong>count:</strong> The number of times the assertion occurred in a row.</p>
+            {% include "help/log_column.html" %}
+            {% include "help/socorro_id_column.html" %}
+         </div>
+
+         <a name="unit_test_data"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Unit Test Data</h3>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Unit test data consists of the Test Results, Crashes, Assertions, and Valgrind messages generated during the Unit Tests.</p>
+         </div>
+
+         <!-- Unit Assertion Data -->
+         <a name="unit_assertions_overview"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Unit Assertions Overview</h3>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Unit assertion data is organized into three different types of data representations: Assertions, URL summary, and Related Assertions.  These datasets enable a user to explore assertion data within a time range.</p>
+         </div>
+         <a name="assertions_ut"></a>
+         <h3>Unit Assertions</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            {% include "help/assertion_location.html" %}
+            {% include "help/occurrence_count.html" %}
+            {% include "help/aggregated_count_columns.html" %}
+         </div>
+         <a name="assertion_urls_ut"></a>
+         <h3>Unit Assertion URL Summary</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p><strong>url:</strong> The url associated with the assertion report.</p>
+            {% include "help/occurrence_count.html" %}
+            {% include "help/aggregated_count_columns.html" %}
+         </div>
+         <a name="assertion_detail_ut"></a>
+         <h3>Unit Related Assertions</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            {% include "help/assertion_location.html" %}
+            {% include "help/product_columns.html" %}
+            <p><strong>url:</strong> The url where the assertion occurred.</p>
+            {% include "help/datetime_column.html" %}
+            <p><strong>stack:</strong> The stack where the assertion occurred. This is currently not captured though it is available in the log file for the test run.</p>
+            <p><strong>count:</strong> The number of times the assertion occurred in a row.</p>
+            {% include "help/log_column.html" %}
+            {% include "help/testrun_id_column.html" %}
+         </div>
+
+         <!-- Unit Valgrind Data -->
+         <a name="unit_valgrind_overview"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Unit Valgrinds Overview</h3>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Unit valgrind data is organized into three different types of data representations: Valgrind, URL summary, and Related Valgrinds.  These datasets enable a user to explore valgrind data within a time range.</p>
+         </div>
+         <a name="valgrinds_ut"></a>
+         <h3>Unit Valgrinds</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            {% include "help/valgrind_sig_message.html" %}
+            {% include "help/aggregated_count_columns.html" %}
+         </div>
+         <a name="valgrind_urls_ut"></a>
+         <h3>Unit Valgrind URL Summary</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p><strong>url:</strong> The url where the valgrind message was emitted.</p>
+            {% include "help/aggregated_count_columns.html" %}
+         </div>
+         <a name="valgrind_detail_ut"></a>
+         <h3>Unit Related Valgrinds</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            {% include "help/valgrind_sig_message.html" %}
+            {% include "help/product_columns.html" %}
+            <p><strong>url:</strong> The url wehre the valgrind warning occurred.</p>
+            {% include "help/datetime_column.html" %}
+            <p><strong>count: </strong> The number of times the valgrind warning occurred in a row.</p>
+            {% include "help/log_column.html" %}
+            {% include "help/testrun_id_column.html" %}
+         </div>
+         <a name="user_data"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">User Data</h3>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>User data contains data views that manage user generated data.  Currently this includes URL resubmissions.  URL resubmissions are URLs contained in bughunter or provided by the user that have been resubmitted to the bughunter queue.  Resubmitted URLs are retested across all source code and platform combinations available in bughunter.</p>
+         </div>
+         <a name="resubmission_urls_ud"></a>
+         <h3>My URL Resubmissions</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            {% include "help/url_resubmissions.html" %}
+         </div>
+         <a name="all_resubmission_urls_ud"></a>
+         <h3>All URL Resubmissions</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p><strong>User:</strong> The username/email address associated with the URL resubmission.</p>
+            {% include "help/url_resubmissions.html" %}
+         </div>
+         <a name="crash_table_data"></a>
+         <div style="margin-top:10px;" class="ui-helper-clearfix">
+            <h3 class="css-left">Crash Table Overview</h3>
+         </div>
+         <hr class="bh-light-horz-line" style="margin-top:5px; margin-bottom:10px;" />
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>Crash tables are a collection of one-off tables that hold useful meta data that does not fit into the site/unit categories.  Currently, the only crash table is Socorro Record which provides a way to connect the bughunter Crash data to the original crash data source in the socorro database.</p>
+         </div>
+         <a name="socorro_record"></a>
+         <h3>Socorro Record</h3>
+         <div class="ui-state-highlight ui-corner-all bh-vis-detail-panel">
+            <p>The Socorro Record contains the data from the user's original Socorro crash report. With the exception of the socorro_id, each of these fields corresponds to a similar field in the crash report available from crash-stats.mozilla.com.</p>
+            <p><strong>socorro_id:</strong> The socorro id is the primary key for the Socorro Record table. It is also a foreign key in the Site Test Run table. socorro_id signals can be sent to and from the Socorro Record view and the Site Test Run view. In this way you can look up the Site Test Runs associated with a Socorro Record for look up the specific Socorro Record assocated with a Site Test Run.</p>
+            <p><strong>signature:</strong> The socorro crash signature which is distinct from the bughunter signature.</p>
+            <p><strong>url:</strong> The url associated with the crash report.</p>
+            <p><strong>uuid:</strong> The crash report id of the original Socorro crash report.</p>
+            <p><strong>client_crash_date:</strong> The date of the crash.</p>
+            <p><strong>date_processed:</strong> The Date Processed from the original Socorro report.</p>
+            <p><strong>last_crash:</strong> The Last Crash Date</p>
+            <p><strong>product:</strong> The name of the software product which generated the crash report.</p>
+            <p><strong>build:</strong> The Build ID of the crashing product.</p>
+            <p><strong>branch:</strong> The source branch.</p>
+            <p><strong>os_name:</strong> The name of the operating system associated with the crash.</p>
+            <p><strong>os_full_version:</strong> The full version of the operating system associated with the crash.</p>
+            <p><strong>os_version:</strong> The abbreviated version of the operating system associated with the crash.</p>
+            <p><strong>cpu_info:</strong> Description of the cpu.</p>
+            <p><strong>cpu_name:</strong> Name of the cpu.</p>
+            <p><strong>address:</strong> The Crash Address from the Socorro crash report.</p>
+            <p><strong>bug_list:</strong> A comma delimited list of the bug numbers which are associated with this crash report in Socorro.</p>
+            <p><strong>user_comments:</strong> The user comments associated with the crash.</p>
+            <p><strong>reason:</strong> The Crash Reason from the Socorro crash report.</p>
+         </div>
+      </div>
+   </div>
+</body>

@@ -1,0 +1,385 @@
+body {
+   font-family: MuseoSans500, sans-serif;
+   font-size:14px;
+   margin: 0;
+   padding: 0;
+   border-top: 2px solid #676767;
+   background: #fff url(/images/background.png) 0 0 repeat-x;
+}
+
+/*BEGIN BH STYLES*/
+h1.bh-logindino {
+  background: transparent url(/images/dino3.png) no-repeat left top;
+  position: absolute;
+  left: 0px;
+  margin: 0;
+  top: -10px;
+  width: 381px;
+  height: 227px;
+  z-index: 1;
+}
+h1.bh-dino {
+  /*background: transparent url(/images/dino3.png) no-repeat left top;*/
+  position: absolute;
+  left: 0px;
+  margin: 0;
+  top: -10px;
+  width: 381px;
+  height: 227px;
+  z-index: -1;
+}
+
+/***********
+ * Header and user info styles
+ ***********/
+#header {
+  display: none;
+}
+#header .title {
+  position: absolute;
+  height: 20px;
+  top: 50%;
+  margin-top: -10px;
+}
+#userinfo {
+  float: right;
+  font-size: 12px;
+  margin-right: 20px;
+  margin-top: 15px;
+}
+#userinfo a {
+  color: #225186;
+}
+.bh-loginmain {
+  width: 390px;
+  height: 300px;
+  margin-top: 120px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 10px;
+  text-align: center;
+}
+p.bh-loginmain {
+  margin-top: 10px;
+  margin-bottom: 5px;
+}
+input.bh-loginmain input[type="submit"] {
+  font-size: 16px;
+  margin-top: 5px;
+}
+
+/********
+ * Toolbar related classes
+ ********/
+div.bh-toolbar-base {
+   /*************
+    * Sets basic layout and background properties
+    * for toolbar components
+    *************/
+   position: relative;
+   margin-left: auto;
+   margin-right: auto;
+   background: transparent #2a2a2a;
+   background: transparent rgba(38,38,38,0.98);
+}
+div.bh-toppanel {
+  height: 50px;
+  width: 95%;
+  margin-top: 20px;
+  padding-top: 10px;
+}
+div.bh-toolbar-border {
+  width: 95%;
+  height: 5px;
+  background: #386196;
+  margin-bottom: 10px;
+}
+div.bh-toolpanel {
+  width: 95%;
+  height:50px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding: 10px;
+  font-size:0.750em;
+}
+div.bh-nodata {
+
+   color: #4F4F4F;
+   font-weight: bold;
+   font-size:1.750em;
+   text-align:center;
+   margin-top: 100px;
+}
+
+/********
+ * Size adjustments for text and buttons
+ * inside a view
+ ********/
+.bh-viewtext {
+   /* Some html elements cannot take em, use pixels instead */
+   font-size:14px;
+}
+.bh-viewbutton {
+   height:19px;
+}
+
+/**********
+ * Styles for filament group menu buttons
+ * and toolbars.
+ **********/
+.fg-buttonset {
+  margin-right: 10px;
+  padding-left: 1px;
+}
+.fg-button {
+   outline: 0;
+   margin:0 0 0 0;
+   padding: .2em .2em;
+   text-decoration:none !important;
+   cursor:pointer;
+   position: relative;
+   text-align: center;
+   zoom: 1;
+   display: inline-block;
+   font-size: .6em;
+}
+
+/************
+ * jQuery ui styles
+ ************/
+.ui-widget-content a {
+  color: #225186;
+}
+
+/*************
+ * General styles
+ *************/
+.errormsgs {
+  color:#CD0000;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.css-right {
+  float: right;
+}
+.css-left {
+  float: left;
+}
+.hidden {
+  display: none;
+}
+span.no-wrap {
+   white-space:nowrap;
+}
+a {
+  text-decoration: none;
+  color: #000080;
+}
+a:hover {
+  text-decoration: underline;
+}
+div.bh-title {
+   margin-top:8px;
+   margin-left:20px;
+   font-size:24px;
+}
+span.bh-redtext {
+   color:#CD0000;
+}
+div.bh-control-panel {
+   height:500px;
+   overflow-y:scroll;
+}
+
+/***********
+ * Modal and form styles
+ ***********/
+div.bh-modal {
+   z-index:3;
+   display:hidden;
+}
+hr.bh-horz-line {
+   background-color:#197F29;
+}
+hr.bh-light-horz-line {
+   background-color:#0D2054;
+}
+div.bh-modal-element {
+   margin-top:25px;
+   margin-bottom:25px;
+}
+div.bh-spinner {
+  background: transparent url(/images/spinner.gif) no-repeat center center;
+  height: 350px;
+}
+
+/***********
+ * URL resubmission styles
+ * *********/
+.bh-resubmission-modal {
+  width: 300px;
+  font-size: smaller;
+  border-spacing: 0;
+}
+/***********
+ *datatable styles
+ ***********/
+.bh-signal-title {
+  font-size: 12px;
+}
+.display {
+  font-size: smaller;
+  border-spacing: 0;
+}
+.css_right {
+  float: right;
+}
+.css_left {
+  float: left;
+}
+.dataTables_processing {
+  background: transparent url(/images/spinner.gif) no-repeat center center;
+  height: 350px;
+}
+
+/************
+ * Context menu styles
+ * **********/
+.contextMenu {
+	position: absolute;
+	width: 360px;
+	z-index: 99999;
+	border: solid 1px #CCC;
+	background: white;
+	padding: 0px;
+	margin: 0px;
+	display: none;
+}
+
+.contextMenu div {
+	list-style: none;
+	padding: 3px;
+	margin: 0px;
+}
+
+.contextMenu a {
+	color: #333;
+	text-decoration: none;
+	display: inline;
+	line-height: 20px;
+	height: 20px;
+	background-position: 6px center;
+	background-repeat: no-repeat;
+	outline: none;
+	padding-left: 20px;
+   padding-top:3px;
+}
+
+div.tip {
+   text-align: left;
+   min-width:150px;
+   max-width:350px;
+   background:white;
+   cursor: help; text-decoration: none;
+   position: relative;
+}
+div.tip-title {
+   font-size: 11px;
+   text-align:left;
+   padding:10px;
+}
+div.bh-vis-detail {
+   position:absolute;
+   left:750px;
+   top:200px;
+   padding:25px;
+   height:450px;
+}
+div.bh-vis-detail-panel {
+  margin-top: 5px; 
+  padding: 0.5em;
+  overflow: auto;
+}
+
+iframe.bh-help-frame {
+   width:570px;
+   height:700px;
+   border:0;
+   margin:0;
+}
+a.bh-help-link {
+   color:#5E68C6;
+}
+/* Reference UI image for the generic application help */
+.bh-help-sprite {
+   margin-left:10px;
+   background-repeat: no-repeat;
+   background-image: url('/images/bhview_panel.png');
+   background-position: 0 0;
+}
+.bh-nav-help {
+   width:132px;
+   height:40px;
+   background-position: 0 0;
+}
+.bh-controlpanel-help {
+   width:116px;
+   height:40px;
+   background-position: -130px 0;
+}
+.bh-parentchild-help {
+   width:260px;
+   height:40px;
+   background-position: -540px 0;
+}
+.bh-visualization-help {
+   width:115px;
+   height:40px;
+   background-position: -790px 0;
+}
+.bh-bcontrols-help {
+   width:150px;
+   height:40px;
+   background-position: -905px 0;
+}
+.bh-signals-help {
+   width:470px;
+   height:30px;
+   background-position: 0 -40px;
+}
+.bh-tablefilters-help {
+   width:200px;
+   height:35px;
+   background-position: 0 -70px;
+}
+.bh-tablesearch-help {
+   width:170px;
+   height:35px;
+   background-position: -890px -70px;
+}
+
+/******
+ * URL resubmission status styles
+ * ****/
+.bh-status-waiting {
+  color: #4C10AE;
+}
+.bh-status-executing {
+  color: #FF5600;
+}
+.bh-status-completed {
+  color: #007730;
+}
+
+/*******
+ * Exploitability styles
+ * *****/
+.bh-low-exploitability {
+   background-color: #FFAA73;
+}
+.bh-medium-exploitability {
+   background-color: #FF8B40;
+}
+.bh-high-exploitability {
+   background-color: #FF6400;
+}

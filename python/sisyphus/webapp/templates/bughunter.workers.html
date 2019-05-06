@@ -1,0 +1,40 @@
+<!DOCTYPE HTML>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Workers - Bughunter</title>
+  </head>
+  <body>
+    <h1>Workers - Bughunter</h1>
+
+    <table summary = "Bughunter Workers">
+      <thead>
+        <tr>
+          <th>hostname</th>
+          <th>Type</th>
+          <th>State</th>
+          <th>Last Update</th>
+          <th>Operating System</th>
+          <th>Version</th>
+          <th>CPU</th>
+          <th>Log</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for worker in worker_rows %}
+        <tr>
+          <td>{{ worker.hostname }}</td>
+          <td>{{ worker.worker_type }}</td>
+          <td>{{ worker.state }}</td>
+          <td>{{ worker.datetime }}</td>
+          <td>{{ worker.os_name }}</td>
+          <td>{{ worker.os_version }}</td>
+          <td>{{ worker.cpu_name }}</td>
+          <td><a href="log/{{ worker.id }}/">View log</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div><a href="/bughunter/admin/">Return to Administration</a></div>
+    <div><a href="/bughunter/">Return to home</a></div>
+  </body>
+</html>

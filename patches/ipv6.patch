@@ -1,0 +1,22 @@
+# HG changeset patch
+# Parent  cbc4ffa82faa0b7ab327a9958f85c62312a0333f
+
+diff --git a/python/sisyphus/automation/utils.py b/python/sisyphus/automation/utils.py
+--- a/python/sisyphus/automation/utils.py
++++ b/python/sisyphus/automation/utils.py
+@@ -123,9 +123,12 @@ def encodeUrl(url):
+     # encoding already encoded characters.
+ 
+     url            = makeUnicodeString(urllib.unquote(url))
+-    urlParseObject = urlparse.urlparse(url)
+-    urlPieces      = [urllib.quote(urlpiece.encode('utf-8'), "/=:&;") for urlpiece in urlParseObject]
+-    url            = urlparse.urlunparse(urlPieces)
++    try:
++        urlParseObject = urlparse.urlparse(url)
++        urlPieces      = [urllib.quote(urlpiece.encode('utf-8'), "/=:&;") for urlpiece in urlParseObject]
++        url            = urlparse.urlunparse(urlPieces)
++    except ValueError as e:
++        print "ValueError %s for url %s" % (e, url)
+     return url
+ 
+ def downloadFile(url, destination, credentials = None, timeout = None):

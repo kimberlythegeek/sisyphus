@@ -1,0 +1,54 @@
+Notes from worker.py:
+
+
+couchdb                                                 generic                         django models
+worker_doc = self.testdb.getDocument(host_name)         getWorker(host_name)            sisyphus.webapp.bughunter.Worker.objects.get(hostname=host_name)
+
+branches_doc = self.testdb.getDocument('branches')      getBranches()                   sisyphus.webapp.bughunter.Branch.objects.all()
+
+             Note: couchdb version is a single document the django version retrieves a set of rows.
+
+self.testdb.createDocument(self.document)               worker.save()                   (workerrow).save()
+
+self.testdb.logMessage(message)
+self.testdb.debugMessage(message)
+
+
+self.updateWorker(worker_doc)                           worker.save()                   (workerrow).save()
+
+             Note: checks to see if the worker's state is ok before attempting to save.
+
+checkForUpdate(self, job_doc)
+
+             Note: checks program for updates and if there is one, it reinserts the job (signature). This is 
+             probably not necessary if we make the SocorroRecord the job and don't delete it.
+
+
+in update_bug_list_assertions(...)
+
+        history_assertions = self.getRows(self.testdb.db.views.crash_type.results,
+                                          startkey=["history_assertion", assertionmessage, assertionfile,
+                                                    product, branch, buildtype, os_name, os_version, cpu_name],
+                                          endkey=["history_assertion", assertionmessage, assertionfile,
+                                                  product, branch, buildtype, os_name, os_version, cpu_name, {}],
+                                          include_docs=True)
+
+Note that LocalBuild isn't needed as an independent table. When we were reloading the data from the table it was
+useful to record what was built/installed on a worker, but when we changed it to reinitialize to take care of the
+situation where a previous state from a snapshot was restored, it no longer is meaningfully stored in the database.
+
+Change it to a dictionary attached to the Worker instance but not to the data stored in the Worker table.
+
+
+==== 2011-03-20 ==
+
+Ok, I've finally got how to deal with uploading files. I need to send
+them as multipart encoded forms posted to a view. The view will bind
+the uploaded data to a Form object. The way to do this for our models
+is to use ModelForms. We can create a ModelForm for each Model and
+populate the ModelForm from the request.POST and request.FILES, then
+call save() on the ModelForm to save it to the database and return a
+reference to the model instance.
+
+
+
