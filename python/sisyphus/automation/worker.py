@@ -1077,6 +1077,9 @@ class Worker(object):
 
         objdir = '/mozilla/builds/%s/mozilla/%s-%s' % (branch, self.product, buildspec['buildtype'])
 
+        if not os.path.exists(objdir):
+            os.makedirs(objdir)
+
         productfilename = os.path.basename(self.build_row.product_package)
 
         if self.os_name == 'Windows NT':
@@ -2088,5 +2091,3 @@ class Worker(object):
             for pid in process_dict:
                 self.logMessage("killTest: unable to kill %s" % pid)
             raise Exception('Worker.killTest.FatalError')
-
-
