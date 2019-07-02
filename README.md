@@ -1,6 +1,8 @@
 
 # Tantalus (Bughunter 2.0)
 
+This is branch is under development. For the current stable build, visit the [production](https://github.com/kimberlythegeek/tantalus/tree/production) branch.
+
 ## Requirements
 
 To run a local development environment, you must have [Docker](https://www.docker.com/get-started) installed and its daemon running.
