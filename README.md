@@ -28,6 +28,8 @@ There is one “master” worker, which will be referred to as the *builder*. Th
 
 Each worker is configured with a different 3rd party application, such as antivirus program, accessibility software, or firefox extension. The different configurations are maintained with VM snapshots.
 
+![image](https://user-images.githubusercontent.com/18633586/60605561-fdb96c00-9d76-11e9-9c6c-20ac31216c3f.png)
+
 ## Usage
 
 ### Requirements
